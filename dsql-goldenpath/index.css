@@ -1,0 +1,366 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --accent-orange: #ff9900; /* heading & highlights */
+  --card-border: #2c3a50;
+  --text-primary: #e3e8ef;
+  --text-muted: #a9b3c1;
+  --bg-page: #0b1e33;
+  --bg-card: #16263a;
+  --badge-blue: #00a1c9;
+  --badge-green: #037f0c;
+  --badge-gray: #6b7280;
+}
+
+body {
+  font-family: "Amazon Ember", "Open Sans", sans-serif;
+  margin: 0;
+  padding: 0;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Improve touch targets on mobile */
+@media (max-width: 639px) {
+  .aws-card {
+    min-height: 44px;
+  }
+  
+  button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  
+  input[type="checkbox"] {
+    min-width: 20px;
+    min-height: 20px;
+  }
+}
+
+.aws-page {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: "Amazon Ember", "Open Sans", sans-serif;
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .aws-page {
+    padding: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .aws-page {
+    padding: 2rem 3rem;
+  }
+}
+
+/* Header */
+.aws-header h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent-orange);
+  margin-bottom: 0.4rem;
+}
+
+@media (min-width: 640px) {
+  .aws-header h1 {
+    font-size: 2.4rem;
+  }
+}
+
+.aws-header p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid var(--accent-orange);
+  padding-left: 1rem;
+}
+
+@media (min-width: 640px) {
+  .aws-header p {
+    font-size: 1rem;
+  }
+}
+
+/* Info bar badges */
+.aws-info-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 640px) {
+  .aws-info-bar {
+    flex-direction: row;
+    gap: 1rem;
+  }
+}
+
+.aws-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  display: inline-block;
+  text-align: center;
+}
+
+@media (max-width: 639px) {
+  .aws-badge {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+  }
+}
+
+.aws-badge.blue   { background-color: var(--badge-blue);  color: #fff; }
+.aws-badge.green  { background-color: var(--badge-green); color: #fff; }
+.aws-badge.gray   { background-color: var(--badge-gray);  color: #fff; }
+
+/* Grid of phase cards */
+.aws-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 640px) {
+  .aws-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .aws-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+.aws-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: background 0.2s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  cursor: pointer;
+}
+
+@media (min-width: 640px) {
+  .aws-card {
+    padding: 1.2rem;
+    align-items: center;
+  }
+}
+
+.aws-card:hover {
+  background-color: #1f324d;
+}
+
+.aws-card.active {
+  background-color: #1f324d;
+  border-color: var(--accent-orange);
+}
+
+.aws-card-icon {
+  font-size: 1.6rem;
+  color: var(--accent-orange);
+}
+
+.aws-card-content {
+  flex: 1;
+}
+
+.aws-card-content .title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+}
+
+@media (min-width: 640px) {
+  .aws-card-content .title {
+    font-size: 1.1rem;
+  }
+}
+
+.aws-card-content .duration {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Section */
+.aws-section {
+  background-color: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .aws-section {
+    padding: 1.5rem;
+    margin-top: 2rem;
+  }
+}
+
+.aws-section h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent-orange);
+  margin-bottom: 0.6rem;
+}
+
+@media (min-width: 640px) {
+  .aws-section h2 {
+    font-size: 1.8rem;
+  }
+}
+
+.aws-section p {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+/* Utility classes */
+.space-y-6 > * + * {
+  margin-top: 1.5rem;
+}
+
+.space-y-1 > * + * {
+  margin-top: 0.25rem;
+}
+
+.space-y-2 > * + * {
+  margin-top: 0.5rem;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.items-start {
+  align-items: flex-start;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.mb-6 {
+  margin-bottom: 1.5rem;
+}
+
+.mt-8 {
+  margin-top: 2rem;
+}
+
+.pt-6 {
+  padding-top: 1.5rem;
+}
+
+.px-6 {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.py-3 {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.rounded {
+  border-radius: 0.25rem;
+}
+
+.w-5 {
+  width: 1.25rem;
+}
+
+.h-5 {
+  height: 1.25rem;
+}
+
+.flex-1 {
+  flex: 1 1 0%;
+}
+
+.block {
+  display: block;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+@media (min-width: 640px) {
+  .sm\:flex-row {
+    flex-direction: row;
+  }
+  
+  .sm\:items-center {
+    align-items: center;
+  }
+}
