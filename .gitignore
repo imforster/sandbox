@@ -1,0 +1,3 @@
+*.dmg
+dist/
+node_modules/

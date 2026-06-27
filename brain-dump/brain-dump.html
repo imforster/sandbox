@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brain Dump</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #5ecfcf;
+    --teal-light: #a8e8e8;
+    --teal-dark: #2a9d9d;
+    --ink: #1a1a2e;
+    --paper: #f9f7f4;
+    --paper-dark: #f0ede8;
+    --storm: #e8ecf4;
+    --shadow: rgba(26,26,46,0.12);
+    --card-bg: #ffffff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 32px 0;
+    position: relative;
+  }
+
+  .corner-stripes {
+    position: absolute;
+    top: 0; left: 0;
+    width: 90px; height: 90px;
+    pointer-events: none;
+  }
+
+  .corner-stripes span {
+    display: block;
+    height: 14px;
+    border-radius: 0 0 4px 0;
+    margin-bottom: 3px;
+    transform-origin: top left;
+  }
+  .corner-stripes span:nth-child(1) { background: var(--teal); width: 80px; }
+  .corner-stripes span:nth-child(2) { background: var(--teal-light); width: 60px; }
+  .corner-stripes span:nth-child(3) { background: #b8f0f0; width: 40px; }
+
+  .title-block {
+    text-align: center;
+    flex: 1;
+    padding-left: 80px;
+  }
+
+  .title-block h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 900;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  .subtitle {
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    color: #666;
+    margin-top: 4px;
+    transition: opacity 0.4s;
+  }
+
+  /* ===== MODE SWITCHER ===== */
+  .mode-switcher {
+    display: flex;
+    gap: 8px;
+    background: var(--paper-dark);
+    border-radius: 40px;
+    padding: 5px;
+    border: 1.5px solid rgba(0,0,0,0.08);
+  }
+
+  .mode-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 30px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    background: transparent;
+    color: #888;
+    transition: all 0.25s;
+    white-space: nowrap;
+  }
+
+  .mode-btn.active {
+    background: var(--card-bg);
+    color: var(--ink);
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+
+  .mode-btn .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--teal);
+    flex-shrink: 0;
+  }
+
+  /* ===== MAIN CONTENT ===== */
+  .main {
+    padding: 28px 32px 48px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* ===== CARD BASE ===== */
+  .card {
+    background: var(--card-bg);
+    border-radius: 18px;
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    padding: 16px;
+    position: relative;
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+
+  .card:focus-within {
+    box-shadow: 6px 6px 0 var(--teal-dark);
+    transform: translate(-1px, -1px);
+  }
+
+  .card label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 8px;
+    letter-spacing: 0.02em;
+  }
+
+  .card textarea {
+    width: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    color: var(--ink);
+    background: transparent;
+    line-height: 1.6;
+    min-height: 80px;
+  }
+
+  /* ===== MODE 1: DAILY GROUNDING ===== */
+  #mode-daily { display: none; }
+  #mode-daily.active { display: block; }
+
+  .daily-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .daily-grid .card-thinking {
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+  .daily-grid .card-thinking textarea { min-height: 160px; }
+
+  .daily-grid .card-unnamed {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .daily-grid .card-unnamed textarea { min-height: 60px; }
+
+  .daily-grid .card-goodday {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .daily-row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .daily-row3 {
+    display: grid;
+    grid-template-columns: 1.2fr 0.5fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+    align-items: start;
+  }
+
+  .card-forgot textarea { min-height: 120px; }
+
+  .daily-row4 {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 0.7fr;
+    gap: 16px;
+    margin-top: 16px;
+    align-items: end;
+  }
+
+  .card-life textarea { min-height: 130px; }
+
+  .card-circle {
+    background: var(--card-bg);
+    border-radius: 50%;
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .card-circle:focus-within {
+    box-shadow: 6px 6px 0 var(--teal-dark);
+    transform: translate(-1px, -1px);
+  }
+  .card-circle textarea {
+    text-align: center;
+    min-height: 60px;
+  }
+
+  .card-dinner {
+    background: var(--card-bg);
+    border-radius: 50%;
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    width: 120px;
+    height: 120px;
+    align-self: flex-end;
+    margin-left: auto;
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .card-dinner:focus-within {
+    box-shadow: 6px 6px 0 var(--teal-dark);
+    transform: translate(-1px, -1px);
+  }
+  .card-dinner label {
+    font-size: 0.72rem;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .card-dinner textarea {
+    min-height: 36px;
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  /* ===== MODE 2: CHAOS ===== */
+  #mode-chaos { display: none; }
+  #mode-chaos.active { display: block; }
+
+  .chaos-wave {
+    text-align: center;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+
+  .wave-svg {
+    width: 100%;
+    max-width: 600px;
+    height: 50px;
+  }
+
+  .chaos-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .chaos-grid .card {
+    background: var(--storm);
+    border: 2px solid var(--ink);
+  }
+
+  .chaos-grid .card label {
+    font-style: italic;
+    color: #777;
+    font-size: 0.88rem;
+    font-weight: 400;
+  }
+
+  .chaos-grid .card textarea { min-height: 160px; }
+
+  /* ===== MODE 3: FREE DUMP ===== */
+  #mode-free { display: none; }
+  #mode-free.active { display: block; }
+
+  .free-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .pin-card {
+    background: var(--card-bg);
+    border: 2.5px solid var(--ink);
+    border-radius: 2px;
+    padding: 30px 20px 20px;
+    position: relative;
+    box-shadow: 5px 5px 0 var(--ink);
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+
+  .pin-card:focus-within {
+    box-shadow: 8px 8px 0 var(--teal-dark);
+    transform: translate(-2px, -2px);
+  }
+
+  .pin {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18px;
+    height: 18px;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    background: radial-gradient(circle at 40% 35%, #8ae8e8, var(--teal-dark));
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.4);
+    z-index: 2;
+  }
+
+  .pin-card:nth-child(1) .pin { background: radial-gradient(circle at 40% 35%, #a0ee88, #3d8f3d); }
+  .pin-card:nth-child(2) .pin { background: radial-gradient(circle at 40% 35%, #88d8ee, var(--teal-dark)); }
+  .pin-card:nth-child(3) .pin { background: radial-gradient(circle at 40% 35%, #88ccee, #2a7fa8); }
+  .pin-card:nth-child(4) .pin { background: radial-gradient(circle at 40% 35%, #99ddee, var(--teal-dark)); }
+
+  .pin-card textarea {
+    width: 100%;
+    flex: 1;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    color: var(--ink);
+    background: transparent;
+    line-height: 1.7;
+  }
+
+  /* ===== ACTIONS BAR ===== */
+  .actions-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 32px 28px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .btn {
+    padding: 10px 22px;
+    border-radius: 30px;
+    border: 2px solid var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+  }
+  .btn-ghost:hover {
+    background: var(--paper-dark);
+  }
+
+  .btn-primary {
+    background: var(--ink);
+    color: white;
+    box-shadow: 3px 3px 0 var(--teal-dark);
+  }
+  .btn-primary:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--teal-dark);
+  }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--ink);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    pointer-events: none;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ===== ANIMATIONS ===== */
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card, .pin-card, .chaos-grid .card {
+    animation: fadeSlideIn 0.4s ease both;
+  }
+  .card:nth-child(1), .pin-card:nth-child(1) { animation-delay: 0.05s; }
+  .card:nth-child(2), .pin-card:nth-child(2) { animation-delay: 0.10s; }
+  .card:nth-child(3), .pin-card:nth-child(3) { animation-delay: 0.15s; }
+  .card:nth-child(4), .pin-card:nth-child(4) { animation-delay: 0.20s; }
+
+  @media (max-width: 640px) {
+    .header { flex-direction: column; gap: 16px; padding: 16px; }
+    .title-block { padding-left: 0; }
+    .daily-grid, .daily-row2, .daily-row3, .daily-row4,
+    .chaos-grid, .free-grid { grid-template-columns: 1fr; }
+    .daily-grid .card-thinking { grid-column: 1; grid-row: auto; }
+    .daily-grid .card-unnamed { grid-column: 1; grid-row: auto; }
+    .daily-grid .card-goodday { grid-column: 1; grid-row: auto; }
+    .main, .actions-bar { padding-left: 16px; padding-right: 16px; }
+    .mode-switcher { flex-wrap: wrap; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="corner-stripes">
+    <span></span><span></span><span></span>
+  </div>
+  <div class="title-block">
+    <h1>Brain Dump</h1>
+    <p class="subtitle" id="mode-subtitle">Daily Grounding &amp; Clarity</p>
+  </div>
+  <nav class="mode-switcher">
+    <button class="mode-btn active" data-mode="daily" onclick="setMode('daily')">
+      <span class="dot"></span> Daily
+    </button>
+    <button class="mode-btn" data-mode="chaos" onclick="setMode('chaos')">
+      <span class="dot"></span> Chaos Mode
+    </button>
+    <button class="mode-btn" data-mode="free" onclick="setMode('free')">
+      <span class="dot"></span> Free Dump
+    </button>
+  </nav>
+</div>
+
+<!-- ===== DAILY MODE ===== -->
+<div class="main" id="mode-daily" class="active">
+  <div class="daily-grid">
+    <div class="card card-thinking">
+      <label>I can't stop thinking about:</label>
+      <textarea placeholder="Let it all out…" rows="8"></textarea>
+    </div>
+    <div class="card card-unnamed">
+      <label>Top of mind right now:</label>
+      <textarea placeholder="Whatever's floating up first…"></textarea>
+    </div>
+    <div class="card card-goodday">
+      <label>It would be a good day even if I just did this:</label>
+      <textarea placeholder="One small win counts."></textarea>
+    </div>
+  </div>
+
+  <div class="daily-row2">
+    <div class="card">
+      <label>I'm worried about:</label>
+      <textarea placeholder="Name the fear, shrink it a little…" rows="4"></textarea>
+    </div>
+    <div class="card card-forgot">
+      <label>I keep forgetting:</label>
+      <textarea placeholder="The thing that keeps slipping away…" rows="4"></textarea>
+    </div>
+  </div>
+
+  <div class="daily-row4">
+    <div class="card card-life">
+      <label>My life would be easier today if I:</label>
+      <textarea placeholder="What would actually help?" rows="5"></textarea>
+    </div>
+    <div class="card">
+      <label>A loose end I can tie up:</label>
+      <textarea placeholder="Something small I can close out…" rows="5"></textarea>
+    </div>
+    <div class="card-dinner">
+      <label>What's for dinner?</label>
+      <textarea placeholder="…"></textarea>
+    </div>
+  </div>
+
+  <div class="daily-row2" style="margin-top:16px;">
+    <div class="card">
+      <label>I will move my body today by:</label>
+      <textarea placeholder="Walk, stretch, dance — anything counts." rows="3"></textarea>
+    </div>
+    <div class="card">
+      <label>Something I want to remember:</label>
+      <textarea placeholder="A thought, quote, moment worth keeping…" rows="3"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CHAOS MODE ===== -->
+<div class="main" id="mode-chaos">
+  <div class="chaos-wave">
+    <svg class="wave-svg" viewBox="0 0 600 50" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0 40 Q75 5 150 40 Q225 75 300 40 Q375 5 450 40 Q525 75 600 40" stroke="#1a1a2e" stroke-width="3" fill="none"/>
+    </svg>
+  </div>
+  <div class="chaos-grid">
+    <div class="card">
+      <label>The storm started because…</label>
+      <textarea placeholder="What kicked this off?"></textarea>
+    </div>
+    <div class="card">
+      <label>What's making it worse?</label>
+      <textarea placeholder="Be honest with yourself here…"></textarea>
+    </div>
+    <div class="card">
+      <label>One tiny step forward is…</label>
+      <textarea placeholder="Microscopic is fine. Truly."></textarea>
+    </div>
+    <div class="card">
+      <label>What are you avoiding?</label>
+      <textarea placeholder="The thing you keep scrolling past…"></textarea>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px;">
+    <div class="card">
+      <label>After all of this, what do I actually need right now?</label>
+      <textarea placeholder="Rest? Help? A snack? Permission to do less?" rows="3"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FREE DUMP MODE ===== -->
+<div class="main" id="mode-free">
+  <p style="font-size:0.82rem; color:#888; text-align:center; margin-bottom:20px; letter-spacing:0.04em;">OUT OF YOUR HEAD, ONTO THE PAGE — no structure, no judgment</p>
+  <div class="free-grid">
+    <div class="pin-card"><div class="pin"></div><textarea placeholder="Start anywhere…"></textarea></div>
+    <div class="pin-card"><div class="pin"></div><textarea placeholder="Keep going…"></textarea></div>
+    <div class="pin-card"><div class="pin"></div><textarea placeholder="More…"></textarea></div>
+    <div class="pin-card"><div class="pin"></div><textarea placeholder="And more…"></textarea></div>
+  </div>
+</div>
+
+<div class="actions-bar">
+  <button class="btn btn-ghost" onclick="clearAll()">↺ Clear</button>
+  <button class="btn btn-primary" onclick="saveSession()">↓ Save as Text</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const modes = {
+    daily: 'Daily Grounding & Clarity',
+    chaos: 'Spiraling & Full-Blown Chaos',
+    free: 'Out of Your Head, Onto the Page'
+  };
+
+  let currentMode = 'daily';
+
+  // Init first mode visible
+  document.getElementById('mode-daily').classList.add('active');
+  document.getElementById('mode-daily').style.display = 'block';
+
+  function setMode(mode) {
+    // Hide all
+    ['daily','chaos','free'].forEach(m => {
+      const el = document.getElementById('mode-' + m);
+      el.style.display = 'none';
+      el.classList.remove('active');
+    });
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+
+    // Show selected
+    const el = document.getElementById('mode-' + mode);
+    el.style.display = 'block';
+    setTimeout(() => el.classList.add('active'), 10);
+    document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+    document.getElementById('mode-subtitle').textContent = modes[mode];
+    currentMode = mode;
+  }
+
+  function clearAll() {
+    const el = document.getElementById('mode-' + currentMode);
+    el.querySelectorAll('textarea').forEach(t => t.value = '');
+    showToast('Cleared ✓');
+  }
+
+  function saveSession() {
+    const el = document.getElementById('mode-' + currentMode);
+    const areas = el.querySelectorAll('textarea');
+    const labels = el.querySelectorAll('label');
+    let text = `# Brain Dump — ${modes[currentMode]}\n\n*${new Date().toLocaleString()}*\n\n`;
+
+    labels.forEach((label, i) => {
+      const area = areas[i];
+      if (area && area.value.trim()) {
+        text += `## ${label.textContent.trim()}\n\n${area.value.trim()}\n\n`;
+      }
+    });
+
+    if (text.split('\n').length <= 4) {
+      showToast('Nothing to save yet!');
+      return;
+    }
+
+    const blob = new Blob([text], { type: 'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `brain-dump-${currentMode}-${Date.now()}.md`;
+    a.click();
+    showToast('Saved ✓');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // Auto-resize textareas
+  document.addEventListener('input', e => {
+    if (e.target.tagName === 'TEXTAREA') {
+      e.target.style.height = 'auto';
+      e.target.style.height = e.target.scrollHeight + 'px';
+    }
+  });
+</script>
+</body>
+</html>
