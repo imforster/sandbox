@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tic Tac Toe v2</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #1a1a2e; color: #eee; }
+h1 { margin-bottom: 0.5rem; font-size: 1.8rem; }
+#status { margin-bottom: 1rem; font-size: 1.2rem; min-height: 1.5em; }
+#board { display: grid; grid-template-columns: repeat(3, 120px); grid-template-rows: repeat(3, 120px); gap: 4px; }
+.cell { background: #16213e; border: 2px solid #0f3460; border-radius: 8px; font-size: 3rem; font-weight: bold; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; justify-content: center; }
+.cell:hover { background: #1a3a5c; }
+.cell.x { color: #e94560; }
+.cell.o { color: #0fbcf9; }
+.cell.win { background: #0f3460; animation: pulse 0.6s infinite alternate; }
+@keyframes pulse { to { opacity: 0.7; } }
+#restart { margin-top: 1.5rem; padding: 0.6rem 1.5rem; font-size: 1rem; border: none; border-radius: 6px; background: #e94560; color: #fff; cursor: pointer; }
+#restart:hover { background: #c0392b; }
+#score { margin-top: 1rem; font-size: 1rem; opacity: 0.8; }
+</style>
+</head>
+<body>
+<h1>Tic Tac Toe v2</h1>
+<div id="status">X's turn</div>
+<div id="board"></div>
+<div id="score">X: 0 | O: 0 | Draw: 0</div>
+<button id="restart">New Game</button>
+<script>
+const board = document.getElementById('board');
+const status = document.getElementById('status');
+const scoreEl = document.getElementById('score');
+const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+let cells, state, turn, over, score = {X:0, O:0, D:0};
+
+function init() {
+  board.innerHTML = '';
+  state = Array(9).fill('');
+  turn = 'X'; over = false;
+  status.textContent = "X's turn";
+  cells = Array.from({length:9}, (_,i) => {
+    const d = document.createElement('div');
+    d.className = 'cell';
+    d.addEventListener('click', () => play(i));
+    board.appendChild(d);
+    return d;
+  });
+}
+
+function play(i) {
+  if (over || state[i]) return;
+  state[i] = turn;
+  cells[i].textContent = turn;
+  cells[i].classList.add(turn.toLowerCase());
+  const w = wins.find(l => l.every(j => state[j] === turn));
+  if (w) {
+    over = true;
+    w.forEach(j => cells[j].classList.add('win'));
+    status.textContent = `${turn} wins!`;
+    score[turn]++;
+  } else if (state.every(Boolean)) {
+    over = true;
+    status.textContent = "Draw!";
+    score.D++;
+  } else {
+    turn = turn === 'X' ? 'O' : 'X';
+    status.textContent = `${turn}'s turn`;
+  }
+  scoreEl.textContent = `X: ${score.X} | O: ${score.O} | Draw: ${score.D}`;
+}
+
+document.getElementById('restart').addEventListener('click', init);
+init();
+</script>
+</body>
+</html>
