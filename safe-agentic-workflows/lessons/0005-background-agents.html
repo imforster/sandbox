@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5: Background Agents — Scheduled Automation</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.9rem;
+    }
+    .schedule-table th,
+    .schedule-table td {
+      border: 1px solid var(--color-border);
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+    }
+    .schedule-table th {
+      background: var(--color-text);
+      color: var(--color-bg);
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.03em;
+    }
+    .schedule-table tr:nth-child(even) td {
+      background: rgba(0,0,0,0.02);
+    }
+    .schedule-table code {
+      font-size: 0.82rem;
+    }
+
+    .pattern-box {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .pattern-box-title {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+      color: var(--color-muted);
+    }
+    .pattern-step {
+      display: flex;
+      align-items: baseline;
+      gap: 0.6rem;
+      padding: 0.5rem 0;
+      font-size: 0.9rem;
+    }
+    .pattern-num {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: var(--color-text);
+      color: var(--color-bg);
+      width: 1.5rem;
+      height: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .cost-warning {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .cost-warning-title {
+      font-weight: 700;
+      color: #991b1b;
+      margin-bottom: 0.4rem;
+    }
+
+    .workflow-file {
+      background: var(--color-bg);
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 1.5rem 0;
+    }
+    .workflow-file-header {
+      background: var(--color-text);
+      color: var(--color-bg);
+      padding: 0.5rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .workflow-file pre {
+      margin: 0;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    .comparison-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .comparison-side {
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+    .comparison-side-title {
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+    .comparison-side ul {
+      margin: 0;
+      padding-left: 1.2rem;
+      font-size: 0.88rem;
+    }
+    .comparison-side li {
+      margin-bottom: 0.3rem;
+    }
+    .manual-side { border-color: #fbbf24; }
+    .scheduled-side { border-color: #34d399; }
+
+    @media (max-width: 600px) {
+      .comparison-box {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0004-triggers-and-events.html" class="lesson-back-top" title="Triggers and Events"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0006-design-patterns.html" class="lesson-next-top" title="Design Patterns">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Background Agents — Scheduled Automation</h1>
+
+<div class="lesson-meta">
+  Lesson 5 · Safe Agentic Workflows · ~10 minutes
+</div>
+
+<p>So far, every workflow we've built requires <em>you</em> to trigger it — typing a command, opening a PR, or pushing a commit. But the most powerful pattern in agentic workflows is the one that runs <strong>while you sleep</strong>.</p>
+
+<p>Background agents run on a schedule. They analyze your repository, produce reports, and surface improvements — all without human invocation. You wake up to a ready-to-review issue summarizing what changed, what's stale, and what needs attention.</p>
+
+<h2>The Concept</h2>
+
+<p>A background agent is a workflow triggered by <code>schedule</code> instead of a human action. It reads your repository, performs analysis, and outputs findings through a <strong>safe output</strong> — typically creating an issue or posting a comment.</p>
+
+<p>The key insight: the same pattern we use for safety (read-only agent → structured output → separate write job) makes scheduled agents inherently safe. They can't push code or merge PRs unless you explicitly grant those outputs. By default, they just <em>report</em>.</p>
+
+<h2>Schedule Syntax</h2>
+
+<p>GitHub Agentic Workflows supports human-friendly schedule expressions that are automatically converted to cron. The system uses <strong>fuzzy schedules</strong> by default — automatically scattering execution times across workflows to prevent load spikes.</p>
+
+<table class="schedule-table">
+  <thead>
+    <tr>
+      <th>Expression</th>
+      <th>When It Runs</th>
+      <th>Type</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>daily</code></td>
+      <td>Once per day, scattered time</td>
+      <td>Fuzzy</td>
+    </tr>
+    <tr>
+      <td><code>daily on weekdays</code></td>
+      <td>Mon–Fri, scattered time</td>
+      <td>Fuzzy</td>
+    </tr>
+    <tr>
+      <td><code>daily around 9am</code></td>
+      <td>8am–10am window (±1 hour)</td>
+      <td>Fuzzy</td>
+    </tr>
+    <tr>
+      <td><code>daily around 9am on weekdays</code></td>
+      <td>Mon–Fri, 8am–10am</td>
+      <td>Fuzzy</td>
+    </tr>
+    <tr>
+      <td><code>daily between 9:00 and 17:00</code></td>
+      <td>Business hours window</td>
+      <td>Fuzzy</td>
+    </tr>
+    <tr>
+      <td><code>weekly</code></td>
+      <td>Scattered day and time</td>
+      <td>Fuzzy</td>
+    </tr>
+    <tr>
+      <td><code>weekly on monday</code></td>
+      <td>Monday, scattered time</td>
+      <td>Fuzzy</td>
+    </tr>
+    <tr>
+      <td><code>weekly on friday around 5pm</code></td>
+      <td>Friday 4pm–6pm</td>
+      <td>Fuzzy</td>
+    </tr>
+    <tr>
+      <td><code>every 2h</code></td>
+      <td>Every 2 hours</td>
+      <td>Fuzzy</td>
+    </tr>
+    <tr>
+      <td><code>bi-weekly</code></td>
+      <td>Every 14 days</td>
+      <td>Fuzzy</td>
+    </tr>
+    <tr>
+      <td><code>0 9 * * 1-5</code></td>
+      <td>Weekdays at 9:00 AM (standard cron)</td>
+      <td>Fixed</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">Fuzzy vs Fixed</div>
+  <p>Fuzzy schedules scatter execution times deterministically per-workflow, preventing load spikes when many workflows share the same time. Always prefer fuzzy syntax (<code>daily</code>) over fixed cron (<code>0 9 * * *</code>) unless you need an exact time.</p>
+</div>
+
+<p>You can also add timezone offsets: <code>daily around 9am utc-5</code> (EST) or <code>daily around 14:00 utc+9</code> (JST).</p>
+
+<h2>The Background Agent Pattern</h2>
+
+<p>Every background agent follows the same structure:</p>
+
+<div class="pattern-box">
+  <div class="pattern-box-title">Schedule → Read → Analyze → Report</div>
+  <div class="pattern-step">
+    <span class="pattern-num">1</span>
+    <span><strong>Schedule trigger</strong> — fires automatically on cadence</span>
+  </div>
+  <div class="pattern-step">
+    <span class="pattern-num">2</span>
+    <span><strong>Read permissions</strong> — agent reads repo contents, issues, PRs</span>
+  </div>
+  <div class="pattern-step">
+    <span class="pattern-num">3</span>
+    <span><strong>Analysis prompt</strong> — agent examines the repo against criteria you define</span>
+  </div>
+  <div class="pattern-step">
+    <span class="pattern-num">4</span>
+    <span><strong>Safe output</strong> — findings delivered as an issue, comment, or discussion</span>
+  </div>
+</div>
+
+<p>The safety model is clean: the agent runs with <strong>read-only</strong> permissions and can only produce output through the declared safe-output channel. It can't modify code, merge PRs, or delete anything.</p>
+
+<h2>Example Workflows</h2>
+
+<h3>1. Daily Repo Status Report</h3>
+
+<p>Creates an issue each morning summarizing yesterday's activity — commits, PRs opened/merged, issues filed.</p>
+
+<div class="workflow-file">
+  <div class="workflow-file-header">.github/workflows/daily-status.md</div>
+  <pre><code>---
+description: "Daily repository status report"
+on:
+  schedule: daily around 8am on weekdays
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+engine:
+  id: copilot
+  model: gpt-4.1-mini
+
+max-ai-credits: 500
+
+safe-outputs:
+  create-issue:
+    title-prefix: "[daily-status] "
+    labels: [report, daily]
+    close-older-issues: true
+    expires: 7
+---
+
+Analyze this repository's activity over the past 24 hours.
+
+Create an issue with a status report covering:
+
+1. **Commits** — list commits merged to main, grouped by author
+2. **Pull Requests** — PRs opened, PRs merged, PRs with reviews requested
+3. **Issues** — new issues filed, issues closed, issues with no response > 48h
+4. **Highlights** — anything unusual (large PRs, spikes in activity, stale items)
+
+Keep the report concise and scannable. Use tables where appropriate.
+
+If there was no activity in the past 24 hours, call `noop` with a message
+explaining the repository was quiet.</code></pre>
+</div>
+
+<h3>2. Weekly Code Quality Monitoring</h3>
+
+<p>Scans for dead code, high-complexity functions, and patterns that commonly lead to bugs.</p>
+
+<div class="workflow-file">
+  <div class="workflow-file-header">.github/workflows/code-quality-weekly.md</div>
+  <pre><code>---
+description: "Weekly code quality analysis"
+on:
+  schedule: weekly on monday around 9am
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+engine:
+  id: claude
+  model: claude-sonnet-4-5
+
+max-ai-credits: 1000
+
+safe-outputs:
+  create-issue:
+    title-prefix: "[code-quality] "
+    labels: [tech-debt, automation]
+    close-older-issues: true
+    expires: 14
+---
+
+Perform a code quality analysis of this repository. Focus on:
+
+1. **Dead code** — functions/methods never called, unreachable branches
+2. **Complexity** — functions exceeding 50 lines or 10+ branches
+3. **Duplication** — near-identical logic in multiple locations
+4. **Outdated patterns** — deprecated API usage, old-style error handling
+
+For each finding, provide:
+- File and line number
+- What the issue is
+- Suggested fix (1-2 sentences)
+
+Prioritize findings by impact. Limit to the top 10 issues.
+
+If the codebase is clean, call `noop` with a congratulatory message.</code></pre>
+</div>
+
+<h3>3. Dependency Freshness Check</h3>
+
+<div class="workflow-file">
+  <div class="workflow-file-header">.github/workflows/dependency-check.md</div>
+  <pre><code>---
+description: "Weekly dependency freshness report"
+on:
+  schedule: weekly on friday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+engine:
+  id: copilot
+  model: gpt-4.1-mini
+
+max-ai-credits: 500
+
+safe-outputs:
+  create-issue:
+    title-prefix: "[deps] "
+    labels: [dependencies, automation]
+    close-older-issues: true
+    expires: 14
+---
+
+Analyze the dependency files in this repository (package.json, requirements.txt,
+Cargo.toml, go.mod, or equivalent).
+
+Report:
+1. Dependencies more than 2 major versions behind
+2. Dependencies with known security advisories
+3. Dependencies that haven't been updated in 12+ months
+4. Any pinned versions that could be safely bumped
+
+If all dependencies are current, call `noop`.</code></pre>
+</div>
+
+<h3>4. Documentation Staleness Detection</h3>
+
+<div class="workflow-file">
+  <div class="workflow-file-header">.github/workflows/docs-freshness.md</div>
+  <pre><code>---
+description: "Bi-weekly documentation staleness check"
+on:
+  schedule: bi-weekly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+engine:
+  id: copilot
+  model: gpt-4.1-mini
+
+max-ai-credits: 500
+
+safe-outputs:
+  create-issue:
+    title-prefix: "[docs] "
+    labels: [documentation, automation]
+    close-older-issues: true
+    expires: 21
+---
+
+Review the documentation in this repository (README.md, docs/, wiki pages).
+
+Flag documentation that appears stale:
+1. References to APIs, functions, or config options that no longer exist in code
+2. Setup instructions that reference outdated tool versions
+3. Architecture docs that don't match the current file structure
+4. Links that point to renamed or deleted files
+
+For each finding, suggest the specific update needed.
+If documentation is current, call `noop`.</code></pre>
+</div>
+
+<h2>Key Configuration</h2>
+
+<h3><code>close-older-issues: true</code></h3>
+
+<p>When your scheduled workflow creates a new issue, this setting <strong>automatically closes previous issues from the same workflow</strong>. Without it, you'd accumulate one open issue per day — quickly flooding your issue tracker.</p>
+
+<p>How it works: when the new issue is successfully created, the system searches for open issues containing the same workflow-id marker and closes them as "not planned" with a comment linking to the new issue. Maximum 10 older issues are closed per run.</p>
+
+<h3><code>expires: 7</code></h3>
+
+<p>Auto-closes the issue after 7 days even if no new report replaces it. This prevents orphaned issues from cluttering your tracker if you disable the workflow or it fails repeatedly. Accepts day strings (<code>7d</code>, <code>2w</code>, <code>1m</code>) or plain integers (interpreted as days).</p>
+
+<h3><code>max-ai-credits: 500</code></h3>
+
+<p>Sets the AI Credits budget for a single run. <strong>Defaults to 1000 if omitted.</strong> One AI Credit = $0.01 USD. For a daily workflow, even a modest budget adds up: 500 AIC × 30 days = $150/month. Set this thoughtfully.</p>
+
+<div class="cost-warning">
+  <div class="cost-warning-title">⚠️ Cost Awareness</div>
+  <p>Scheduled agents run on <strong>every trigger</strong> — that's the point. But it means cost is predictable and relentless. A daily workflow with no budget cap will happily spend 1000 AIC every day ($300/month) whether it finds anything useful or not.</p>
+  <p>Default guardrails: <strong>1000 AIC per run</strong>, <strong>5000 AIC per workflow per day</strong>, and a <strong>20-minute timeout</strong>. Always set <code>max-ai-credits</code> to the minimum your workflow actually needs. Use a cheaper model (<code>gpt-4.1-mini</code>, <code>claude-haiku-4-5</code>) for routine monitoring tasks.</p>
+</div>
+
+<h3><code>max-daily-ai-credits</code></h3>
+
+<p>For extra protection, cap total daily spend across all runs of the same workflow:</p>
+
+<pre><code>max-daily-ai-credits: 2000</code></pre>
+
+<p>If the workflow has already consumed 2000 AIC in the past 24 hours (across all runs), subsequent runs are skipped and an issue is created explaining why.</p>
+
+<h2>Connection to Your Work</h2>
+
+<p>Think about your <code>/status</code> skill — you invoke it manually to get a snapshot of your project. A scheduled workflow produces the <strong>same output automatically</strong>:</p>
+
+<div class="comparison-box">
+  <div class="comparison-side manual-side">
+    <div class="comparison-side-title">🖐️ Manual (today)</div>
+    <ul>
+      <li>You remember to run it</li>
+      <li>Runs when you ask</li>
+      <li>Output in your terminal</li>
+      <li>Only happens when you think of it</li>
+    </ul>
+  </div>
+  <div class="comparison-side scheduled-side">
+    <div class="comparison-side-title">⏰ Scheduled (background agent)</div>
+    <ul>
+      <li>Runs every morning automatically</li>
+      <li>Report waiting when you start work</li>
+      <li>Output as a GitHub issue (shareable)</li>
+      <li>Never forgets, never gets busy</li>
+    </ul>
+  </div>
+</div>
+
+<p>The manual skill and the scheduled workflow can share the same prompt. The only difference is the trigger and the output channel.</p>
+
+<h2>Full Example: Daily Status Workflow</h2>
+
+<p>Here's a complete workflow file you could drop into any repository:</p>
+
+<div class="workflow-file">
+  <div class="workflow-file-header">.github/workflows/morning-briefing.md</div>
+  <pre><code>---
+description: "Morning briefing — summarizes repo activity and open work"
+emoji: "☀️"
+labels: [automation, monitoring]
+
+on:
+  schedule: daily around 8am on weekdays
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+engine:
+  id: copilot
+  model: gpt-4.1-mini
+
+max-ai-credits: 400
+max-daily-ai-credits: 2000
+
+safe-outputs:
+  create-issue:
+    title-prefix: "[morning-briefing] "
+    labels: [report, daily-briefing]
+    close-older-issues: true
+    expires: 3
+---
+
+# Morning Briefing
+
+Generate a concise daily briefing for this repository. Today's date is
+{{ date }}.
+
+## What to analyze
+
+1. **Yesterday's activity**
+   - Commits pushed to main
+   - Pull requests opened, reviewed, or merged
+   - Issues opened or closed
+
+2. **Attention needed**
+   - PRs awaiting review for more than 24 hours
+   - Issues with no response for more than 48 hours
+   - Failing CI on open PRs
+
+3. **Upcoming**
+   - PRs marked as ready for review
+   - Issues assigned but not started (no linked branch)
+
+## Format
+
+Use this structure for the issue body:
+- Start with a 1-sentence summary ("Busy day: 5 PRs merged" or "Quiet: no changes")
+- Use tables for lists of items (PR #, author, status)
+- End with "Action items" — the 1-3 things that need human attention today
+
+## Rules
+
+- Keep it under 500 words
+- Link to actual PRs and issues using #number format
+- If the repo was completely quiet, call `noop` instead of creating an empty report</code></pre>
+</div>
+
+<h2>Practical Exercise</h2>
+
+<div class="callout">
+  <div class="callout-title">Your turn: Design a scheduled workflow</div>
+  <p>Pick one recurring task you do manually for your repository and design a scheduled workflow for it. Use this template:</p>
+</div>
+
+<pre><code>---
+description: "___"
+
+on:
+  schedule: ___          # How often?
+  workflow_dispatch:     # Always include for manual testing
+
+permissions:
+  contents: read
+  # What else does it need to read?
+
+engine:
+  id: copilot
+  model: gpt-4.1-mini   # Start cheap
+
+max-ai-credits: ___     # What's the minimum budget?
+
+safe-outputs:
+  create-issue:
+    title-prefix: "[___] "
+    labels: [___]
+    close-older-issues: true
+    expires: ___         # How long is the report useful?
+---
+
+# Your prompt here
+
+What should the agent analyze?
+What format should the output take?
+When should it call `noop` instead?</code></pre>
+
+<p>Ideas for your first scheduled workflow:</p>
+<ul>
+  <li><strong>TODO scanner</strong> — finds TODO/FIXME comments added in the last week</li>
+  <li><strong>Test coverage drift</strong> — reports files with decreasing test coverage</li>
+  <li><strong>PR aging report</strong> — lists PRs open longer than 5 days</li>
+  <li><strong>Security surface scan</strong> — finds new uses of <code>eval()</code>, hardcoded URLs, or unvalidated inputs</li>
+  <li><strong>README sync check</strong> — verifies the README matches the actual project structure</li>
+</ul>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">What does <code>close-older-issues: true</code> do in a scheduled workflow?</div>
+  <ul class="quiz-options">
+    <li>Closes all issues in the repository older than 30 days</li>
+    <li data-correct="true">Automatically closes previous open issues created by the same workflow when a new one is created</li>
+    <li>Prevents the workflow from creating a new issue if one already exists</li>
+    <li>Closes the newly created issue after the workflow completes</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct — it searches for open issues with the same workflow-id marker and closes them as "not planned" with a link to the new issue. This keeps your issue tracker clean by ensuring only the latest report is open.</div>
+  <div class="quiz-feedback incorrect">Not quite. <code>close-older-issues: true</code> specifically closes previous issues <em>from the same workflow</em> when a new one is created. It identifies them by a hidden workflow-id marker in the issue body. This ensures only the latest report is open at any time.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">What happens if you omit <code>max-ai-credits</code> from a daily scheduled workflow?</div>
+  <ul class="quiz-options">
+    <li>The workflow won't compile — it's a required field for scheduled triggers</li>
+    <li>The workflow runs with zero budget and immediately stops</li>
+    <li data-correct="true">It defaults to 1000 AI Credits per run (~$10/day, ~$300/month for a daily schedule)</li>
+    <li>The workflow runs with unlimited budget and no cost controls</li>
+  </ul>
+  <div class="quiz-feedback correct">Right — the default is 1000 AIC per run. For a daily workflow, that's $10/day or ~$300/month. There's also a default daily cap of 5000 AIC, but the per-run default alone can be expensive for monitoring workflows that don't need much compute.</div>
+  <div class="quiz-feedback incorrect">The default <code>max-ai-credits</code> is 1000 per run when omitted. For a daily workflow, that's ~$10/day or ~$300/month. It's not unlimited (there's also a default 5000 AIC daily cap), but it's expensive for a simple monitoring task. Always set it explicitly to the minimum your workflow needs.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">How do you make a scheduled workflow run only on weekdays (Monday through Friday)?</div>
+  <ul class="quiz-options">
+    <li><code>schedule: daily exclude weekends</code></li>
+    <li><code>schedule: "0 9 * * 1,2,3,4,5"</code></li>
+    <li data-correct="true"><code>schedule: daily on weekdays</code></li>
+    <li><code>schedule: daily if weekday</code></li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly — append <code>on weekdays</code> to any daily or hourly schedule. It restricts execution to Monday through Friday. You can also use standard cron (<code>0 9 * * 1-5</code>) but the fuzzy syntax is preferred because it prevents load spikes.</div>
+  <div class="quiz-feedback incorrect">The correct answer is <code>daily on weekdays</code>. The <code>on weekdays</code> modifier can be appended to <code>daily</code>, <code>hourly</code>, or interval schedules. While cron syntax like <code>0 9 * * 1-5</code> also works, the fuzzy <code>on weekdays</code> form is preferred because it automatically scatters execution times.</div>
+</div>
+
+<h2>What's Next</h2>
+
+<p>You now have the full picture: hooks guard every action, commands structure your workflows, skills inform decisions, and <strong>scheduled agents work in the background</strong>. The next lesson covers <strong>multi-agent orchestration</strong> — how to chain workflows together, dispatch sub-agents, and build systems where agents coordinate with each other.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://github.github.com/gh-aw/reference/schedule-syntax/">Schedule Syntax Reference</a> — the complete documentation on fuzzy schedules, time constraints, intervals, cron expressions, and timezone support.</p>
+  <p>Also see: <a href="https://github.github.com/gh-aw/reference/cost-management/">Cost Management</a> and <a href="https://github.github.com/gh-aw/reference/safe-outputs/">Safe Outputs</a> for the full configuration options.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me about schedule syntax, cost budgeting, safe output options, or how to adapt any of these examples to your specific repository.
+</div>
+
+<div class="lesson-nav">
+  <a href="0004-triggers-and-events.html" class="lesson-nav-prev" title="Triggers and Events">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0006-design-patterns.html" class="lesson-nav-next" title="Design Patterns">Next →</a>
+</div>
+
+<script>
+// Quiz interaction
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        // Highlight the correct answer
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

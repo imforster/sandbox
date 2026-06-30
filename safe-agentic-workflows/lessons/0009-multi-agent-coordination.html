@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 9: Multi-Agent Coordination — From Solo to Team</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .flow-diagram {
+      margin: 2rem 0;
+      padding: 1.5rem;
+      border: 2px solid var(--color-border);
+      border-radius: 8px;
+      background: #fafafa;
+    }
+    .flow-diagram svg {
+      width: 100%;
+      max-width: 700px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .role-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.9rem;
+    }
+    .role-table th,
+    .role-table td {
+      border: 1px solid var(--color-border);
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+    }
+    .role-table th {
+      background: var(--color-text);
+      color: var(--color-bg);
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.03em;
+    }
+    .role-table tr:nth-child(even) td {
+      background: rgba(0,0,0,0.02);
+    }
+
+    .pattern-box {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .pattern-box-title {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+      color: var(--color-muted);
+    }
+
+    .insight-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .insight-box-title {
+      font-weight: 700;
+      color: #1e40af;
+      margin-bottom: 0.4rem;
+    }
+
+    .collapse-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .collapse-card {
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+    .collapse-card-title {
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+    .collapse-card ul {
+      margin: 0;
+      padding-left: 1.2rem;
+      font-size: 0.88rem;
+    }
+    .collapse-card li {
+      margin-bottom: 0.3rem;
+    }
+    .can-collapse { border-color: #34d399; }
+    .never-collapse { border-color: #f87171; }
+
+    .warning-box {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .warning-box-title {
+      font-weight: 700;
+      color: #991b1b;
+      margin-bottom: 0.4rem;
+    }
+
+    @media (max-width: 600px) {
+      .collapse-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0008-cost-controls.html" class="lesson-back-top" title="Cost Controls"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0010-putting-it-all-together.html" class="lesson-next-top" title="Putting It All Together">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Multi-Agent Coordination — From Solo to Team</h1>
+
+<div class="lesson-meta">
+  Lesson 9 · Safe Agentic Workflows · ~12 minutes
+</div>
+
+<p>Every lesson so far has focused on a <strong>single agent</strong> doing a job: one workflow, one prompt, one output. But some tasks are too big for one agent's context window, or too important to trust without independent review. That's where multi-agent coordination comes in.</p>
+
+<p>The good news: if you've been using <code>/comply</code> to spawn an independent reviewer subagent, <strong>you're already doing multi-agent coordination</strong>. This lesson formalizes those patterns and shows you how to scale them.</p>
+
+<h2>When You Need Multiple Agents</h2>
+
+<p>A single agent hits its limits when:</p>
+
+<ul>
+  <li><strong>Context overflow</strong> — the task requires reading more files, docs, or history than one context window can hold</li>
+  <li><strong>Independent review</strong> — the implementer can't objectively evaluate its own output (same reason humans do code review)</li>
+  <li><strong>Specialization</strong> — different parts of the task require different expertise (security vs. performance vs. UX)</li>
+  <li><strong>Parallelism</strong> — subtasks are independent and can run concurrently to save time</li>
+</ul>
+
+<p>The key principle: <strong>coordination cost must be less than the value of specialization</strong>. Don't split a 5-minute task across 3 agents just because you can.</p>
+
+<h2>SAW's Approach: 11 Roles with Defined Boundaries</h2>
+
+<p>The Safe Agentic Workflow (SAW) framework defines 11 agent roles, each with explicit boundaries, exit states, and handoff patterns. You don't need all 11 — most solo developers use 3-4 — but knowing the full set helps you pick the right ones.</p>
+
+<table class="role-table">
+  <thead>
+    <tr>
+      <th>Role</th>
+      <th>Responsibility</th>
+      <th>Exit State</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Planner</strong></td>
+      <td>Breaks work into tasks, defines acceptance criteria</td>
+      <td>Plan document with task list</td>
+    </tr>
+    <tr>
+      <td><strong>Researcher</strong></td>
+      <td>Gathers context, reads docs, explores codebase</td>
+      <td>Context summary for downstream agents</td>
+    </tr>
+    <tr>
+      <td><strong>Implementer</strong></td>
+      <td>Writes code, creates files, makes changes</td>
+      <td>Working code with passing tests</td>
+    </tr>
+    <tr>
+      <td><strong>Reviewer</strong></td>
+      <td>Independent quality review of implementation</td>
+      <td>Approve or reject with specific feedback</td>
+    </tr>
+    <tr>
+      <td><strong>QAS (Quality Assurance &amp; Security)</strong></td>
+      <td>Validates security, compliance, and quality gates</td>
+      <td>Pass/fail with evidence</td>
+    </tr>
+    <tr>
+      <td><strong>Shipper</strong></td>
+      <td>Deploys, merges, or publishes approved work</td>
+      <td>Artifact in production/main</td>
+    </tr>
+    <tr>
+      <td><strong>Triage</strong></td>
+      <td>Categorizes incoming work, assigns priority</td>
+      <td>Labeled and assigned issue</td>
+    </tr>
+    <tr>
+      <td><strong>Monitor</strong></td>
+      <td>Watches for regressions, drift, or anomalies</td>
+      <td>Alert or noop</td>
+    </tr>
+    <tr>
+      <td><strong>Documenter</strong></td>
+      <td>Updates docs, changelogs, and knowledge bases</td>
+      <td>Updated documentation</td>
+    </tr>
+    <tr>
+      <td><strong>Orchestrator</strong></td>
+      <td>Dispatches and coordinates other agents</td>
+      <td>All subtasks complete</td>
+    </tr>
+    <tr>
+      <td><strong>Responder</strong></td>
+      <td>Handles external queries (issues, discussions)</td>
+      <td>Response posted</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>The QAS Gate Pattern</h3>
+
+<p>The most critical multi-agent pattern is the <strong>QAS gate</strong>: an independent quality and security review that sits between implementation and shipping. It must be a separate agent (or subagent) because:</p>
+
+<ol>
+  <li><strong>Independence</strong> — the implementer is biased toward its own output. A fresh context catches what the implementer missed.</li>
+  <li><strong>Clean context</strong> — the reviewer sees only the output, not the messy exploration that produced it. This mimics how a human reviewer reads a PR.</li>
+  <li><strong>Accountability</strong> — if the reviewer approves something broken, you know exactly where the gate failed.</li>
+</ol>
+
+<div class="insight-box">
+  <div class="insight-box-title">💡 You're already doing this</div>
+  <p>When <code>/comply</code> spawns a reviewer subagent, that's a QAS gate. The subagent has fresh context, reviews independently, and produces a pass/fail verdict. The pattern is the same whether it's checking code style or security posture.</p>
+</div>
+
+<h2>gh-aw's Approach: OrchestratorOps + Dispatch Workflow</h2>
+
+<p>GitHub Agentic Workflows implements multi-agent coordination through <strong>OrchestratorOps</strong> — a workflow that doesn't do work itself, but dispatches specialized worker workflows and coordinates their results.</p>
+
+<p>The pattern is simple: one orchestrator workflow receives a trigger, decides what needs to happen, and fires <code>dispatch-workflow</code> calls to specialized workers. Each worker runs in its own context with its own permissions and budget.</p>
+
+<pre><code>---
+description: "Orchestrator — routes incoming issues to the right workflow"
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+engine:
+  id: copilot
+  model: gpt-4.1
+
+safe-outputs:
+  dispatch-workflow:
+    allowed:
+      - research-and-plan.md
+      - implement-feature.md
+      - security-review.md
+---
+
+# Route this issue
+
+Based on the issue labels and content, dispatch to the appropriate
+worker workflow:
+
+- `bug` label → implement-feature.md (with fix instructions)
+- `feature` label → research-and-plan.md (needs planning first)
+- `security` label → security-review.md (needs audit)
+
+Pass the issue number and relevant context to the dispatched workflow.</code></pre>
+
+<h3>The Research-Plan-Assign Pattern</h3>
+
+<p>The most common orchestration pattern chains three phases: research the problem, plan the solution, then assign the implementation. Each phase can be a separate agent with appropriate context and permissions.</p>
+
+<div class="flow-diagram">
+  <svg viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background connectors -->
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#374151"/>
+      </marker>
+    </defs>
+
+    <!-- Trigger -->
+    <rect x="20" y="130" width="100" height="60" rx="30" fill="#e5e7eb" stroke="#374151" stroke-width="2"/>
+    <text x="70" y="165" text-anchor="middle" font-family="system-ui" font-size="13" font-weight="700">Trigger</text>
+
+    <!-- Arrow 1 -->
+    <line x1="120" y1="160" x2="160" y2="160" stroke="#374151" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+    <!-- Research box -->
+    <rect x="165" y="120" width="130" height="80" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <text x="230" y="152" text-anchor="middle" font-family="system-ui" font-size="12" font-weight="700" fill="#1e40af">Research</text>
+    <text x="230" y="172" text-anchor="middle" font-family="system-ui" font-size="10" fill="#1e40af">Read docs, codebase</text>
+    <text x="230" y="188" text-anchor="middle" font-family="system-ui" font-size="10" fill="#1e40af">Gather context</text>
+
+    <!-- Arrow 2 -->
+    <line x1="295" y1="160" x2="335" y2="160" stroke="#374151" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+    <!-- Plan box -->
+    <rect x="340" y="120" width="130" height="80" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+    <text x="405" y="152" text-anchor="middle" font-family="system-ui" font-size="12" font-weight="700" fill="#92400e">Plan</text>
+    <text x="405" y="172" text-anchor="middle" font-family="system-ui" font-size="10" fill="#92400e">Break into tasks</text>
+    <text x="405" y="188" text-anchor="middle" font-family="system-ui" font-size="10" fill="#92400e">Define criteria</text>
+
+    <!-- Arrow 3 -->
+    <line x1="470" y1="160" x2="510" y2="160" stroke="#374151" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+    <!-- Assign box -->
+    <rect x="515" y="120" width="130" height="80" rx="8" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+    <text x="580" y="152" text-anchor="middle" font-family="system-ui" font-size="12" font-weight="700" fill="#065f46">Assign</text>
+    <text x="580" y="172" text-anchor="middle" font-family="system-ui" font-size="10" fill="#065f46">Dispatch to agent</text>
+    <text x="580" y="188" text-anchor="middle" font-family="system-ui" font-size="10" fill="#065f46">or human</text>
+
+    <!-- Context flow label -->
+    <text x="350" y="105" text-anchor="middle" font-family="system-ui" font-size="10" fill="#6b7280" font-style="italic">context passed forward at each handoff</text>
+
+    <!-- Output arrows from Assign -->
+    <line x1="580" y1="200" x2="580" y2="240" stroke="#374151" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+    <!-- Implement box -->
+    <rect x="515" y="245" width="130" height="55" rx="8" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2"/>
+    <text x="580" y="270" text-anchor="middle" font-family="system-ui" font-size="12" font-weight="700" fill="#5b21b6">Implement</text>
+    <text x="580" y="288" text-anchor="middle" font-family="system-ui" font-size="10" fill="#5b21b6">Coding agent</text>
+
+    <!-- Review branch -->
+    <line x1="515" y1="272" x2="435" y2="272" stroke="#374151" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+    <rect x="305" y="245" width="130" height="55" rx="8" fill="#fce7f3" stroke="#db2777" stroke-width="2"/>
+    <text x="370" y="270" text-anchor="middle" font-family="system-ui" font-size="12" font-weight="700" fill="#9d174d">Review</text>
+    <text x="370" y="288" text-anchor="middle" font-family="system-ui" font-size="10" fill="#9d174d">QAS gate</text>
+  </svg>
+</div>
+
+<p>This is what SAW calls <strong>ResearchPlanAssignOps</strong> — a reusable orchestration pattern. The orchestrator doesn't need to understand the domain; it just routes context between specialists.</p>
+
+<h2>Extending Your Existing Pattern</h2>
+
+<p>You already have multi-agent coordination via <code>/comply</code>. Here's how to extend it:</p>
+
+<div class="pattern-box">
+  <div class="pattern-box-title">Extension 1: Parallel Specialized Reviewers</div>
+  <p>Instead of one reviewer subagent, spawn two in parallel — one for code quality and one for security:</p>
+  <pre><code># In your /comply workflow, dispatch two reviewers:
+
+safe-outputs:
+  dispatch-workflow:
+    allowed:
+      - code-review.md      # Style, DRY, correctness
+      - security-review.md  # Auth, injection, secrets
+
+# Both run independently. Both must pass before shipping.</code></pre>
+  <p>This gives you the same pattern as a team with separate code review and security review — without needing two humans.</p>
+</div>
+
+<div class="pattern-box">
+  <div class="pattern-box-title">Extension 2: Chained Workflows (Triage → Implement → Review)</div>
+  <p>Use <code>dispatch-workflow</code> to chain a full pipeline:</p>
+  <pre><code># orchestrator.md dispatches sequentially:
+#   1. triage-issue.md    → labels, prioritizes, writes acceptance criteria
+#   2. implement.md       → coding agent picks up the issue
+#   3. review.md          → independent QAS gate on the PR
+
+# Each workflow's output triggers the next via issue/PR events</code></pre>
+</div>
+
+<div class="pattern-box">
+  <div class="pattern-box-title">Extension 3: Assign-to-Agent</div>
+  <p>The orchestrator can assign issues directly to the Copilot coding agent:</p>
+  <pre><code># After research + planning, assign the issue:
+safe-outputs:
+  assign-issue:
+    assignees: ["copilot"]  # GitHub's coding agent picks it up
+    labels: ["agent-ready", "auto-implement"]</code></pre>
+  <p>The coding agent sees the issue with full context (from the research phase) and acceptance criteria (from the planning phase), then opens a PR.</p>
+</div>
+
+<h2>Role Collapsing</h2>
+
+<p>Eleven roles is a lot for a solo developer. The SAW framework explicitly supports <strong>role collapsing</strong> — combining multiple roles into fewer agents when independence isn't critical.</p>
+
+<div class="collapse-grid">
+  <div class="collapse-card can-collapse">
+    <div class="collapse-card-title">✅ Can Collapse</div>
+    <ul>
+      <li>Researcher + Planner → one "prep" agent</li>
+      <li>Implementer + Documenter → code + docs together</li>
+      <li>Triage + Responder → one "intake" agent</li>
+      <li>Monitor + Responder → detect + notify</li>
+      <li>Orchestrator + Planner → plan + dispatch</li>
+    </ul>
+  </div>
+  <div class="collapse-card never-collapse">
+    <div class="collapse-card-title">🚫 Never Collapse</div>
+    <ul>
+      <li>QAS + Implementer (reviews own work)</li>
+      <li>Security + Implementer (audits own code)</li>
+      <li>Reviewer + Implementer (no independence)</li>
+      <li>Shipper + Implementer (no gate before deploy)</li>
+    </ul>
+  </div>
+</div>
+
+<p>The rule is simple: <strong>any role that exists to provide independent verification cannot be collapsed with the role it verifies</strong>. Everything else is fair game for solo work.</p>
+
+<p>In practice, most solo developers use three active agents:</p>
+<ol>
+  <li><strong>Implementer</strong> (collapsed with Researcher + Planner + Documenter) — does the work</li>
+  <li><strong>Reviewer/QAS</strong> (independent subagent) — validates the work</li>
+  <li><strong>Shipper</strong> (you, the human) — approves and merges</li>
+</ol>
+
+<h2>Dark Factory: Persistent Agent Teams (Experimental)</h2>
+
+<div class="warning-box">
+  <div class="warning-box-title">⚠️ Experimental Pattern</div>
+  <p>Dark Factories are an emerging concept — persistent autonomous agent teams running on remote servers. This is the bleeding edge of multi-agent coordination. Understand the concept, but don't build one until the tooling matures.</p>
+</div>
+
+<p>A "Dark Factory" is a tmux-based setup where multiple agent sessions run persistently on a remote server, each in its own pane:</p>
+
+<ul>
+  <li><strong>Pane 1:</strong> Monitor agent — watches for new issues and PRs</li>
+  <li><strong>Pane 2:</strong> Implementer agent — picks up assigned work</li>
+  <li><strong>Pane 3:</strong> Reviewer agent — reviews completed PRs</li>
+  <li><strong>Pane 4:</strong> Orchestrator — coordinates handoffs between panes</li>
+</ul>
+
+<p>They communicate through the repository itself (issues, PRs, comments) — the same mechanism humans use. This means every interaction is auditable and the system degrades gracefully (a human can step in at any point).</p>
+
+<p>The key insight: <strong>the coordination protocol is the same whether agents are ephemeral (workflow-triggered) or persistent (tmux-based)</strong>. Issues and PRs are the message bus. Labels and assignments are the routing mechanism.</p>
+
+<h2>Connection to Your Work</h2>
+
+<p>Here's where you are on the multi-agent spectrum:</p>
+
+<table class="role-table">
+  <thead>
+    <tr>
+      <th>Level</th>
+      <th>Pattern</th>
+      <th>You?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1. Single agent</td>
+      <td>One prompt, one output</td>
+      <td>✅ Most of your work</td>
+    </tr>
+    <tr>
+      <td>2. Agent + subagent</td>
+      <td>Implementer spawns independent reviewer</td>
+      <td>✅ Your <code>/comply</code> pattern</td>
+    </tr>
+    <tr>
+      <td>3. Orchestrated chain</td>
+      <td>Workflow dispatches multiple specialists</td>
+      <td>⬜ Next step</td>
+    </tr>
+    <tr>
+      <td>4. Persistent team</td>
+      <td>Dark Factory — always-on agent ensemble</td>
+      <td>⬜ Future (experimental)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Your next step</strong> is Level 3: add a second specialized reviewer (security) alongside your existing code reviewer, or set up a dispatch-workflow that chains triage → implement → review automatically when issues are labeled.</p>
+
+<div class="insight-box">
+  <div class="insight-box-title">💡 Start small</div>
+  <p>Don't jump to full orchestration. Add <strong>one more specialized subagent</strong> to your existing <code>/comply</code> pattern — a security reviewer that checks for secrets, injection vectors, and auth issues. That alone gives you 80% of the value of multi-agent coordination.</p>
+</div>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">Why must the reviewer be a <em>subagent</em> (separate context) rather than a follow-up prompt in the same session?</div>
+  <ul class="quiz-options">
+    <li>Subagents are faster because they run in parallel</li>
+    <li>The main agent's context window is usually full after implementation</li>
+    <li data-correct="true">A fresh context provides independence — the reviewer isn't biased by the implementation journey and sees only the output</li>
+    <li>Subagents have access to different tools than the main agent</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct — independence is the key reason. A subagent has no memory of the exploratory dead-ends, compromises, or reasoning that led to the implementation. It evaluates the output on its own merits, just like a human reviewer reading a PR without watching it being written.</div>
+  <div class="quiz-feedback incorrect">The primary reason is independence. A subagent has fresh context — it doesn't carry the implementer's biases, dead-ends, or justifications. It sees only the output, which lets it catch issues the implementer rationalized away. This is the same reason human code review works: the reviewer wasn't there when shortcuts were taken.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">What does OrchestratorOps do in the gh-aw multi-agent model?</div>
+  <ul class="quiz-options">
+    <li>It implements features by writing code across multiple files</li>
+    <li>It monitors all running workflows and restarts failed ones</li>
+    <li data-correct="true">It receives triggers and dispatches specialized worker workflows, coordinating their execution without doing the work itself</li>
+    <li>It merges PRs automatically once all checks pass</li>
+  </ul>
+  <div class="quiz-feedback correct">Right — OrchestratorOps is a coordinator, not a worker. It receives a trigger (like a new issue), decides which specialist workflow should handle it, and dispatches that workflow with the right context. It's the routing layer between events and specialized agents.</div>
+  <div class="quiz-feedback incorrect">OrchestratorOps is purely a coordinator — it doesn't do work itself. It receives triggers (new issue, PR event, schedule), decides which specialized workflow should handle the task, and dispatches it via <code>dispatch-workflow</code>. Think of it as a dispatcher routing calls to the right department.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">What does "role collapsing" mean, and which roles can <em>never</em> be collapsed together?</div>
+  <ul class="quiz-options">
+    <li>Removing unused roles from the framework; any role can be removed if not needed</li>
+    <li data-correct="true">Combining multiple roles into fewer agents for efficiency; QAS/Reviewer and Implementer can never be collapsed because independence is required for verification</li>
+    <li>Reducing the number of workflow files by putting multiple prompts in one file</li>
+    <li>Deprecating old roles as the framework evolves; Orchestrator and Monitor are being collapsed in vNext</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly — role collapsing lets solo developers run lean by combining compatible roles (Researcher + Planner, Implementer + Documenter). But any role that verifies another role's output (QAS, Reviewer, Security) must remain independent. You can't review your own work.</div>
+  <div class="quiz-feedback incorrect">Role collapsing means combining multiple SAW roles into fewer agents when full separation isn't needed — for example, one agent doing research + planning + implementation. The hard rule: any role that exists to <em>verify</em> another role's output (QAS, Reviewer, Security reviewer) can never be collapsed with the role it checks. Independence is non-negotiable for quality gates.</div>
+</div>
+
+<h2>Key Takeaways</h2>
+
+<ul>
+  <li><strong>Multi-agent isn't exotic</strong> — spawning a reviewer subagent (which you already do) is multi-agent coordination</li>
+  <li><strong>OrchestratorOps dispatches, doesn't implement</strong> — it routes triggers to specialized workers</li>
+  <li><strong>Research → Plan → Assign</strong> is the standard orchestration chain for complex work</li>
+  <li><strong>Role collapsing</strong> keeps things lean for solo work, but QAS/Security independence is sacred</li>
+  <li><strong>The repository is the message bus</strong> — issues, PRs, and labels coordinate agents the same way they coordinate humans</li>
+</ul>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://github.com/bybren-llc/safe-agentic-workflow">Safe Agentic Workflow — vNext Workflow Contract</a> — the full specification of agent roles, exit states, handoff patterns, and role collapsing rules.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me about role boundaries, when to add another subagent, how to set up dispatch-workflow chaining, or how the Dark Factory concept applies to your projects.
+</div>
+
+<div class="lesson-nav">
+  <a href="0008-cost-controls.html" class="lesson-nav-prev" title="Cost Controls">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0010-putting-it-all-together.html" class="lesson-nav-next" title="Putting It All Together">Next →</a>
+</div>
+
+<script>
+// Quiz interaction
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        // Highlight the correct answer
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

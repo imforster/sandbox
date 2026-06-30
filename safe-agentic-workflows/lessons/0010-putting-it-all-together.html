@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 10: Putting It All Together</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .blueprint {
+      border: 2px solid var(--color-accent);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .blueprint-title {
+      background: var(--color-accent);
+      color: white;
+      padding: 0.6rem 1rem;
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    .blueprint-body {
+      padding: 1.25rem;
+    }
+    .blueprint-body pre {
+      margin-bottom: 0;
+    }
+    .roadmap {
+      list-style: none;
+      padding: 0;
+      position: relative;
+    }
+    .roadmap::before {
+      content: '';
+      position: absolute;
+      left: 1rem;
+      top: 0.5rem;
+      bottom: 0.5rem;
+      width: 2px;
+      background: var(--color-border);
+    }
+    .roadmap li {
+      position: relative;
+      padding-left: 2.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .roadmap li::before {
+      content: '';
+      position: absolute;
+      left: 0.65rem;
+      top: 0.45rem;
+      width: 0.75rem;
+      height: 0.75rem;
+      border-radius: 50%;
+      background: var(--color-accent);
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px var(--color-accent);
+    }
+    .roadmap li.done::before {
+      background: var(--color-success);
+      box-shadow: 0 0 0 2px var(--color-success);
+    }
+    .roadmap li.current::before {
+      background: var(--color-warning);
+      box-shadow: 0 0 0 2px var(--color-warning);
+    }
+    .roadmap-label {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .roadmap-desc {
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      margin-top: 0.2rem;
+    }
+    .checklist {
+      list-style: none;
+      padding: 0;
+    }
+    .checklist li {
+      padding: 0.5rem 0;
+      padding-left: 1.75rem;
+      position: relative;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .checklist li::before {
+      content: '☐';
+      position: absolute;
+      left: 0;
+      font-size: 1.1rem;
+    }
+    .phase-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .phase-card {
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+    .phase-card h4 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+    .phase-card p {
+      font-size: 0.85rem;
+      margin-bottom: 0;
+      color: var(--color-muted);
+    }
+    @media (max-width: 600px) {
+      .phase-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0009-multi-agent-coordination.html" class="lesson-back-top" title="Multi-Agent Coordination"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span></span></nav>
+
+<h1>Putting It All Together</h1>
+
+<div class="lesson-meta">
+  Lesson 10 · Safe Agentic Workflows · ~15 minutes
+</div>
+
+<p>You've learned the concepts. Now let's design a <strong>complete agentic automation plan</strong> for your repositories — combining your existing Kiro harness with gh-aw workflows to create a system where agents handle the routine while you focus on the interesting problems.</p>
+
+<h2>Your Current System</h2>
+
+<p>You already have a strong foundation:</p>
+
+<div class="phase-grid">
+  <div class="phase-card">
+    <h4>✅ Local Harness (Kiro)</h4>
+    <p>/start-work → implement → /comply → /ship → /end-work. Independent reviewer subagent. 90% compliance gate.</p>
+  </div>
+  <div class="phase-card">
+    <h4>✅ CI/CD (GitHub Actions)</h4>
+    <p>Tests, linting, builds already running on push/PR. The infrastructure is there.</p>
+  </div>
+  <div class="phase-card">
+    <h4>🔲 Automated Agents (gh-aw)</h4>
+    <p>Not yet. This is where agents run <em>without</em> you invoking them.</p>
+  </div>
+  <div class="phase-card">
+    <h4>🔲 Cross-Provider</h4>
+    <p>Kiro-only harness. Could add Claude Code and Codex support alongside.</p>
+  </div>
+</div>
+
+<h2>The Implementation Plan</h2>
+
+<p>Here's a phased rollout — each phase builds on the previous one and can be completed in a single session:</p>
+
+<ul class="roadmap">
+  <li class="done">
+    <div class="roadmap-label">Phase 0: Foundation (Done)</div>
+    <div class="roadmap-desc">Your Kiro harness works. Commands, steering, roles, promptfoo evals. ✓</div>
+  </li>
+  <li class="current">
+    <div class="roadmap-label">Phase 1: First gh-aw Workflow</div>
+    <div class="roadmap-desc">Install gh-aw CLI. Add daily-repo-status to one repo. Validate it works. (~15 min)</div>
+  </li>
+  <li>
+    <div class="roadmap-label">Phase 2: Custom Triage Workflow</div>
+    <div class="roadmap-desc">Write your own IssueOps workflow: auto-label new issues, ask for missing info. (~30 min)</div>
+  </li>
+  <li>
+    <div class="roadmap-label">Phase 3: Automated PR Review</div>
+    <div class="roadmap-desc">Port your /comply logic to a gh-aw workflow triggered on PR open. Independent review without you typing /comply. (~45 min)</div>
+  </li>
+  <li>
+    <div class="roadmap-label">Phase 4: Scheduled Quality Monitor</div>
+    <div class="roadmap-desc">MonitorOps workflow: weekly code quality scan, creates an issue with findings. (~30 min)</div>
+  </li>
+  <li>
+    <div class="roadmap-label">Phase 5: Cross-Provider Harness</div>
+    <div class="roadmap-desc">Add .claude/ directory alongside .kiro/ so Claude Code users get the same workflow. (~1 hr)</div>
+  </li>
+</ul>
+
+<h2>Phase 1 Blueprint: Your First gh-aw Workflow</h2>
+
+<p>Start here. This gets you a working agentic workflow in production in 15 minutes.</p>
+
+<ul class="checklist">
+  <li>Install the CLI: <code>gh extension install github/gh-aw</code></li>
+  <li>Pick a repo you actively work on (not a test repo — you want real signal)</li>
+  <li>Add the daily status workflow: <code>gh aw add-wizard githubnext/agentics/daily-repo-status</code></li>
+  <li>Choose your AI engine (Anthropic if you have a key, Copilot otherwise)</li>
+  <li>Trigger a run: <code>gh aw run daily-repo-status</code></li>
+  <li>Check the created issue — customize the workflow markdown to focus on what you care about</li>
+  <li>Add <code>max-ai-credits: 5</code> to the frontmatter to cap costs</li>
+  <li>Commit and let it run on schedule for a week</li>
+</ul>
+
+<h2>Phase 3 Blueprint: Automated /comply</h2>
+
+<p>This is the most valuable automation for your workflow — your independent reviewer, running automatically on every PR:</p>
+
+<div class="blueprint">
+  <div class="blueprint-title">auto-comply.md — Automated PR Compliance Review</div>
+  <div class="blueprint-body">
+<pre><code>---
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+safe-outputs:
+  create-pull-request-review-comment:
+    max: 10
+  submit-pull-request-review:
+    max: 1
+    allowed-events: [COMMENT]
+  add-labels:
+    allowed: [compliance-pass, compliance-fail, needs-review]
+
+max-ai-credits: 10
+---
+
+## Automated Compliance Review
+
+You are an independent code reviewer. Review this PR against
+the repository's design principles and any spec file present.
+
+### What to check
+
+1. **Spec compliance**: If `.kiro/spec.md` exists, grade each
+   acceptance criterion as met/partial/unmet with evidence.
+2. **Design principles**: DRY, simplicity, surgical changes,
+   backwards compatibility.
+3. **Test coverage**: Are new behaviors tested?
+4. **Documentation**: Do public APIs have docs?
+
+### Output format
+
+Post review comments on specific lines where issues exist.
+Submit a review summary with:
+- Overall compliance score (percentage)
+- Table of criteria → status → evidence
+- Verdict: pass (≥90%) or fail
+
+### Labels
+
+- Add `compliance-pass` if score ≥90%
+- Add `compliance-fail` if score &lt;90%
+- Add `needs-review` if you can't determine (missing spec)
+</code></pre>
+  </div>
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">Key insight</div>
+  <p>This is your <code>/comply</code> skill — but running automatically on every PR. The same independent-reviewer principle (no access to implementation reasoning, only sees the diff and spec), now triggered by GitHub events instead of a manual command.</p>
+</div>
+
+<h2>Phase 4 Blueprint: Weekly Quality Monitor</h2>
+
+<div class="blueprint">
+  <div class="blueprint-title">weekly-quality.md — Code Quality Monitor</div>
+  <div class="blueprint-body">
+<pre><code>---
+on:
+  schedule: "0 9 * * 1"  # Every Monday at 9am
+
+permissions:
+  contents: read
+  issues: read
+
+safe-outputs:
+  create-issue:
+    title-prefix: "[quality] "
+    labels: [automation, quality]
+    close-older-issues: true
+    expires: 7
+
+max-ai-credits: 8
+---
+
+## Weekly Code Quality Report
+
+Analyze the repository for quality issues and create
+a prioritized report.
+
+### What to analyze
+
+- Dead code (unused exports, unreachable branches)
+- Complexity hotspots (functions > 50 lines, deep nesting)
+- Dependency freshness (outdated packages)
+- Test coverage gaps (untested public functions)
+- Documentation staleness (docs that reference old APIs)
+
+### Report format
+
+Create an issue with:
+- Top 5 priority items (most impactful to fix)
+- Quick wins (< 15 min each)
+- Trends (better or worse than last week, if prior report exists)
+
+Keep it actionable. Skip theoretical concerns.
+</code></pre>
+  </div>
+</div>
+
+<h2>Decision Framework: When to Automate</h2>
+
+<p>Not everything should be an automated workflow. Use this test:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Automate when...</th>
+      <th>Keep manual when...</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>You do it the same way every time</td>
+      <td>It requires judgment about <em>what</em> to do</td>
+    </tr>
+    <tr>
+      <td>Forgetting to do it causes problems</td>
+      <td>The cost of a wrong action is high</td>
+    </tr>
+    <tr>
+      <td>It can be verified by checking output</td>
+      <td>It needs real-time human context</td>
+    </tr>
+    <tr>
+      <td>An independent reviewer adds value</td>
+      <td>Speed of human response matters more</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Your Automation Readiness Checklist</h2>
+
+<p>Before adding any gh-aw workflow to a repo, verify:</p>
+
+<ul class="checklist">
+  <li>GitHub Actions enabled on the repo</li>
+  <li>AI engine secret configured (ANTHROPIC_API_KEY or COPILOT_GITHUB_TOKEN)</li>
+  <li><code>max-ai-credits</code> set in frontmatter (start low: 5-10)</li>
+  <li>Start with <code>staged: true</code> to preview before going live</li>
+  <li>Test manually with <code>gh aw run</code> before enabling schedule/event triggers</li>
+  <li>Monitor first week: <code>gh aw logs</code> to check costs and quality</li>
+  <li>Iterate: tighten prompts based on actual outputs</li>
+</ul>
+
+<h2>What You've Learned</h2>
+
+<p>Across these 10 lessons, you now understand:</p>
+
+<ol>
+  <li><strong>The three-layer architecture</strong> — hooks, commands, skills — and how your Kiro harness already implements it</li>
+  <li><strong>gh-aw</strong> — how to install, add, and customize agentic workflows that run in GitHub Actions</li>
+  <li><strong>The security model</strong> — read-only agents, safe outputs, sandboxing, threat detection</li>
+  <li><strong>Triggers</strong> — event-driven, scheduled, manual, and command-based invocation</li>
+  <li><strong>Background automation</strong> — scheduled agents that work while you sleep</li>
+  <li><strong>Design patterns</strong> — IssueOps, ChatOps, MonitorOps, SpecOps, OrchestratorOps</li>
+  <li><strong>Cross-provider portability</strong> — same patterns across Claude Code, Gemini, Codex, Cursor</li>
+  <li><strong>Cost controls</strong> — AI credit budgets, staged mode, observability</li>
+  <li><strong>Multi-agent coordination</strong> — subagents, orchestration, role collapsing</li>
+  <li><strong>Implementation planning</strong> — phased rollout from your existing system</li>
+</ol>
+
+<div class="callout">
+  <div class="callout-title">The principle</div>
+  <p>Start with one automated workflow on one real repo. Let it run for a week. See what it catches that you would have missed. Then add the next one. Compound automation beats big-bang adoption every time.</p>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://github.github.com/gh-aw/blog/2026-01-12-welcome-to-pelis-agent-factory/">Peli's Agent Factory</a> — A 19-part blog series walking through real-world agentic workflows. Each post is a different automation pattern with full source. Pick the one closest to your Phase 2 goal and adapt it.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Ready to build?</strong> Come back anytime and ask me to help you implement any of the phases above. I can write the workflow markdown, help debug runs, or design custom patterns for your specific repos. Just say which phase you want to tackle.
+</div>
+
+<div class="lesson-nav">
+  <a href="0009-multi-agent-coordination.html" class="lesson-nav-prev" title="Multi-Agent Coordination">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <span></span>
+</div>
+
+<script>
+// Quiz interaction (none in this lesson - it's a planning/synthesis lesson)
+</script>
+
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1: The Three-Layer Architecture</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    /* Layer diagram */
+    .layer-diagram {
+      border: 2px solid var(--color-text);
+      border-radius: 6px;
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+    .layer-diagram-title {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      text-align: center;
+      padding: 0.6rem;
+      background: var(--color-text);
+      color: var(--color-bg);
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+    }
+    .layer-box {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--color-border);
+      align-items: start;
+    }
+    .layer-box:last-child { border-bottom: none; }
+    .layer-label {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding-top: 0.15rem;
+    }
+    .layer-desc {
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .layer-hooks { background: #fef2f2; }
+    .layer-commands { background: #eff6ff; }
+    .layer-skills { background: #f0fdf4; }
+
+    /* Flow diagram */
+    .flow-diagram {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .flow-trigger {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .flow-step, .flow-substep {
+      display: flex;
+      align-items: baseline;
+      gap: 0.6rem;
+      padding: 0.4rem 0;
+      font-size: 0.9rem;
+    }
+    .flow-substep {
+      padding-left: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--color-muted);
+    }
+    .flow-layer-tag {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+    .flow-layer-tag.hook { background: #fee2e2; color: #991b1b; }
+    .flow-layer-tag.command { background: #dbeafe; color: #1e40af; }
+    .flow-layer-tag.skill { background: #d1fae5; color: #065f46; }
+
+    @media (max-width: 600px) {
+      .layer-box {
+        grid-template-columns: 1fr;
+        gap: 0.3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><span></span><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0002-gh-aw-quick-start.html" class="lesson-next-top" title="gh-aw Quick Start">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>The Three-Layer Architecture</h1>
+
+<div class="lesson-meta">
+  Lesson 1 · Safe Agentic Workflows · ~10 minutes
+</div>
+
+<p>You already use AI agents to write code. The question isn't <em>whether</em> to use them — it's how to <strong>structure</strong> their behavior so it's repeatable, safe, and increasingly autonomous.</p>
+
+<p>The answer, emerging across both the <a href="https://github.com/bybren-llc/safe-agentic-workflow">SAW harness</a> and <a href="https://github.github.com/gh-aw/">GitHub Agentic Workflows</a>, is a <strong>three-layer architecture</strong> that separates <em>what agents must always do</em> from <em>what you ask them to do</em> from <em>what they figure out on their own</em>.</p>
+
+<h2>The Three Layers</h2>
+
+<div class="layer-diagram">
+  <div class="layer-diagram-title">YOUR REPOSITORY</div>
+  <div class="layer-box layer-hooks">
+    <div class="layer-label">LAYER 1: HOOKS</div>
+    <div class="layer-desc">
+      <strong>Automatic guardrails</strong><br>
+      Fire on every action. Agent cannot bypass them.<br>
+      <em>Think: linters, format checks, permission gates, commit rules.</em>
+    </div>
+  </div>
+  <div class="layer-box layer-commands">
+    <div class="layer-label">LAYER 2: COMMANDS</div>
+    <div class="layer-desc">
+      <strong>User-invoked workflows</strong><br>
+      You trigger them explicitly. Structured multi-step processes.<br>
+      <em>Think: /start-work, /pre-pr, /release, /deploy.</em>
+    </div>
+  </div>
+  <div class="layer-box layer-skills">
+    <div class="layer-label">LAYER 3: SKILLS</div>
+    <div class="layer-desc">
+      <strong>Model-invoked expertise</strong><br>
+      Agent activates them when relevant. Domain knowledge that loads on cue.<br>
+      <em>Think: "I see a migration file, let me load the DB patterns skill."</em>
+    </div>
+  </div>
+</div>
+
+<h2>What Each Layer Does</h2>
+
+<h3>Layer 1: Hooks — The Guardrails</h3>
+
+<p>Hooks fire <strong>automatically</strong> on specific events — before a file is written, after a command runs, before a commit. The agent doesn't choose whether to follow them. They're enforced.</p>
+
+<p>In Claude Code, these live in <code>.claude/hooks-config.json</code>. In gh-aw, they're the <code>permissions:</code> and <code>safe-outputs:</code> frontmatter. Same concept: <strong>what the agent is not allowed to violate</strong>.</p>
+
+<p>Examples:</p>
+<ul>
+  <li>Block commits without a ticket reference</li>
+  <li>Enforce code formatting before every file write</li>
+  <li>Require tests pass before any PR-related action</li>
+  <li>Prevent the agent from touching <code>.env</code> files</li>
+</ul>
+
+<div class="callout tip">
+  <div class="callout-title">Key insight</div>
+  <p>Hooks exist because AI agents are <em>eager</em>. Without guardrails, they'll do what seems helpful — which sometimes means reformatting your entire codebase or committing untested code. Hooks make certain mistakes structurally impossible.</p>
+</div>
+
+<h3>Layer 2: Commands — The Workflows</h3>
+
+<p>Commands are multi-step processes <strong>you invoke explicitly</strong>. They encode your team's workflow as executable instructions the agent follows. In Claude Code, these are slash commands (<code>/start-work</code>, <code>/pre-pr</code>). In gh-aw, they're the entire workflow markdown file triggered by events or <code>/slash</code> commands in issues.</p>
+
+<p>A command typically:</p>
+<ol>
+  <li>Sets up context (reads the ticket, checks the branch)</li>
+  <li>Executes a sequence of steps</li>
+  <li>Produces a defined output (a commit, a PR, a report)</li>
+</ol>
+
+<p>The power here is <strong>repeatability</strong>. Instead of explaining your workflow to the agent each time, you encode it once and invoke it with a word.</p>
+
+<h3>Layer 3: Skills — The Expertise</h3>
+
+<p>Skills are domain knowledge that the agent <strong>loads automatically when relevant</strong>. They use frontmatter triggers — file patterns, project conditions — to activate. The agent recognizes "I'm working on a database migration" and loads your migration patterns skill.</p>
+
+<p>Skills don't execute steps. They <em>inform</em> the agent's decision-making. They're the difference between an agent that writes generic code and one that writes code matching your project's patterns.</p>
+
+<p>In Claude Code / Kiro, these are <code>.claude/skills/</code> or steering files. In SAW, they're the 18 model-invoked skills with Skills 2.0 frontmatter.</p>
+
+<h2>How the Layers Interact</h2>
+
+<p>The layers aren't independent — they compose:</p>
+
+<div class="flow-diagram">
+  <div class="flow-trigger">You type: <code>/start-work TICKET-123</code></div>
+  <div class="flow-step">
+    <span class="flow-layer-tag command">COMMAND</span>
+    <span>1. Read ticket from project tracker</span>
+  </div>
+  <div class="flow-step">
+    <span class="flow-layer-tag command">COMMAND</span>
+    <span>2. Create feature branch</span>
+  </div>
+  <div class="flow-step">
+    <span class="flow-layer-tag skill">SKILL</span>
+    <span>3. Load relevant skills based on ticket type</span>
+  </div>
+  <div class="flow-step">
+    <span class="flow-layer-tag command">COMMAND</span>
+    <span>4. Begin implementation</span>
+  </div>
+  <div class="flow-substep">
+    <span class="flow-layer-tag hook">HOOK</span>
+    <span>Every file write: format check ✓ &middot; import sort ✓ &middot; test exists ✓</span>
+  </div>
+  <div class="flow-step">
+    <span class="flow-layer-tag command">COMMAND</span>
+    <span>5. Produce "Ready for review" state</span>
+  </div>
+</div>
+
+<p>Notice the layering: the <em>command</em> drives the workflow, <em>skills</em> inform the agent's choices within it, and <em>hooks</em> constrain every action along the way. Process as service, not control.</p>
+
+<h2>Where This Maps to Your Tools</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Layer</th>
+      <th>Claude Code</th>
+      <th>Kiro</th>
+      <th>Codex CLI</th>
+      <th>gh-aw</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Hooks</td>
+      <td><code>.claude/hooks-config.json</code></td>
+      <td>Steering files (always-on)</td>
+      <td><code>config.toml</code> approval policy</td>
+      <td><code>permissions:</code> + <code>safe-outputs:</code></td>
+    </tr>
+    <tr>
+      <td>Commands</td>
+      <td><code>.claude/commands/*.md</code></td>
+      <td>Skills (manual trigger)</td>
+      <td>Natural language (no slash)</td>
+      <td>Workflow markdown files</td>
+    </tr>
+    <tr>
+      <td>Skills</td>
+      <td><code>.claude/skills/*/SKILL.md</code></td>
+      <td>Steering files (file-matched)</td>
+      <td><code>.agents/skills/*.md</code></td>
+      <td>Prompt body + imports</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="callout-title">The mental shift</div>
+  <p>You're already using pieces of this. Every time you set a Kiro steering file or write a Claude Code command, you're building one layer. The three-layer architecture just names the pattern and asks: <em>are all three layers present and working together?</em></p>
+</div>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">A rule that blocks your agent from committing without running tests first belongs in which layer?</div>
+  <ul class="quiz-options">
+    <li data-correct="true">Layer 1: Hooks</li>
+    <li>Layer 2: Commands</li>
+    <li>Layer 3: Skills</li>
+  </ul>
+  <div class="quiz-feedback correct">Right — hooks are enforced guardrails. The agent can't bypass them. This is a constraint, not a workflow step.</div>
+  <div class="quiz-feedback incorrect">Not quite. This is a <em>constraint</em> that fires automatically on every commit attempt. That's Layer 1 (Hooks). Commands are user-invoked workflows; skills are domain knowledge.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">Your agent notices you're editing a React component and automatically loads your component patterns. Which layer is this?</div>
+  <ul class="quiz-options">
+    <li>Layer 1: Hooks</li>
+    <li>Layer 2: Commands</li>
+    <li data-correct="true">Layer 3: Skills</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct — skills activate based on context (file patterns, project conditions). The agent decides to load them, and they inform its approach.</div>
+  <div class="quiz-feedback incorrect">This is Layer 3 (Skills). The agent recognized a file pattern and loaded relevant domain knowledge. No one invoked it, and it's not a constraint — it's expertise.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">You type <code>/pre-pr</code> and the agent runs linting, checks test coverage, updates the changelog, and opens a PR. Which layer?</div>
+  <ul class="quiz-options">
+    <li>Layer 1: Hooks</li>
+    <li data-correct="true">Layer 2: Commands</li>
+    <li>Layer 3: Skills</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly — commands are explicitly invoked multi-step workflows. You triggered it, and it executes a defined sequence.</div>
+  <div class="quiz-feedback incorrect">This is Layer 2 (Commands). You explicitly invoked <code>/pre-pr</code>, and it executed a multi-step workflow. Hooks fire automatically; skills load contextually.</div>
+</div>
+
+<h2>What's Next</h2>
+
+<p>Now that you have the mental model, the next lesson will be hands-on: <strong>building your first hook</strong>. We'll set up a Claude Code hook that enforces a constraint you choose — something you've wished your agent would stop doing wrong.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents">Effective Harnesses for Long-Running Agents</a> — Anthropic Engineering. This is the paper that established the three-layer pattern. ~15 min read. Focus on the "Architecture" section.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me anything that's unclear. I'm your teacher — I can explain any of these concepts differently, give more examples, or dive deeper into how a specific layer works with your tools.
+</div>
+
+<div class="lesson-nav">
+  <span></span>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0002-gh-aw-quick-start.html" class="lesson-nav-next" title="gh-aw Quick Start">Next →</a>
+</div>
+
+<script>
+// Quiz interaction
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        // Highlight the correct answer
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

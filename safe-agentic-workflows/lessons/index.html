@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Safe Agentic Workflows — Lesson Index</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    .course-header {
+      margin-bottom: 3rem;
+    }
+    .course-header h1 {
+      font-size: 2.8rem;
+      letter-spacing: -0.035em;
+      margin-bottom: 0.75rem;
+    }
+    .course-header p {
+      color: var(--color-muted);
+      font-size: 1.05rem;
+      line-height: 1.5;
+      max-width: 600px;
+    }
+    .lesson-list {
+      list-style: none;
+      padding: 0;
+    }
+    .lesson-list li {
+      margin-bottom: 0;
+      padding: 0;
+    }
+    .lesson-card {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr auto;
+      gap: 1rem;
+      align-items: baseline;
+      padding: 1.1rem 1rem;
+      text-decoration: none;
+      color: var(--color-text);
+      border-radius: 10px;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .lesson-card:hover {
+      background: var(--color-card-bg);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-card);
+      text-decoration: none;
+    }
+    .lesson-num {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--color-muted);
+      font-weight: 600;
+    }
+    .lesson-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .lesson-title {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--color-accent);
+    }
+    .lesson-desc {
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      line-height: 1.4;
+    }
+    .lesson-time {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--color-muted);
+      white-space: nowrap;
+      background: var(--color-code-bg);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+    .section-label {
+      font-family: var(--font-heading);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-muted);
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      padding-left: 1rem;
+    }
+    .resources-link {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--color-border);
+      font-size: 0.9rem;
+    }
+    .resources-link a {
+      font-weight: 500;
+    }
+    @media (max-width: 600px) {
+      .lesson-card {
+        grid-template-columns: 2rem 1fr;
+      }
+      .lesson-time { display: none; }
+      .course-header h1 { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="course-header">
+  <h1>Safe Agentic Workflows</h1>
+  <p>A hands-on course on structuring AI agent automation — from local harnesses to CI/CD-triggered workflows with guardrails, cost controls, and multi-agent coordination.</p>
+</div>
+
+<div class="section-label">Foundations</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0001-three-layer-architecture.html">
+      <span class="lesson-num">01</span>
+      <span class="lesson-info">
+        <span class="lesson-title">The Three-Layer Architecture</span>
+        <span class="lesson-desc">Hooks, Commands, and Skills — the mental model behind every agent harness.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0002-gh-aw-quick-start.html">
+      <span class="lesson-num">02</span>
+      <span class="lesson-info">
+        <span class="lesson-title">gh-aw Quick Start</span>
+        <span class="lesson-desc">Install the CLI, add your first agentic workflow, and trigger a run.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0003-the-security-model.html">
+      <span class="lesson-num">03</span>
+      <span class="lesson-info">
+        <span class="lesson-title">The Security Model</span>
+        <span class="lesson-desc">Safe outputs, sandboxing, and threat detection — how agents earn trust.</span>
+      </span>
+      <span class="lesson-time">~12 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Automation Patterns</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0004-triggers-and-events.html">
+      <span class="lesson-num">04</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Triggers and Events</span>
+        <span class="lesson-desc">Making agents react to issues, PRs, comments, and schedules.</span>
+      </span>
+      <span class="lesson-time">~8 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0005-background-agents.html">
+      <span class="lesson-num">05</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Background Agents</span>
+        <span class="lesson-desc">Scheduled automation — wake up to ready-to-review improvements.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0006-design-patterns.html">
+      <span class="lesson-num">06</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Design Patterns</span>
+        <span class="lesson-desc">IssueOps, ChatOps, MonitorOps, SpecOps — choosing the right pattern.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Scaling Up</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0007-cross-provider-portability.html">
+      <span class="lesson-num">07</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Cross-Provider Portability</span>
+        <span class="lesson-desc">One harness across Claude Code, Gemini CLI, Codex, and Cursor.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0008-cost-controls.html">
+      <span class="lesson-num">08</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Cost Controls and Observability</span>
+        <span class="lesson-desc">AI credit budgets, staged mode, and tracking what agents spend.</span>
+      </span>
+      <span class="lesson-time">~8 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0009-multi-agent-coordination.html">
+      <span class="lesson-num">09</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Multi-Agent Coordination</span>
+        <span class="lesson-desc">Orchestration, subagents, role collapsing — from solo to team.</span>
+      </span>
+      <span class="lesson-time">~12 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0010-putting-it-all-together.html">
+      <span class="lesson-num">10</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Putting It All Together</span>
+        <span class="lesson-desc">A phased implementation plan — from your existing harness to full automation.</span>
+      </span>
+      <span class="lesson-time">~15 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="resources-link">
+  <p><strong>Course:</strong> Safe Agentic Workflows — 10 lessons on building AI agent automation with guardrails.</p>
+  <p style="color: var(--color-muted); font-size: 0.85rem; margin-top: 0.5rem;">Total course time: ~105 minutes · 10 lessons · Interactive quizzes in each</p>
+</div>
+
+</body>
+</html>

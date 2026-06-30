@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4: Triggers and Events — Making Agents React</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    /* Trigger type cards */
+    .trigger-card {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+    .trigger-card-header {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 0.6rem 1rem;
+      background: var(--color-code-bg);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .trigger-card-body {
+      padding: 1rem 1.25rem;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .trigger-card-body p { margin-bottom: 0.5rem; }
+    .trigger-card-body p:last-child { margin-bottom: 0; }
+
+    /* Trigger type badges */
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .badge-event { background: #dbeafe; color: #1e40af; }
+    .badge-schedule { background: #fef3c7; color: #92400e; }
+    .badge-manual { background: #d1fae5; color: #065f46; }
+    .badge-command { background: #ede9fe; color: #5b21b6; }
+
+    /* Before/after comparison */
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .comparison-panel {
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .comparison-panel-title {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 0.8rem;
+      padding: 0.5rem 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .comparison-panel.before .comparison-panel-title {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .comparison-panel.after .comparison-panel-title {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .comparison-panel pre {
+      margin: 0;
+      border: none;
+      border-radius: 0;
+      font-size: 0.78rem;
+    }
+
+    @media (max-width: 600px) {
+      .comparison {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0003-the-security-model.html" class="lesson-back-top" title="The Security Model"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-background-agents.html" class="lesson-next-top" title="Background Agents">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Triggers and Events — Making Agents React</h1>
+
+<div class="lesson-meta">
+  Lesson 4 · Safe Agentic Workflows · ~8 minutes
+</div>
+
+<p>Until now, every workflow we've discussed is <strong>manually invoked</strong> — you type a command and the agent runs. That's powerful, but it's only half the picture. The real shift happens when agents react to events <em>without you asking</em>.</p>
+
+<p>This lesson covers the <code>on:</code> frontmatter section — the declarative syntax that tells a workflow <em>when</em> to activate. If you've used GitHub Actions, this will feel familiar. The difference: instead of triggering a CI pipeline, you're triggering an <strong>AI agent</strong>.</p>
+
+<h2>The <code>on:</code> Section</h2>
+
+<p>Every agentic workflow file has YAML frontmatter at the top. The <code>on:</code> key declares the trigger — what event or condition causes the workflow to fire:</p>
+
+<pre><code>---
+on:
+  issues:
+    types: [opened]
+
+safe-outputs:
+  add-comment:
+---
+
+# Auto-Triage New Issues
+
+Read the issue title and body. Assign appropriate labels based on content.
+Add a comment acknowledging receipt and estimated triage time.</code></pre>
+
+<p>This workflow fires every time a new issue is opened. No human invocation needed. The agent reads, labels, and responds — all from a single trigger declaration.</p>
+
+<h2>Four Types of Triggers</h2>
+
+<p>Triggers fall into four categories. Most workflows use one; complex workflows combine several.</p>
+
+<div class="trigger-card">
+  <div class="trigger-card-header">
+    <span class="badge badge-event">Event</span>
+    Event Triggers — React to Repository Activity
+  </div>
+  <div class="trigger-card-body">
+    <p>Fire when something happens in your repository: an issue opens, a PR is created, a comment is posted, a label is applied.</p>
+    <p>These are the workhorses of agentic automation. They turn your agent into a team member that monitors and responds.</p>
+  </div>
+</div>
+
+<div class="trigger-card">
+  <div class="trigger-card-header">
+    <span class="badge badge-schedule">Schedule</span>
+    Schedule Triggers — Run on a Timer
+  </div>
+  <div class="trigger-card-body">
+    <p>Fire at regular intervals: daily, weekly, every 30 minutes, or at a specific cron time. Use for maintenance tasks, reports, and periodic sweeps.</p>
+    <p>Supports both standard cron syntax and human-friendly "fuzzy" expressions.</p>
+  </div>
+</div>
+
+<div class="trigger-card">
+  <div class="trigger-card-header">
+    <span class="badge badge-manual">Manual</span>
+    Manual Triggers — On-Demand with Inputs
+  </div>
+  <div class="trigger-card-body">
+    <p>Fire when explicitly invoked via the GitHub UI, CLI (<code>gh aw run</code>), or API. Can accept typed input parameters (strings, booleans, dropdowns).</p>
+    <p>Use for workflows that need human judgment about <em>when</em> or <em>what</em> to run on.</p>
+  </div>
+</div>
+
+<div class="trigger-card">
+  <div class="trigger-card-header">
+    <span class="badge badge-command">Command</span>
+    Command Triggers — Slash Commands in Comments
+  </div>
+  <div class="trigger-card-body">
+    <p>Fire when someone types <code>/command-name</code> in an issue or PR comment. This is the <strong>ChatOps</strong> pattern — triggering agent work through conversation.</p>
+    <p>Enables team members to invoke complex workflows without leaving their issue thread.</p>
+  </div>
+</div>
+
+<h2>Event Triggers in Detail</h2>
+
+<p>Event triggers use standard GitHub webhook event names with optional <code>types:</code> filtering:</p>
+
+<pre><code># React to new and edited issues
+on:
+  issues:
+    types: [opened, edited, labeled]
+
+# React to PR creation and new commits
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+# React to comments (ChatOps pattern)
+on:
+  issue_comment:
+    types: [created]
+
+# React to new discussions
+on:
+  discussion:
+    types: [created]</code></pre>
+
+<p>The <code>types:</code> array lets you be precise. Without it, the workflow fires on <em>every</em> event type — which is usually too broad. Always specify types.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Note on issue_comment</div>
+  <p>GitHub fires <code>issue_comment</code> events for comments on both issues <em>and</em> pull requests. When triggered by a PR comment, the agent gets access to the PR branch. This is what makes ChatOps patterns work for code review.</p>
+</div>
+
+<h2>Schedule Triggers</h2>
+
+<p>Schedule triggers support two syntaxes: human-friendly fuzzy expressions and standard cron.</p>
+
+<h3>Fuzzy Syntax (Recommended)</h3>
+
+<p>Fuzzy schedules are easier to read and automatically scatter execution times to avoid load spikes:</p>
+
+<pre><code># Simple intervals
+on:
+  schedule: daily
+  schedule: weekly on monday
+  schedule: hourly
+  schedule: every 30 minutes
+
+# With time preferences
+on:
+  schedule: daily around 14:00              # ±1 hour around 2pm UTC
+  schedule: daily between 9:00 and 17:00    # Scattered within business hours
+  schedule: weekly on friday around 5pm
+
+# With timezone offsets
+on:
+  schedule: daily between 9am and 5pm utc-5  # Eastern time business hours</code></pre>
+
+<p>The compiler converts these to deterministic cron expressions based on the workflow's file path — so the same workflow always runs at the same time, but different workflows scatter naturally.</p>
+
+<h3>Standard Cron</h3>
+
+<p>For exact timing, use cron directly:</p>
+
+<pre><code>on:
+  schedule:
+    - cron: "0 9 * * 1-5"      # 9:00 UTC weekdays
+    - cron: "30 6 * * 1"       # Monday at 06:30 UTC
+    - cron: "0 9 15 * *"       # 15th of month at 09:00 UTC
+      timezone: "America/New_York"  # IANA timezone override</code></pre>
+
+<h2>Manual Triggers (<code>workflow_dispatch</code>)</h2>
+
+<p>Manual triggers let you define input parameters the user provides when invoking the workflow:</p>
+
+<pre><code>on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: 'Research topic'
+        required: true
+        type: string
+      priority:
+        description: 'Task priority'
+        required: false
+        type: choice
+        options:
+          - low
+          - medium
+          - high
+        default: medium</code></pre>
+
+<p>Access inputs in your prompt with template syntax: <code>${{ github.event.inputs.topic }}</code></p>
+
+<p>This is the bridge between "fully manual" and "fully automatic." You decide <em>when</em> to run it, but the workflow handles the <em>how</em>.</p>
+
+<h2>Command Triggers (<code>slash_command</code>)</h2>
+
+<p>Command triggers turn issue comments into agent invocations:</p>
+
+<pre><code>on:
+  slash_command:
+    name: investigate
+    events: [issues, issue_comment]</code></pre>
+
+<p>Now, when anyone types <code>/investigate</code> in an issue comment, the workflow fires with the full issue context. This is the ChatOps pattern — your team interacts with the agent through normal GitHub conversations.</p>
+
+<p>Use cases:</p>
+<ul>
+  <li><code>/investigate</code> — Deep-dive into a reported bug</li>
+  <li><code>/deploy staging</code> — Trigger a deployment</li>
+  <li><code>/summarize</code> — Generate a summary of a long thread</li>
+  <li><code>/comply</code> — Run compliance checks on demand</li>
+</ul>
+
+<h2>Combining Triggers</h2>
+
+<p>A single workflow can respond to multiple triggers. This is common — you want something to run both automatically <em>and</em> on-demand:</p>
+
+<pre><code>on:
+  # Fire automatically on new issues
+  issues:
+    types: [opened]
+  # Also allow manual invocation for testing
+  workflow_dispatch:
+  # And fire on a schedule for catch-up
+  schedule: daily around 9:00</code></pre>
+
+<p>The workflow runs identically regardless of which trigger fired. This makes testing easy — use <code>workflow_dispatch</code> during development, then let the event triggers handle production.</p>
+
+<h2>Common Trigger Patterns</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Pattern</th>
+      <th>Trigger Config</th>
+      <th>What It Enables</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Auto-triage</td>
+      <td><code>issues: [opened]</code></td>
+      <td>Label, assign, and acknowledge new issues instantly</td>
+    </tr>
+    <tr>
+      <td>PR review</td>
+      <td><code>pull_request: [opened, synchronize]</code></td>
+      <td>Automated code review on every push</td>
+    </tr>
+    <tr>
+      <td>ChatOps</td>
+      <td><code>slash_command: name: fix</code></td>
+      <td>Team invokes agent via <code>/fix</code> in comments</td>
+    </tr>
+    <tr>
+      <td>Daily report</td>
+      <td><code>schedule: daily around 9:00</code></td>
+      <td>Stale PR sweep, metrics digest, dependency check</td>
+    </tr>
+    <tr>
+      <td>CI follow-up</td>
+      <td><code>workflow_run: [completed]</code></td>
+      <td>Agent analyzes failures after CI finishes</td>
+    </tr>
+    <tr>
+      <td>Label-as-command</td>
+      <td><code>label_command: deploy</code></td>
+      <td>Apply "deploy" label → agent deploys, removes label</td>
+    </tr>
+    <tr>
+      <td>External webhook</td>
+      <td><code>repository_dispatch: [jira-created]</code></td>
+      <td>Jira/PagerDuty/Slack triggers agent work</td>
+    </tr>
+    <tr>
+      <td>On-demand + auto</td>
+      <td><code>issues: [opened]</code> + <code>workflow_dispatch:</code></td>
+      <td>Automatic in production, manual for testing</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Practical Example: Auto-Triage New Issues</h2>
+
+<p>Let's build a complete auto-triage workflow. This is one of the most impactful first automations — it gives every issue reporter instant acknowledgment and applies initial labels:</p>
+
+<pre><code>---
+on:
+  issues:
+    types: [opened]
+  reaction: "eyes"
+
+safe-outputs:
+  add-comment:
+  add-labels:
+
+permissions:
+  issues: write
+---
+
+# Auto-Triage New Issues
+
+You are a triage agent for this repository.
+
+## Context
+
+Read the issue: "${{ github.event.issue.title }}"
+
+Body:
+${{ github.event.issue.body }}
+
+## Task
+
+1. Analyze the issue content and determine:
+   - Is this a bug report, feature request, question, or documentation issue?
+   - What area of the codebase does it relate to?
+   - What priority level seems appropriate (critical, high, medium, low)?
+
+2. Apply labels:
+   - One type label: `bug`, `enhancement`, `question`, or `documentation`
+   - One area label if identifiable: `area/api`, `area/ui`, `area/infra`, etc.
+   - One priority label: `priority/critical`, `priority/high`, `priority/medium`, `priority/low`
+
+3. Add a comment:
+   - Acknowledge the issue
+   - Summarize your understanding
+   - Note any missing information needed for triage
+   - Be friendly and concise</code></pre>
+
+<p>This workflow activates the moment an issue is created. The <code>reaction: "eyes"</code> immediately adds an 👀 emoji so the reporter knows something is happening. Within seconds, the issue has labels and a helpful comment.</p>
+
+<h2>Connection to Your Work</h2>
+
+<p>Think about your existing <code>/comply</code> workflow. Right now, it's Layer 2 — a manually invoked command. You type it, it runs. But what if it fired automatically?</p>
+
+<div class="comparison">
+  <div class="comparison-panel before">
+    <div class="comparison-panel-title">Today (Manual)</div>
+    <pre><code>---
+on:
+  workflow_dispatch:
+---
+
+# Compliance Check
+Run compliance checks...</code></pre>
+  </div>
+  <div class="comparison-panel after">
+    <div class="comparison-panel-title">Tomorrow (Automatic)</div>
+    <pre><code>---
+on:
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+---
+
+# Compliance Check
+Run compliance checks...</code></pre>
+  </div>
+</div>
+
+<p>One line changes the trigger from "when I ask" to "when any PR is opened or updated." The workflow body stays identical. The agent's behavior doesn't change — only <em>when</em> it activates. This is the power of declarative triggers: you graduate workflows from manual to automatic by editing frontmatter, not rewriting logic.</p>
+
+<div class="callout">
+  <div class="callout-title">The progression</div>
+  <p><strong>Manual → Event-driven → Scheduled → Combined.</strong> Start with <code>workflow_dispatch</code> to build and test. Add event triggers once you trust the output. Add schedule triggers for catch-up sweeps. This is how you safely increase autonomy.</p>
+</div>
+
+<h2>Trigger Shorthands</h2>
+
+<p>For common patterns, the gh-aw compiler accepts natural-language shorthand instead of full YAML:</p>
+
+<pre><code># These are equivalent:
+on: issue opened
+on:
+  issues:
+    types: [opened]
+
+# More shorthand examples:
+on: pull_request opened
+on: issue labeled bug
+on: manual
+on: manual with input version
+on: comment created
+on: "deployment failed"</code></pre>
+
+<p>Shorthands are useful for simple, single-trigger workflows. Use full YAML when combining triggers or adding filtering options.</p>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">A new issue is created in your repository. Which trigger configuration would fire?</div>
+  <ul class="quiz-options">
+    <li data-correct="true"><code>on: issues: types: [opened]</code></li>
+    <li><code>on: issues: types: [edited]</code></li>
+    <li><code>on: issue_comment: types: [created]</code></li>
+    <li><code>on: pull_request: types: [opened]</code></li>
+  </ul>
+  <div class="quiz-feedback correct">Correct — a new issue fires the <code>issues</code> event with type <code>opened</code>. The <code>edited</code> type fires when the issue body or title is changed later. <code>issue_comment</code> is for comments, not issue creation.</div>
+  <div class="quiz-feedback incorrect">Not quite. Creating a new issue fires the <code>issues</code> event with type <code>opened</code>. The <code>edited</code> type fires on title/body changes. <code>issue_comment</code> fires when a comment is posted. <code>pull_request</code> is for PRs, not issues.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">You want a workflow to run at 9:00 AM on weekdays (UTC), with some flexibility in exact timing. Which schedule syntax is most appropriate?</div>
+  <ul class="quiz-options">
+    <li><code>schedule: "0 9 * * 1-5"</code></li>
+    <li data-correct="true"><code>schedule: daily between 9:00 and 10:00</code> (plus a weekday filter)</li>
+    <li><code>schedule: every 24 hours</code></li>
+    <li><code>schedule: weekly on monday around 9:00</code></li>
+  </ul>
+  <div class="quiz-feedback correct">Right — fuzzy syntax like <code>daily between 9:00 and 10:00</code> scatters execution within that window and is the recommended approach when you want "roughly around 9 AM" without load-spike concerns. Combine with an <code>if:</code> weekday condition or use <code>cron: "0 9 * * 1-5"</code> for exact-time weekday-only execution.</div>
+  <div class="quiz-feedback incorrect">The cron syntax <code>"0 9 * * 1-5"</code> would give you <em>exact</em> 9:00 UTC weekdays — but the question asked for flexibility. Fuzzy syntax like <code>daily between 9:00 and 10:00</code> scatters within the window, which is the "flexible timing" approach. <code>every 24 hours</code> runs every day including weekends. <code>weekly on monday</code> only runs once a week.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">What do command triggers (<code>slash_command:</code>) enable that event triggers alone cannot?</div>
+  <ul class="quiz-options">
+    <li>Running workflows on a schedule</li>
+    <li>Accepting typed input parameters like strings and booleans</li>
+    <li data-correct="true">Letting team members invoke agent workflows conversationally from issue/PR comments</li>
+    <li>Triggering workflows from external systems like Jira</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly — command triggers enable the ChatOps pattern. Team members type <code>/command-name</code> in a comment and the agent activates in that conversational context. This is uniquely interactive: the team works <em>with</em> the agent through normal GitHub conversation.</div>
+  <div class="quiz-feedback incorrect">Command triggers specifically enable ChatOps — invoking agent workflows by typing <code>/command-name</code> in issue or PR comments. Schedule triggers handle timers. <code>workflow_dispatch</code> handles typed inputs. <code>repository_dispatch</code> handles external system integration.</div>
+</div>
+
+<h2>What's Next</h2>
+
+<p>You now understand the four trigger types and how to declare them. The next lesson covers <strong>safe outputs</strong> — controlling <em>what</em> an event-triggered agent is allowed to do. Because once an agent activates autonomously, the guardrails matter more than ever.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://github.github.com/gh-aw/reference/triggers/">Frontmatter (Triggers)</a> — GitHub Agentic Workflows reference. Complete syntax for all trigger types, filtering options, and advanced features like <code>lock-for-agent</code> and <code>skip-if-match</code>.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me about any trigger pattern — I can help you figure out the right <code>on:</code> configuration for a specific workflow you're imagining, or explain how triggers interact with the safety layers from Lesson 1.
+</div>
+
+<div class="lesson-nav">
+  <a href="0003-the-security-model.html" class="lesson-nav-prev" title="The Security Model">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0005-background-agents.html" class="lesson-nav-next" title="Background Agents">Next →</a>
+</div>
+
+<script>
+// Quiz interaction
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 7: Cross-Provider Portability — One Harness, Many Agents</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    /* Provider cards */
+    .provider-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .provider-card {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      background: var(--color-bg);
+    }
+    .provider-card h4 {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.95rem;
+    }
+    .provider-card .provider-dir {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    .provider-card ul {
+      margin: 0;
+      padding-left: 1.2rem;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+    .provider-claude { border-color: #c084fc; }
+    .provider-gemini { border-color: #60a5fa; }
+    .provider-codex { border-color: #34d399; }
+    .provider-cursor { border-color: #fbbf24; }
+
+    /* Comparison table */
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-bottom: 1.5rem;
+    }
+    .comparison-table th,
+    .comparison-table td {
+      border: 1px solid var(--color-border);
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    .comparison-table th {
+      background: var(--color-text);
+      color: var(--color-bg);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .comparison-table tr:nth-child(even) td {
+      background: var(--color-surface, #f9fafb);
+    }
+    .comparison-table code {
+      font-size: 0.78rem;
+    }
+
+    /* Shared skills highlight */
+    .shared-skills-box {
+      border: 2px solid #34d399;
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      background: #f0fdf4;
+    }
+    .shared-skills-box h4 {
+      margin: 0 0 0.5rem 0;
+      color: #065f46;
+    }
+
+    /* Migration steps */
+    .migration-tree {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      line-height: 1.8;
+      padding: 1rem 1.25rem;
+      background: var(--color-surface, #f9fafb);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+    }
+    .migration-tree .new-file {
+      color: #059669;
+      font-weight: 600;
+    }
+    .migration-tree .existing-file {
+      color: var(--color-muted);
+    }
+
+    @media (max-width: 600px) {
+      .comparison-table {
+        font-size: 0.75rem;
+      }
+      .comparison-table th,
+      .comparison-table td {
+        padding: 0.35rem 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0006-design-patterns.html" class="lesson-back-top" title="Design Patterns"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0008-cost-controls.html" class="lesson-next-top" title="Cost Controls">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Cross-Provider Portability — One Harness, Many Agents</h1>
+
+<div class="lesson-meta">
+  Lesson 7 · Safe Agentic Workflows · ~10 minutes
+</div>
+
+<p>You're using Kiro, Claude Code, and Codex. Tomorrow you might add Gemini CLI or open a file in Cursor. The three-layer architecture (Hooks → Commands → Skills) doesn't belong to any single tool — it's a <strong>pattern</strong> that maps across all of them.</p>
+
+<p>This lesson shows how the <a href="https://github.com/bybren-llc/safe-agentic-workflow">SAW harness</a> implements the same workflow patterns for four different AI coding tools — and how you can make your own harness portable.</p>
+
+<h2>The Portability Problem</h2>
+
+<p>Every AI coding agent has the same three concepts:</p>
+<ol>
+  <li><strong>Hooks</strong> — automatic guardrails that fire on events</li>
+  <li><strong>Commands</strong> — user-invoked workflow steps</li>
+  <li><strong>Skills</strong> — domain expertise the model loads contextually</li>
+</ol>
+
+<p>But they all use <strong>different config formats, different directory conventions, and different invocation syntax</strong>. If you build your workflow for one tool, switching costs you a rewrite — unless you design for portability from the start.</p>
+
+<p>The SAW harness solves this by maintaining <strong>parallel provider directories</strong> with the same logical content adapted to each tool's native format. Your workflows stay the same; only the encoding changes.</p>
+
+<h2>How SAW Maps the Three Layers Across Providers</h2>
+
+<div class="provider-grid">
+  <div class="provider-card provider-claude">
+    <h4>Claude Code</h4>
+    <div class="provider-dir">.claude/</div>
+    <ul>
+      <li>Hooks: <code>hooks-config.json</code></li>
+      <li>Commands: <code>commands/*.md</code></li>
+      <li>Skills: <code>skills/*/SKILL.md</code></li>
+      <li>Agents: <code>agents/*.md</code></li>
+    </ul>
+  </div>
+
+  <div class="provider-card provider-gemini">
+    <h4>Gemini CLI</h4>
+    <div class="provider-dir">.gemini/</div>
+    <ul>
+      <li>Hooks: <code>settings.json</code> hooks section</li>
+      <li>Commands: <code>commands/*.toml</code></li>
+      <li>Skills: <code>skills/*/SKILL.md</code></li>
+      <li>System prompt: <code>GEMINI.md</code></li>
+    </ul>
+  </div>
+
+  <div class="provider-card provider-codex">
+    <h4>Codex CLI</h4>
+    <div class="provider-dir">.codex/</div>
+    <ul>
+      <li>Hooks: <code>config.toml</code> approval policy</li>
+      <li>Commands: natural language (no slash)</li>
+      <li>Skills: <code>.agents/skills/*.md</code></li>
+      <li>Agents: reads <code>AGENTS.md</code></li>
+    </ul>
+  </div>
+
+  <div class="provider-card provider-cursor">
+    <h4>Cursor IDE</h4>
+    <div class="provider-dir">.cursor/rules/</div>
+    <ul>
+      <li>Hooks: glob-activated rules</li>
+      <li>Commands: <code>@rule-name</code> invocation</li>
+      <li>Skills: <code>.mdc</code> files w/ YAML frontmatter</li>
+      <li>Background agents: <code>30-*.mdc</code></li>
+    </ul>
+  </div>
+</div>
+
+<h2>The Full Comparison</h2>
+
+<table class="comparison-table">
+  <thead>
+    <tr>
+      <th>Aspect</th>
+      <th>Claude Code</th>
+      <th>Gemini CLI</th>
+      <th>Codex CLI</th>
+      <th>Cursor IDE</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Config Format</strong></td>
+      <td>JSON + Markdown</td>
+      <td>JSON + TOML</td>
+      <td>TOML</td>
+      <td>YAML frontmatter + Markdown (<code>.mdc</code>)</td>
+    </tr>
+    <tr>
+      <td><strong>Hooks</strong></td>
+      <td><code>hooks-config.json</code></td>
+      <td><code>settings.json</code> → <code>hooks</code> key</td>
+      <td><code>config.toml</code> → approval policy</td>
+      <td>Glob-matched rules (always-apply)</td>
+    </tr>
+    <tr>
+      <td><strong>Commands</strong></td>
+      <td><code>/start-work</code></td>
+      <td><code>/workflow:start-work</code></td>
+      <td>Natural language prompt</td>
+      <td><code>@rule-name</code></td>
+    </tr>
+    <tr>
+      <td><strong>Skills Location</strong></td>
+      <td><code>.claude/skills/*/SKILL.md</code></td>
+      <td><code>.gemini/skills/*/SKILL.md</code></td>
+      <td><code>.agents/skills/*.md</code></td>
+      <td><code>.cursor/rules/10-*.mdc</code></td>
+    </tr>
+    <tr>
+      <td><strong>Skill Activation</strong></td>
+      <td>Skills 2.0 frontmatter triggers</td>
+      <td>Frontmatter triggers</td>
+      <td>Agent discovers on context</td>
+      <td>Glob pattern in YAML frontmatter</td>
+    </tr>
+    <tr>
+      <td><strong>Hook Migration</strong></td>
+      <td>N/A (primary format)</td>
+      <td><code>gemini hooks migrate --from-claude</code></td>
+      <td>Manual translation</td>
+      <td>Manual translation</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Command Syntax Differences</h2>
+
+<p>The same workflow action has different invocation syntax per provider:</p>
+
+<table class="comparison-table">
+  <thead>
+    <tr>
+      <th>Action</th>
+      <th>Claude Code</th>
+      <th>Gemini CLI</th>
+      <th>Codex CLI</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Start work on ticket</td>
+      <td><code>/start-work PROJ-123</code></td>
+      <td><code>/workflow:start-work PROJ-123</code></td>
+      <td>"Start work on PROJ-123"</td>
+    </tr>
+    <tr>
+      <td>Pre-PR validation</td>
+      <td><code>/pre-pr</code></td>
+      <td><code>/workflow:pre-pr</code></td>
+      <td>"Run pre-PR checks"</td>
+    </tr>
+    <tr>
+      <td>Local sync</td>
+      <td><code>/local-sync</code></td>
+      <td><code>/local:sync</code></td>
+      <td>"Sync local environment"</td>
+    </tr>
+    <tr>
+      <td>Remote deploy</td>
+      <td><code>/remote-deploy</code></td>
+      <td><code>/remote:deploy</code></td>
+      <td>"Deploy to remote"</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Gemini CLI uses <strong>namespaced commands</strong> (<code>/namespace:command</code>) while Claude Code uses flat names (<code>/command</code>). Codex doesn't have slash commands at all — you describe what you want in natural language and it discovers the right skill.</p>
+
+<h2>The Shared <code>.agents/skills/</code> Directory</h2>
+
+<div class="shared-skills-box">
+  <h4>Cross-Provider Skills</h4>
+  <p>SAW maintains a <strong>shared <code>.agents/skills/</code> directory</strong> at the repository root. This is the canonical source for skills that work across providers. Codex reads it directly; other providers have their own copies adapted to their format.</p>
+  <p>This is where your core domain expertise lives — API patterns, workflow logic, safe coding guidelines — in a format any agent can consume.</p>
+</div>
+
+<p>The directory contains 18 skills covering patterns like:</p>
+<ul>
+  <li><code>api-patterns/</code> — API design conventions</li>
+  <li><code>safe-workflow/</code> — SAFe methodology gates and exit states</li>
+  <li><code>pattern-discovery/</code> — "Search first, reuse always, create only when necessary"</li>
+  <li><code>orchestration-patterns/</code> — multi-agent coordination</li>
+</ul>
+
+<p>Each provider-specific directory (<code>.claude/skills/</code>, <code>.gemini/skills/</code>) adapts these for its native format. The shared directory is the source of truth.</p>
+
+<h2>Hook Mechanisms Compared</h2>
+
+<h3>Claude Code: <code>hooks-config.json</code></h3>
+
+<p>Declarative JSON. Hooks fire on lifecycle events (<code>PreToolUse</code>, <code>PostToolUse</code>, etc.) and can block actions.</p>
+
+<pre><code>{
+  "hooks": {
+    "PreCommit": [
+      {
+        "command": "bash scripts/pre-commit-check.sh",
+        "blocking": true
+      }
+    ]
+  }
+}</code></pre>
+
+<h3>Gemini CLI: <code>settings.json</code> hooks section</h3>
+
+<p>Similar lifecycle model but lives inside the broader settings file alongside model config and MCP servers.</p>
+
+<pre><code>{
+  "hooks": {
+    "pre_commit": {
+      "command": "bash scripts/pre-commit-check.sh",
+      "blocking": true
+    }
+  },
+  "model": "gemini-3-flash",
+  "mcpServers": { ... }
+}</code></pre>
+
+<p>Gemini also offers a dedicated migration command: <code>gemini hooks migrate --from-claude</code> to translate Claude's <code>hooks-config.json</code> into its own format.</p>
+
+<h3>Codex CLI: <code>config.toml</code> approval policy</h3>
+
+<p>Codex takes a different approach. Instead of event-based hooks, it uses an <strong>approval policy</strong> that controls what the agent can do without asking:</p>
+
+<pre><code>[approval]
+# "suggest" = always ask, "auto-edit" = allow file edits, "full-auto" = allow everything
+mode = "auto-edit"
+
+[sandbox]
+enabled = true
+network = false</code></pre>
+
+<p>The sandbox and approval modes serve the same purpose as hooks — constraining agent behavior — but expressed as a policy rather than event listeners.</p>
+
+<h3>Cursor IDE: Glob-Activated Rules</h3>
+
+<p>Cursor uses <code>.mdc</code> files with YAML frontmatter that activates rules based on file patterns:</p>
+
+<pre><code>---
+description: Enforce commit message format
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+
+# Git Commit Rules
+All commits must reference a ticket number...</code></pre>
+
+<p>Rules numbered <code>00-02</code> are "always apply" (equivalent to hooks). Higher numbers activate contextually.</p>
+
+<h2>Migration Path: Adding Claude Code to Your Kiro Harness</h2>
+
+<p>Your <code>~/Developer/agent-workflow/</code> is currently Kiro-only. Adding Claude Code support means creating a <code>.claude/</code> directory alongside your existing <code>.kiro/</code>. Here's what that looks like:</p>
+
+<div class="migration-tree">
+<span class="existing-file">~/Developer/agent-workflow/</span>
+├── <span class="existing-file">.kiro/</span>
+│   └── <span class="existing-file">steering/</span>
+│       ├── <span class="existing-file">your-existing-rules.md</span>
+│       └── <span class="existing-file">...</span>
+├── <span class="new-file">.claude/</span>
+│   ├── <span class="new-file">hooks-config.json</span>          ← translate your Kiro hooks
+│   ├── <span class="new-file">commands/</span>
+│   │   ├── <span class="new-file">start-work.md</span>          ← encode your workflow
+│   │   ├── <span class="new-file">pre-pr.md</span>
+│   │   └── <span class="new-file">end-work.md</span>
+│   └── <span class="new-file">skills/</span>
+│       └── <span class="new-file">your-domain/SKILL.md</span>   ← port your steering files
+├── <span class="new-file">.agents/</span>
+│   └── <span class="new-file">skills/</span>
+│       └── <span class="new-file">shared-patterns.md</span>     ← cross-provider skills
+└── <span class="existing-file">src/</span>
+</div>
+
+<p>The migration steps:</p>
+<ol>
+  <li><strong>Map your steering files to skills.</strong> Kiro steering files (always-included markdown with frontmatter) become Claude Code skills with Skills 2.0 frontmatter triggers.</li>
+  <li><strong>Create <code>hooks-config.json</code>.</strong> Any constraints in your Kiro setup that should be <em>enforced</em> (not just suggested) become hooks.</li>
+  <li><strong>Encode repeatable workflows as commands.</strong> Any multi-step process you find yourself explaining to Kiro repeatedly becomes a <code>.claude/commands/*.md</code> file.</li>
+  <li><strong>Extract shared skills to <code>.agents/skills/</code>.</strong> Skills that aren't provider-specific go in the shared directory so Codex (and future tools) can discover them too.</li>
+</ol>
+
+<div class="callout tip">
+  <div class="callout-title">Start small</div>
+  <p>You don't need to port everything at once. Start with your most-used workflow (probably <code>/start-work</code>) and one skill. Expand as you use Claude Code more.</p>
+</div>
+
+<h2>Key Takeaways</h2>
+
+<ul>
+  <li>The three-layer pattern (Hooks → Commands → Skills) is <strong>provider-agnostic</strong>. Every tool implements it differently, but the concepts are the same.</li>
+  <li>SAW maintains <strong>parallel provider directories</strong> (<code>.claude/</code>, <code>.gemini/</code>, <code>.codex/</code>, <code>.cursor/</code>) with equivalent content in each tool's native format.</li>
+  <li>The <strong><code>.agents/skills/</code></strong> directory is the cross-provider source of truth for domain expertise.</li>
+  <li>Adding a new provider doesn't require rewriting — it requires <strong>translating</strong> your existing patterns into the new format.</li>
+  <li>Gemini uses namespaced commands (<code>/workflow:start-work</code>), Claude uses flat names (<code>/start-work</code>), Codex uses natural language, and Cursor uses <code>@rule</code> invocations.</li>
+</ul>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">Where do Gemini CLI custom commands live?</div>
+  <ul class="quiz-options">
+    <li><code>.gemini/settings.json</code></li>
+    <li data-correct="true"><code>.gemini/commands/*.toml</code></li>
+    <li><code>.gemini/GEMINI.md</code></li>
+    <li><code>.agents/commands/*.md</code></li>
+  </ul>
+  <div class="quiz-feedback correct">Correct — Gemini CLI uses TOML-formatted command files in <code>.gemini/commands/</code>. The <code>settings.json</code> handles hooks and model config, while <code>GEMINI.md</code> is the system prompt.</div>
+  <div class="quiz-feedback incorrect">Gemini CLI commands live in <code>.gemini/commands/*.toml</code>. They use TOML format (unlike Claude Code's Markdown commands). The settings.json holds hooks and config, not commands.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">What is the <code>.agents/skills/</code> directory for?</div>
+  <ul class="quiz-options">
+    <li>It's the Claude Code skills directory</li>
+    <li>It stores agent profile definitions for all providers</li>
+    <li data-correct="true">It's a shared, cross-provider skills directory that any agent tool can discover</li>
+    <li>It's only used by Codex CLI and ignored by other providers</li>
+  </ul>
+  <div class="quiz-feedback correct">Right — <code>.agents/skills/</code> is the canonical cross-provider source of truth for domain expertise. Codex reads it directly; other providers maintain adapted copies in their own directories.</div>
+  <div class="quiz-feedback incorrect">The <code>.agents/skills/</code> directory is the <strong>shared, cross-provider</strong> skills source. It holds domain expertise in a format any tool can consume. Codex reads it natively; Claude Code has its own copy in <code>.claude/skills/</code>.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">Which provider uses <code>.mdc</code> files with YAML frontmatter for its rules and skills?</div>
+  <ul class="quiz-options">
+    <li>Claude Code</li>
+    <li>Gemini CLI</li>
+    <li>Codex CLI</li>
+    <li data-correct="true">Cursor IDE</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly — Cursor uses <code>.mdc</code> files in <code>.cursor/rules/</code> with YAML frontmatter that specifies glob patterns for activation. It's a unique format not shared by the other providers.</div>
+  <div class="quiz-feedback incorrect">Cursor IDE uses <code>.mdc</code> files (Markdown with YAML frontmatter) in <code>.cursor/rules/</code>. Claude uses plain Markdown, Gemini uses TOML for commands and JSON for settings, and Codex uses TOML config.</div>
+</div>
+
+<h2>What's Next</h2>
+
+<p>You now understand how to structure your agent harness for portability across providers. The next lesson covers <strong>harness sync and versioning</strong> — how to keep your local harness up-to-date with upstream changes without losing your customizations.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://github.com/bybren-llc/safe-agentic-workflow">SAW — SAFe Agentic Workflow</a> (GitHub) — the multi-provider reference implementation. Pay attention to the Repository Structure section and the parallel <code>.claude/</code>, <code>.gemini/</code>, <code>.codex/</code>, <code>.cursor/</code> directories.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me about porting specific Kiro steering files to Claude Code skills, Gemini command syntax, or how to set up the shared skills directory for your project.
+</div>
+
+<div class="lesson-nav">
+  <a href="0006-design-patterns.html" class="lesson-nav-prev" title="Design Patterns">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0008-cost-controls.html" class="lesson-nav-next" title="Cost Controls">Next →</a>
+</div>
+
+<script>
+// Quiz interaction
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        // Highlight the correct answer
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

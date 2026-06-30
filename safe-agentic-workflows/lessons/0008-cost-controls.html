@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 8: Cost Controls and Observability</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .cost-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.9rem;
+    }
+    .cost-table th,
+    .cost-table td {
+      border: 1px solid var(--color-border);
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+    }
+    .cost-table th {
+      background: var(--color-text);
+      color: var(--color-bg);
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.03em;
+    }
+    .cost-table tr:nth-child(even) td {
+      background: rgba(0,0,0,0.02);
+    }
+    .cost-table code {
+      font-size: 0.82rem;
+    }
+
+    .checklist-callout {
+      background: #f0fdf4;
+      border: 2px solid #86efac;
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+      margin: 1.5rem 0;
+    }
+    .checklist-callout-title {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 0.75rem;
+      color: #166534;
+    }
+    .checklist-callout ul {
+      margin: 0;
+      padding-left: 0;
+      list-style: none;
+    }
+    .checklist-callout li {
+      padding: 0.35rem 0;
+      font-size: 0.9rem;
+      padding-left: 1.6rem;
+      position: relative;
+    }
+    .checklist-callout li::before {
+      content: "☐";
+      position: absolute;
+      left: 0;
+      font-size: 1rem;
+    }
+
+    .cost-warning {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .cost-warning-title {
+      font-weight: 700;
+      color: #991b1b;
+      margin-bottom: 0.4rem;
+    }
+
+    .workflow-file {
+      background: var(--color-bg);
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 1.5rem 0;
+    }
+    .workflow-file-header {
+      background: var(--color-text);
+      color: var(--color-bg);
+      padding: 0.5rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .workflow-file pre {
+      margin: 0;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    .model-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.9rem;
+    }
+    .model-table th,
+    .model-table td {
+      border: 1px solid var(--color-border);
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+    }
+    .model-table th {
+      background: var(--color-text);
+      color: var(--color-bg);
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.03em;
+    }
+    .model-table tr:nth-child(even) td {
+      background: rgba(0,0,0,0.02);
+    }
+
+    .observability-stack {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .obs-card {
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+    .obs-card-title {
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+    .obs-card p {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--color-muted);
+    }
+    .obs-card code {
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 600px) {
+      .observability-stack {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0007-cross-provider-portability.html" class="lesson-back-top" title="Cross-Provider Portability"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0009-multi-agent-coordination.html" class="lesson-next-top" title="Multi-Agent Coordination">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Cost Controls and Observability</h1>
+
+<div class="lesson-meta">
+  Lesson 8 · Safe Agentic Workflows · ~8 minutes
+</div>
+
+<p>Scheduled agents are powerful — they work while you sleep. But they also <strong>spend while you sleep</strong>. Without cost controls, a daily workflow can quietly accumulate hundreds of dollars per month in AI credits and Actions minutes. This lesson gives you the tools to prevent runaway costs and gain visibility into what your agents are actually doing.</p>
+
+<h2>The Cost Problem</h2>
+
+<p>Every workflow run incurs two costs:</p>
+
+<ul>
+  <li><strong>AI Credits (AIC)</strong> — token consumption from the language model. More complex prompts, larger context windows, and more capable models all increase this.</li>
+  <li><strong>Actions minutes</strong> — compute time for the runner executing your workflow. This includes time waiting for the model to respond.</li>
+</ul>
+
+<div class="cost-warning">
+  <div class="cost-warning-title">⚠️ The Compound Effect</div>
+  <p>A single run might cost $5. That seems fine. But <code>$5 × 365 days = $1,825/year</code>. And that's one workflow. Most teams end up with 5–15 scheduled workflows. Without budgets, the default behavior is <strong>uncapped spending that scales linearly with time</strong>.</p>
+</div>
+
+<p>The core principle: <strong>every scheduled workflow must have an explicit budget</strong>. Never rely on defaults for production automation.</p>
+
+<h2>Hard Budget: <code>max-ai-credits</code></h2>
+
+<p>The <code>max-ai-credits</code> frontmatter field sets a hard ceiling on AI credit consumption per run. If the workflow reaches this limit, it stops immediately — mid-analysis if necessary.</p>
+
+<div class="workflow-file">
+  <div class="workflow-file-header">.github/workflows/daily-review.md</div>
+  <pre><code>---
+description: "Daily code review suggestions"
+
+on:
+  schedule: daily around 8am on weekdays
+
+engine:
+  id: copilot
+  model: gpt-4.1-mini
+
+max-ai-credits: 200
+max-daily-ai-credits: 800
+
+safe-outputs:
+  create-issue:
+    title-prefix: "[daily-review] "
+    close-older-issues: true
+---</code></pre>
+</div>
+
+<p>Key behaviors of <code>max-ai-credits</code>:</p>
+
+<ul>
+  <li><strong>Hard stop</strong> — the run terminates when the budget is hit. No partial outputs are published.</li>
+  <li><strong>Per-run scope</strong> — each trigger gets its own budget. A daily workflow with <code>max-ai-credits: 200</code> can spend 200 per day.</li>
+  <li><strong>Stacks with daily cap</strong> — use <code>max-daily-ai-credits</code> as a second layer of protection against multiple retries or manual triggers burning through budget.</li>
+  <li><strong>Default is 1000</strong> — if you omit it, each run can spend up to 1000 AIC. Always set it explicitly.</li>
+</ul>
+
+<h2>Model Selection and Cost Tradeoffs</h2>
+
+<p>Not every workflow needs the most capable model. Choosing the right model for the task is the single biggest cost lever you have.</p>
+
+<table class="model-table">
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Best For</th>
+      <th>Relative Cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>gpt-4.1-mini</code></td>
+      <td>Scanning, summarization, pattern matching, routine monitoring</td>
+      <td>$ (cheapest)</td>
+    </tr>
+    <tr>
+      <td><code>claude-haiku-4-5</code></td>
+      <td>Fast classification, simple analysis, structured extraction</td>
+      <td>$</td>
+    </tr>
+    <tr>
+      <td><code>gpt-4.1</code></td>
+      <td>Code generation, complex reasoning, multi-step analysis</td>
+      <td>$$$</td>
+    </tr>
+    <tr>
+      <td><code>claude-sonnet-4</code></td>
+      <td>Nuanced writing, architectural analysis, code review</td>
+      <td>$$$</td>
+    </tr>
+    <tr>
+      <td><code>o3</code> / <code>claude-opus-4</code></td>
+      <td>Multi-step reasoning, complex refactoring, research</td>
+      <td>$$$$$</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Rule of thumb:</strong> start every scheduled workflow with the cheapest model that produces acceptable output. Upgrade only when you see quality failures in the logs.</p>
+
+<h2>Optimization Levers</h2>
+
+<p>Beyond model selection, four levers reduce cost per run:</p>
+
+<table class="cost-table">
+  <thead>
+    <tr>
+      <th>Lever</th>
+      <th>How</th>
+      <th>Impact</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Tighter prompts</td>
+      <td>Remove preamble, examples, and instruction the model doesn't need. Be specific about output format.</td>
+      <td>20–40% fewer input tokens</td>
+    </tr>
+    <tr>
+      <td>Fewer output tokens</td>
+      <td>Ask for concise output. "Summarize in 3 bullets" costs less than "write a detailed report."</td>
+      <td>30–60% fewer output tokens</td>
+    </tr>
+    <tr>
+      <td>Skip-if conditions</td>
+      <td>Add <code>skip-if</code> logic so the workflow doesn't run when there's nothing to analyze (no new commits, no open PRs).</td>
+      <td>Eliminates entire runs</td>
+    </tr>
+    <tr>
+      <td>Scoped file reads</td>
+      <td>Use <code>permissions: contents: read</code> with path filters instead of reading the entire repo.</td>
+      <td>50–80% less context</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="workflow-file">
+  <div class="workflow-file-header">skip-if example</div>
+  <pre><code>---
+on:
+  schedule: daily around 9am on weekdays
+
+skip-if:
+  no-commits-since: 24h
+  no-open-prs: true
+---
+
+# Only runs if there's actually something to review</code></pre>
+</div>
+
+<h2>Observability: <code>gh aw logs</code></h2>
+
+<p>You can't optimize what you can't measure. The <code>gh aw logs</code> command shows exactly what each run consumed:</p>
+
+<pre><code>$ gh aw logs daily-review --last 7
+
+Run ID      Date        Duration  AIC Used  Status
+─────────   ──────────  ────────  ────────  ──────
+a3f2c1e     Jun 28      42s       148       ✓ success
+b7d4e2a     Jun 27      38s       135       ✓ success
+c9a1f3b     Jun 26      1m12s     312       ✓ success  ← spike
+d2e5a4c     Jun 25      35s       127       ✓ success
+e4b6c7d     Jun 24      40s       141       ✓ success
+f1a8d9e     Jun 23      0s        0         ⊘ skipped (no-commits)
+g3c2e1f     Jun 22      0s        0         ⊘ skipped (weekend)</code></pre>
+
+<p>Key things to look for:</p>
+<ul>
+  <li><strong>Cost spikes</strong> — a run that used 2× normal credits indicates the model encountered something unusual (large file, complex analysis). Investigate with <code>gh aw logs &lt;run-id&gt; --detail</code>.</li>
+  <li><strong>Consistent skips</strong> — if a workflow skips 5 of 7 days, consider changing it to weekly.</li>
+  <li><strong>Duration outliers</strong> — long runs may be hitting rate limits or retrying.</li>
+</ul>
+
+<h2>Auditing Failures: <code>gh aw audit</code></h2>
+
+<p>When a workflow fails or produces unexpected output, <code>gh aw audit</code> shows the full execution trace:</p>
+
+<pre><code>$ gh aw audit daily-review --run c9a1f3b
+
+Run: c9a1f3b (Jun 26, 1m12s, 312 AIC)
+Status: success (but over typical budget)
+
+Timeline:
+  00:00  Started. Model: gpt-4.1-mini
+  00:02  Read 14 files (src/api/*.ts) — 8,200 tokens
+  00:08  Read 6 files (tests/*.ts) — 4,100 tokens     ← unusual
+  00:15  Model response: 2,800 tokens (analysis)
+  00:42  Model response: 1,200 tokens (issue body)
+  01:12  Output: created issue #247
+
+Token breakdown:
+  Input:  18,400 tokens (context + prompt)
+  Output:  4,000 tokens (responses)
+  Total:   312 AIC
+
+Note: Input was 2x normal due to test file reads triggered by
+      new test files added in commit a1b2c3d.</code></pre>
+
+<p>The audit trail answers "why did this run cost more?" and "what went wrong?" — essential for debugging scheduled automation that runs without supervision.</p>
+
+<h2>OpenTelemetry Integration</h2>
+
+<p>For teams running multiple workflows, CLI inspection doesn't scale. Export telemetry to your observability stack for dashboards and alerting:</p>
+
+<div class="workflow-file">
+  <div class="workflow-file-header">.github/aw-config.yml</div>
+  <pre><code>telemetry:
+  otlp:
+    endpoint: https://otel.yourcompany.com:4317
+    headers:
+      Authorization: "Bearer ${secrets.OTLP_TOKEN}"
+    export:
+      - traces      # Full execution spans
+      - metrics     # AIC usage, duration, token counts
+      - logs        # Model interactions (redacted)
+
+  alerts:
+    - name: budget-spike
+      condition: aic_used > 2 * avg(aic_used, 7d)
+      notify: slack:#agentic-ops</code></pre>
+</div>
+
+<div class="observability-stack">
+  <div class="obs-card">
+    <div class="obs-card-title">📊 Dashboards</div>
+    <p>Track AIC spend per workflow, cost trends over time, model utilization. Grafana, Datadog, or any OTLP-compatible backend.</p>
+  </div>
+  <div class="obs-card">
+    <div class="obs-card-title">🚨 Alerting</div>
+    <p>Get notified on cost spikes, repeated failures, or budget exhaustion before it becomes a monthly bill surprise.</p>
+  </div>
+  <div class="obs-card">
+    <div class="obs-card-title">🔍 Traces</div>
+    <p>See exactly which files were read, which model calls were made, and where time was spent — per run.</p>
+  </div>
+  <div class="obs-card">
+    <div class="obs-card-title">📈 Trends</div>
+    <p>Spot workflows whose costs are creeping up as the repo grows, so you can optimize before the bill lands.</p>
+  </div>
+</div>
+
+<h2>Outcomes Measurement</h2>
+
+<p>Cost control isn't just about spending less — it's about spending <em>well</em>. A workflow that costs $3/day but whose output is ignored every time is wasting $90/month. Track whether your automation actually helps:</p>
+
+<ul>
+  <li><strong>Acceptance rate</strong> — how often do humans act on the workflow's output? If you close the issue without reading it, the workflow isn't useful.</li>
+  <li><strong>Time saved</strong> — does the automated report replace 20 minutes of manual investigation?</li>
+  <li><strong>Error catch rate</strong> — for monitoring workflows, how often does it surface something a human wouldn't have noticed?</li>
+  <li><strong>Noop ratio</strong> — a high noop rate means the workflow runs but finds nothing. Consider reducing frequency.</li>
+</ul>
+
+<pre><code>$ gh aw stats daily-review --last 30d
+
+Runs: 22 (8 skipped)
+Avg cost: 145 AIC ($1.45/run)
+Monthly spend: ~$32
+Acceptance rate: 73% (issues read within 4h)
+Action rate: 45% (led to a commit or PR within 24h)
+Noop rate: 18%</code></pre>
+
+<p>A workflow with a low action rate isn't necessarily bad — a security scanner that finds nothing 90% of the time is doing its job. But a daily summary that's never read should be made weekly or killed.</p>
+
+<h2>Concurrency Controls</h2>
+
+<p>Prevent duplicate runs from piling up — especially when a workflow is triggered by both schedule and manual dispatch, or when a slow run overlaps with the next scheduled execution:</p>
+
+<div class="workflow-file">
+  <div class="workflow-file-header">concurrency configuration</div>
+  <pre><code>---
+concurrency:
+  group: daily-review-${branch}
+  cancel-in-progress: true
+---</code></pre>
+</div>
+
+<p>Behaviors:</p>
+<ul>
+  <li><strong><code>group</code></strong> — runs with the same group name are mutually exclusive. Only one runs at a time.</li>
+  <li><strong><code>cancel-in-progress: true</code></strong> — if a new run starts while an old one is still going, the old one is cancelled. This prevents stacking.</li>
+  <li><strong>Without concurrency</strong> — if a workflow takes 5 minutes but triggers every 3 minutes, you'll get overlapping runs that each consume full budget.</li>
+</ul>
+
+<h2>Staged Mode: Preview Before Going Live</h2>
+
+<p>When you first deploy a scheduled workflow — or after making significant changes — use <code>staged: true</code> to preview what it <em>would</em> do without actually publishing outputs:</p>
+
+<div class="workflow-file">
+  <div class="workflow-file-header">staged mode</div>
+  <pre><code>---
+staged: true   # Runs the full workflow but doesn't publish outputs
+
+safe-outputs:
+  create-issue:
+    title-prefix: "[daily-review] "
+---</code></pre>
+</div>
+
+<p>In staged mode:</p>
+<ul>
+  <li>The workflow runs end-to-end (consuming credits — so keep <code>max-ai-credits</code> low)</li>
+  <li>Outputs are captured but <strong>not published</strong> — no issues created, no comments posted</li>
+  <li>You review outputs with <code>gh aw logs &lt;run-id&gt; --staged-output</code></li>
+  <li>Once satisfied, remove <code>staged: true</code> to go live</li>
+</ul>
+
+<p>This is your safety net: validate cost, quality, and relevance before committing to daily spend.</p>
+
+<h2>Connection to Your Work</h2>
+
+<p>As you add scheduled workflows (the background agents from Lesson 5), cost control moves from "nice to have" to essential infrastructure. Here's the progression:</p>
+
+<table class="cost-table">
+  <thead>
+    <tr>
+      <th>Stage</th>
+      <th>What to Do</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>First workflow</td>
+      <td>Set <code>max-ai-credits</code>, use cheapest model, enable <code>staged: true</code></td>
+    </tr>
+    <tr>
+      <td>2–5 workflows</td>
+      <td>Add <code>max-daily-ai-credits</code>, check <code>gh aw logs</code> weekly, tune budgets down</td>
+    </tr>
+    <tr>
+      <td>5+ workflows</td>
+      <td>Set up OTLP export, create a cost dashboard, add spike alerts</td>
+    </tr>
+    <tr>
+      <td>Team-wide adoption</td>
+      <td>Establish org-level budget policies, review outcomes monthly, kill low-value workflows</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="checklist-callout">
+  <div class="checklist-callout-title">✅ Cost Optimization Checklist</div>
+  <ul>
+    <li>Set explicit <code>max-ai-credits</code> on every scheduled workflow (never rely on the 1000 default)</li>
+    <li>Set <code>max-daily-ai-credits</code> as a safety net against retries and manual triggers</li>
+    <li>Use the cheapest model that produces acceptable output (<code>gpt-4.1-mini</code> or <code>claude-haiku-4-5</code> for monitoring)</li>
+    <li>Add <code>skip-if</code> conditions to avoid running when there's nothing to analyze</li>
+    <li>Add <code>concurrency</code> config to prevent overlapping runs</li>
+    <li>Deploy new workflows with <code>staged: true</code> first — review output before going live</li>
+    <li>Check <code>gh aw logs</code> weekly for cost spikes and unnecessary runs</li>
+    <li>Track acceptance rate — kill or reduce frequency of workflows nobody reads</li>
+    <li>Keep prompts tight: specify output format, limit scope, remove unnecessary instructions</li>
+    <li>Scope file reads with path filters instead of reading the entire repository</li>
+    <li>Set up OTLP export and alerts once you have 5+ active workflows</li>
+  </ul>
+</div>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">What happens when a workflow run hits its <code>max-ai-credits</code> limit?</div>
+  <ul class="quiz-options">
+    <li>The run continues but switches to a cheaper model for the remainder</li>
+    <li>The run pauses and waits for manual approval to continue</li>
+    <li data-correct="true">The run stops immediately — no partial outputs are published</li>
+    <li>The run completes but the overage is charged at a penalty rate</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct — <code>max-ai-credits</code> is a hard stop. When the budget is exhausted, the workflow terminates immediately and no outputs are published. This prevents a runaway analysis from producing incomplete or misleading results.</div>
+  <div class="quiz-feedback incorrect">Not quite. <code>max-ai-credits</code> is a hard ceiling — when reached, the run stops immediately with no partial outputs published. It doesn't downgrade models, pause for approval, or charge a penalty. The workflow simply terminates to protect your budget.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">What is the purpose of <code>staged: true</code> in a workflow?</div>
+  <ul class="quiz-options">
+    <li>It runs the workflow in a sandboxed environment with no repository access</li>
+    <li data-correct="true">It runs the full workflow but captures outputs without publishing them, so you can preview before going live</li>
+    <li>It splits the workflow into stages that require manual approval between each step</li>
+    <li>It schedules the workflow to run only during off-peak hours to save on compute costs</li>
+  </ul>
+  <div class="quiz-feedback correct">Right — staged mode runs the complete workflow end-to-end (consuming credits) but holds all outputs without publishing. You review them with <code>gh aw logs &lt;run-id&gt; --staged-output</code> and remove <code>staged: true</code> once you're confident in the quality and cost.</div>
+  <div class="quiz-feedback incorrect">Staged mode runs the full workflow normally — including model calls and file reads — but captures outputs without publishing them (no issues created, no comments posted). It's a preview mechanism so you can validate cost and quality before committing to ongoing automated output.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">How would you identify which of your scheduled workflows is the most expensive?</div>
+  <ul class="quiz-options">
+    <li>Check the GitHub billing page under "AI Credits" for a workflow-level breakdown</li>
+    <li>Run <code>gh aw audit --all</code> and sort by error count</li>
+    <li data-correct="true">Run <code>gh aw logs</code> for each workflow and compare the AIC Used column, or use OTLP dashboards for aggregate views</li>
+    <li>Check the <code>max-ai-credits</code> value in each workflow file — the highest budget is the most expensive</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct — <code>gh aw logs</code> shows actual AIC consumed per run, which you can compare across workflows. For teams with many workflows, OTLP dashboards aggregate this automatically. Note that <code>max-ai-credits</code> is the budget cap, not actual spend — a workflow might use far less than its limit.</div>
+  <div class="quiz-feedback incorrect">The <code>max-ai-credits</code> value is just the budget cap — actual spend may be much lower. To find the most expensive workflow, check <code>gh aw logs</code> for actual AIC usage per run, or set up OTLP dashboards that aggregate cost metrics across all workflows. The billing page exists but doesn't break down by individual workflow.</div>
+</div>
+
+<h2>What's Next</h2>
+
+<p>You now know how to keep your agentic workflows on a budget and how to see exactly what they're doing. Cost controls and observability aren't optional add-ons — they're the foundation that makes <em>all</em> your other automation sustainable. The next lesson covers <strong>testing and validation</strong> — how to verify that your workflows produce correct outputs before trusting them in production.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://github.github.com/gh-aw/reference/cost-management/">Cost Management Reference</a> — complete documentation on <code>max-ai-credits</code>, <code>max-daily-ai-credits</code>, model pricing, OTLP export configuration, and budget alerting.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me about budget sizing for specific workflow types, OTLP setup, model selection tradeoffs, or how to calculate ROI on your scheduled workflows.
+</div>
+
+<div class="lesson-nav">
+  <a href="0007-cross-provider-portability.html" class="lesson-nav-prev" title="Cross-Provider Portability">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0009-multi-agent-coordination.html" class="lesson-nav-next" title="Multi-Agent Coordination">Next →</a>
+</div>
+
+<script>
+// Quiz interaction
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        // Highlight the correct answer
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

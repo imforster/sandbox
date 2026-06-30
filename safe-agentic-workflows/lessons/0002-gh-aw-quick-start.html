@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 2: gh-aw Quick Start — Your First Agentic Workflow</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    /* Process flow diagram */
+    .process-flow {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .process-flow-title {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 1rem;
+      color: var(--color-muted);
+    }
+    .process-step {
+      display: grid;
+      grid-template-columns: 2rem 1fr;
+      gap: 0.75rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--color-border);
+      align-items: start;
+    }
+    .process-step:last-child { border-bottom: none; }
+    .step-num {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: var(--color-accent);
+      color: white;
+      width: 1.6rem;
+      height: 1.6rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-content {
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .step-content strong { display: block; margin-bottom: 0.2rem; }
+
+    /* File anatomy diagram */
+    .file-anatomy {
+      border: 2px solid var(--color-text);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .file-anatomy-title {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      text-align: center;
+      padding: 0.6rem;
+      background: var(--color-text);
+      color: var(--color-bg);
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+    }
+    .file-row {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 0.75rem;
+      padding: 0.8rem 1.25rem;
+      border-bottom: 1px solid var(--color-border);
+      align-items: start;
+    }
+    .file-row:last-child { border-bottom: none; }
+    .file-name {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding-top: 0.1rem;
+    }
+    .file-desc {
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+    .file-row.source { background: #eff6ff; }
+    .file-row.compiled { background: #f0fdf4; }
+
+    /* Relationship diagram */
+    .relationship {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .rel-boxes {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .rel-box {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 600;
+      min-width: 160px;
+    }
+    .rel-box.existing { background: #f5f5f0; border-color: var(--color-muted); }
+    .rel-box.new { background: #dbeafe; border-color: var(--color-accent); }
+    .rel-arrow {
+      font-size: 1.4rem;
+      color: var(--color-muted);
+    }
+    .rel-label {
+      font-family: var(--font-heading);
+      font-size: 0.75rem;
+      color: var(--color-muted);
+      margin-top: 0.3rem;
+    }
+
+    @media (max-width: 600px) {
+      .file-row {
+        grid-template-columns: 1fr;
+        gap: 0.3rem;
+      }
+      .rel-boxes { flex-direction: column; }
+      .rel-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0001-three-layer-architecture.html" class="lesson-back-top" title="The Three-Layer Architecture"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0003-the-security-model.html" class="lesson-next-top" title="The Security Model">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>gh-aw Quick Start — Your First Agentic Workflow</h1>
+
+<div class="lesson-meta">
+  Lesson 2 · Safe Agentic Workflows · ~10 minutes
+</div>
+
+<p>You already have GitHub Actions running CI/CD for your repos. In this lesson, you'll add something new alongside it: an <strong>agentic workflow</strong> — an AI agent that runs automatically on a schedule, analyzes your repository, and produces a daily status report.</p>
+
+<p>Your existing <code>.yml</code> workflows stay untouched. You're adding a new kind of workflow file (written in Markdown) that compiles into its own Actions YAML. Two systems, one Actions tab, zero interference.</p>
+
+<h2>Prerequisites</h2>
+
+<p>Before you start, confirm these are in place:</p>
+
+<ul>
+  <li><strong>GitHub CLI</strong> (<code>gh</code>) v2.0.0+ — check with <code>gh --version</code>. <a href="https://cli.github.com">Install here</a> if needed.</li>
+  <li><strong>Logged in</strong> — verify with <code>gh auth status</code>. If scopes are missing, run <code>gh auth login --scopes repo,workflow</code>.</li>
+  <li><strong>GitHub Actions enabled</strong> — check under Settings → Actions in your target repo.</li>
+  <li><strong>AI account</strong> — GitHub Copilot (simplest if you already have it), Anthropic Claude, OpenAI Codex, or Google Gemini.</li>
+  <li><strong>A repo where you have write access</strong> — pick a real one you maintain.</li>
+</ul>
+
+<div class="callout tip">
+  <div class="callout-title">Already have Copilot?</div>
+  <p>If you have a GitHub Copilot subscription, start there. It requires no extra account setup — you'll just need to create a fine-grained PAT with the Copilot Requests permission.</p>
+</div>
+
+<h2>Step 1: Install the Extension</h2>
+
+<pre><code>gh extension install github/gh-aw</code></pre>
+
+<p>This adds the <code>gh aw</code> subcommand to your CLI. If you encounter authentication issues, you can also install via:</p>
+
+<pre><code>curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash</code></pre>
+
+<h2>Step 2: Add a Workflow with the Wizard</h2>
+
+<p>Navigate to your repository root and run:</p>
+
+<pre><code>gh aw add-wizard githubnext/agentics/daily-repo-status</code></pre>
+
+<p>The reference format is <code>&lt;owner&gt;/&lt;repo&gt;/&lt;workflow-name&gt;</code>. This pulls the "Daily Repo Status" workflow from GitHub Next's public examples repository.</p>
+
+<h3>The Interactive Process</h3>
+
+<p>The wizard walks you through five steps:</p>
+
+<div class="process-flow">
+  <div class="process-flow-title">add-wizard interactive flow</div>
+  <div class="process-step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <strong>Check prerequisites</strong>
+      Verifies you have write access and Actions are enabled.
+    </div>
+  </div>
+  <div class="process-step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <strong>Select an AI engine</strong>
+      Choose between Copilot, Claude, Codex, or Gemini.
+    </div>
+  </div>
+  <div class="process-step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <strong>Set up the required secret</strong>
+      Depending on your engine: <code>COPILOT_GITHUB_TOKEN</code>, <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, or <code>GEMINI_API_KEY</code>. The wizard tells you exactly what to create and where.
+    </div>
+  </div>
+  <div class="process-step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <strong>Add workflow files</strong>
+      Creates two files in <code>.github/workflows/</code> — the source markdown and its compiled lock file.
+    </div>
+  </div>
+  <div class="process-step">
+    <div class="step-num">5</div>
+    <div class="step-content">
+      <strong>Optionally trigger an initial run</strong>
+      Starts the workflow immediately so you can see results within minutes.
+    </div>
+  </div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">Setting up COPILOT_GITHUB_TOKEN</div>
+  <p>1. Create a <a href="https://github.com/settings/personal-access-tokens/new">fine-grained PAT</a> under your account.<br>
+  2. Under Permissions → Account permissions, set <strong>Copilot Requests</strong> to Read.<br>
+  3. Add as a repo secret: <code>gh secret set COPILOT_GITHUB_TOKEN &lt; /path/to/token.txt</code></p>
+</div>
+
+<h2>Step 3: What Gets Created</h2>
+
+<p>After the wizard completes, you have two new files:</p>
+
+<div class="file-anatomy">
+  <div class="file-anatomy-title">.github/workflows/</div>
+  <div class="file-row source">
+    <div class="file-name">daily-repo-status.md</div>
+    <div class="file-desc">
+      <strong>The workflow source.</strong> Plain Markdown with YAML frontmatter (triggers, engine, permissions) and a prose body (the agent's instructions). This is what you edit.
+    </div>
+  </div>
+  <div class="file-row compiled">
+    <div class="file-name">daily-repo-status.lock.yml</div>
+    <div class="file-desc">
+      <strong>The compiled Actions YAML.</strong> Auto-generated from the <code>.md</code> file. This is what GitHub Actions actually executes. Never edit this by hand — it gets regenerated.
+    </div>
+  </div>
+</div>
+
+<p>This is the key mental model: you author in Markdown, the toolchain compiles to YAML. The <code>.lock.yml</code> includes all the Actions plumbing — checkout steps, engine setup, safe output jobs, secret redaction, threat detection — so you don't have to write any of it.</p>
+
+<h3>How This Fits Your Existing Setup</h3>
+
+<div class="relationship">
+  <div class="rel-boxes">
+    <div>
+      <div class="rel-box existing">ci.yml<br>deploy.yml</div>
+      <div class="rel-label">Your existing Actions</div>
+    </div>
+    <div class="rel-arrow">+</div>
+    <div>
+      <div class="rel-box new">daily-repo-status.md<br>daily-repo-status.lock.yml</div>
+      <div class="rel-label">New agentic workflow</div>
+    </div>
+  </div>
+  <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--color-muted);">
+    They coexist in <code>.github/workflows/</code>. Different triggers, different jobs, no interaction.
+  </p>
+</div>
+
+<h2>Step 4: Trigger a Run</h2>
+
+<p>If you didn't trigger during the wizard, do it now:</p>
+
+<pre><code>gh aw run daily-repo-status</code></pre>
+
+<p>The workflow takes 2–3 minutes. While it runs, the agent reads your repository's recent activity — issues, PRs, discussions, releases, code changes — and generates a structured status report.</p>
+
+<h2>Step 5: Monitor</h2>
+
+<p>Two ways to watch:</p>
+
+<ul>
+  <li><strong>CLI:</strong> <code>gh aw status</code> shows workflow state. <code>gh run watch</code> streams the latest run's logs.</li>
+  <li><strong>Browser:</strong> Open the Actions tab and select the most recent run.</li>
+</ul>
+
+<p>When the run succeeds, a new issue titled "Daily Repo Report" appears in your Issues tab. It includes recent activity analysis, progress tracking, project status, and recommended next steps.</p>
+
+<h2>Step 6: Customize</h2>
+
+<p>The workflow is yours now. To customize:</p>
+
+<ol>
+  <li>Open <code>.github/workflows/daily-repo-status.md</code></li>
+  <li>Edit the body — change the "What to include" section to focus on what matters to you (backlog health, CI status, testing gaps, roadmap progress)</li>
+  <li>If you changed the <strong>frontmatter</strong> (the YAML between <code>---</code> markers), regenerate the lock file:
+    <pre><code>gh aw compile</code></pre>
+  </li>
+  <li>Commit and push</li>
+  <li>Trigger another run: <code>gh aw run daily-repo-status</code></li>
+</ol>
+
+<div class="callout tip">
+  <div class="callout-title">When do you need to recompile?</div>
+  <p>Only when you change the <strong>frontmatter</strong> (triggers, engine, permissions, network config). If you only edit the prose body (the agent's instructions), just commit and push — no recompilation needed.</p>
+</div>
+
+<h2>Why Read-Only? The SafeOutputs Model</h2>
+
+<p>You might notice: the agent job runs with <strong>read-only permissions</strong>. It can read your code, issues, and PRs, but it cannot directly write to your repository. When it wants to create an issue (like the daily report), the output is <em>buffered as an artifact</em>, run through a threat detection pipeline, and only then handed to a separate job with scoped write permissions.</p>
+
+<p>This is the <strong>SafeOutputs</strong> architecture — even a fully compromised agent cannot directly modify your repository. Write operations are deferred, validated, and executed by separate jobs with minimal permissions. It's defense-in-depth by design.</p>
+
+<p>This connects directly to <a href="0001-three-layer-architecture.html">Lesson 1</a>'s Layer 1 (Hooks): the permission isolation is an enforced guardrail the agent cannot bypass.</p>
+
+<h2>Quick Reference</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Command</th>
+      <th>What it does</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>gh extension install github/gh-aw</code></td>
+      <td>Install the extension</td>
+    </tr>
+    <tr>
+      <td><code>gh aw add-wizard &lt;ref&gt;</code></td>
+      <td>Add a workflow interactively</td>
+    </tr>
+    <tr>
+      <td><code>gh aw run &lt;name&gt;</code></td>
+      <td>Trigger a workflow run manually</td>
+    </tr>
+    <tr>
+      <td><code>gh aw status</code></td>
+      <td>Check workflow state</td>
+    </tr>
+    <tr>
+      <td><code>gh aw compile</code></td>
+      <td>Regenerate <code>.lock.yml</code> from <code>.md</code> frontmatter</td>
+    </tr>
+    <tr>
+      <td><code>gh aw logs</code></td>
+      <td>Download and analyze run logs</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">What file format are gh-aw workflows written in?</div>
+  <ul class="quiz-options">
+    <li>YAML (<code>.yml</code>)</li>
+    <li data-correct="true">Markdown (<code>.md</code>) with YAML frontmatter</li>
+    <li>JSON (<code>.json</code>)</li>
+    <li>TOML (<code>.toml</code>)</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct — you author workflows in Markdown. The frontmatter holds configuration (triggers, engine, permissions) and the body holds the agent's instructions in prose. The toolchain compiles this into the <code>.lock.yml</code> that Actions executes.</div>
+  <div class="quiz-feedback incorrect">Not quite. gh-aw workflows are written in Markdown (<code>.md</code>) with YAML frontmatter for configuration. The <code>.lock.yml</code> (Actions YAML) is auto-generated — you never write it by hand.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">What does <code>gh aw compile</code> do?</div>
+  <ul class="quiz-options">
+    <li>Runs the workflow and produces a report</li>
+    <li>Validates your AI engine credentials</li>
+    <li data-correct="true">Regenerates the <code>.lock.yml</code> file from the workflow's Markdown frontmatter</li>
+    <li>Installs dependencies needed by the workflow</li>
+  </ul>
+  <div class="quiz-feedback correct">Right — <code>compile</code> takes your <code>.md</code> source file and regenerates the compiled Actions YAML (<code>.lock.yml</code>). You run it after changing frontmatter configuration. Body-only edits don't need recompilation.</div>
+  <div class="quiz-feedback incorrect">The <code>compile</code> command regenerates the <code>.lock.yml</code> (the Actions YAML) from your workflow's Markdown frontmatter. It's a build step, not a run step. You only need it when frontmatter changes.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">Why does the agent job run with read-only permissions?</div>
+  <ul class="quiz-options">
+    <li>To reduce API rate limiting</li>
+    <li>Because GitHub doesn't support write permissions in Actions</li>
+    <li data-correct="true">So that even a compromised agent cannot directly modify repository state — writes are deferred to separate, validated jobs</li>
+    <li>To make workflows faster by skipping permission checks</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly — this is the SafeOutputs architecture. The agent buffers its intended actions as artifacts. A separate threat detection job validates them, and only then do scoped write jobs execute. Defense-in-depth: the agent never has the credentials to write directly.</div>
+  <div class="quiz-feedback incorrect">The read-only constraint is a security design called SafeOutputs. The agent never gets write permissions — its outputs are buffered, validated by a threat detection pipeline, and only then executed by separate jobs with minimal scoped write access. This prevents a compromised agent from directly modifying your repo.</div>
+</div>
+
+<h2>What's Next</h2>
+
+<p>You now have a working agentic workflow running in your repository. In the next lesson, we'll look at <strong>the security model</strong> — how safe outputs, sandboxing, and threat detection let you trust agents with increasing autonomy.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://github.github.com/gh-aw/setup/quick-start/">gh-aw Quick Start</a> — the official guide this lesson is based on. Includes a video walkthrough and troubleshooting links.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> If you hit a snag during setup, paste the error here. I can help troubleshoot authentication issues, secret configuration, and common failure modes.
+</div>
+
+<div class="lesson-nav">
+  <a href="0001-three-layer-architecture.html" class="lesson-nav-prev" title="The Three-Layer Architecture">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0003-the-security-model.html" class="lesson-nav-next" title="The Security Model">Next →</a>
+</div>
+
+<script>
+// Quiz interaction
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        // Highlight the correct answer
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

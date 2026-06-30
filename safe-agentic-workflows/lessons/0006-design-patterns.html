@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6: Design Patterns — Choosing the Right Pattern</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .pattern-card {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .pattern-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.75rem;
+    }
+    .pattern-card-icon {
+      font-size: 1.4rem;
+    }
+    .pattern-card-name {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    .pattern-card-trigger {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      background: var(--color-text);
+      color: var(--color-bg);
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+      margin-left: auto;
+    }
+    .pattern-card-desc {
+      font-size: 0.92rem;
+      margin-bottom: 0.75rem;
+    }
+    .pattern-card-good-for {
+      font-size: 0.85rem;
+      color: var(--color-muted);
+    }
+    .pattern-card-good-for strong {
+      color: var(--color-text);
+    }
+
+    .decision-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.9rem;
+    }
+    .decision-table th,
+    .decision-table td {
+      border: 1px solid var(--color-border);
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+    }
+    .decision-table th {
+      background: var(--color-text);
+      color: var(--color-bg);
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.03em;
+    }
+    .decision-table tr:nth-child(even) td {
+      background: rgba(0,0,0,0.02);
+    }
+    .decision-table code {
+      font-size: 0.82rem;
+    }
+
+    .combo-box {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin: 1.5rem 0;
+      background: rgba(0,0,0,0.01);
+    }
+    .combo-box-title {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 0.6rem;
+    }
+    .combo-box-flow {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+      font-size: 0.9rem;
+    }
+    .combo-box-flow .pattern-tag {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      background: var(--color-text);
+      color: var(--color-bg);
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+    }
+    .combo-box-flow .arrow {
+      color: var(--color-muted);
+      font-weight: 700;
+    }
+    .combo-box-desc {
+      font-size: 0.88rem;
+      color: var(--color-muted);
+    }
+
+    .connection-box {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .connection-box-title {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+      color: var(--color-muted);
+    }
+    .connection-item {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      font-size: 0.9rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .connection-item:last-child {
+      border-bottom: none;
+    }
+    .connection-label {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+
+    .workflow-file {
+      background: var(--color-bg);
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 1.5rem 0;
+    }
+    .workflow-file-header {
+      background: var(--color-text);
+      color: var(--color-bg);
+      padding: 0.5rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .workflow-file pre {
+      margin: 0;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0005-background-agents.html" class="lesson-back-top" title="Background Agents"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0007-cross-provider-portability.html" class="lesson-next-top" title="Cross-Provider Portability">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Design Patterns — Choosing the Right Pattern</h1>
+
+<div class="lesson-meta">
+  Lesson 6 · Safe Agentic Workflows · ~10 minutes
+</div>
+
+<p>GitHub Agentic Workflows defines <strong>15 named design patterns</strong> — proven architectures for specific types of automation. Instead of inventing your workflow structure from scratch, you pick the pattern that matches your goal and fill in the details.</p>
+
+<p>Think of these patterns like design patterns in software: you wouldn't invent your own Observer pattern each time you need event handling. Similarly, you don't need to invent a new workflow architecture each time you want to automate something in your repository.</p>
+
+<h2>Why Patterns Matter</h2>
+
+<p>Every pattern answers three questions:</p>
+
+<ol>
+  <li><strong>What triggers it?</strong> — The event or schedule that starts the workflow.</li>
+  <li><strong>What does the agent do?</strong> — The shape of the analysis or action.</li>
+  <li><strong>How does output flow?</strong> — Where results go and what permissions are needed.</li>
+</ol>
+
+<p>By naming these shapes, patterns give you a shared vocabulary, predictable behavior, and clear safety boundaries. When someone says "that's an IssueOps workflow," you immediately know: it triggers on issue events, reads the issue context, and responds with labels or comments.</p>
+
+<h2>The Six Patterns Every Solo Developer Needs</h2>
+
+<p>Of the 15 available patterns, these six cover the vast majority of what a solo developer or small team will build:</p>
+
+<div class="pattern-card">
+  <div class="pattern-card-header">
+    <span class="pattern-card-icon">🎫</span>
+    <span class="pattern-card-name">IssueOps</span>
+    <span class="pattern-card-trigger">on: issues</span>
+  </div>
+  <div class="pattern-card-desc">
+    Triggers on issue events (opened, labeled, edited). The agent reads the issue content, triages it, applies labels, assigns people, and posts a comment with its analysis.
+  </div>
+  <div class="pattern-card-good-for">
+    <strong>Good for:</strong> Auto-triage incoming bugs, validate issue templates, route issues to the right person, add missing labels, detect duplicates.
+  </div>
+</div>
+
+<div class="pattern-card">
+  <div class="pattern-card-header">
+    <span class="pattern-card-icon">💬</span>
+    <span class="pattern-card-name">ChatOps</span>
+    <span class="pattern-card-trigger">on: issue_comment (/command)</span>
+  </div>
+  <div class="pattern-card-desc">
+    Triggers when someone types a <code>/slash-command</code> in a PR or issue comment. The agent parses the command, performs an action, and replies with results. Essentially turns GitHub comments into a CLI.
+  </div>
+  <div class="pattern-card-good-for">
+    <strong>Good for:</strong> On-demand agent invocation from the GitHub UI, running checks, generating summaries, requesting specific analysis without leaving the browser.
+  </div>
+</div>
+
+<div class="pattern-card">
+  <div class="pattern-card-header">
+    <span class="pattern-card-icon">📊</span>
+    <span class="pattern-card-name">MonitorOps</span>
+    <span class="pattern-card-trigger">on: schedule</span>
+  </div>
+  <div class="pattern-card-desc">
+    Runs on a schedule (daily, weekly, etc.). The agent reads the repository, performs analysis against criteria you define, and creates a report as an issue or discussion. Pure read-only monitoring.
+  </div>
+  <div class="pattern-card-good-for">
+    <strong>Good for:</strong> Health checks, dependency freshness, code quality metrics, documentation staleness, activity reports.
+  </div>
+</div>
+
+<div class="pattern-card">
+  <div class="pattern-card-header">
+    <span class="pattern-card-icon">📝</span>
+    <span class="pattern-card-name">SpecOps</span>
+    <span class="pattern-card-trigger">on: schedule | workflow_dispatch</span>
+  </div>
+  <div class="pattern-card-desc">
+    The agent analyzes the repo, identifies improvements, and <strong>proposes changes as a pull request</strong>. Unlike MonitorOps (which only reports), SpecOps takes action by creating a branch and opening a PR for human review.
+  </div>
+  <div class="pattern-card-good-for">
+    <strong>Good for:</strong> Automated refactoring proposals, dependency updates, code migration, documentation regeneration, config file updates.
+  </div>
+</div>
+
+<div class="pattern-card">
+  <div class="pattern-card-header">
+    <span class="pattern-card-icon">🎛️</span>
+    <span class="pattern-card-name">OrchestratorOps</span>
+    <span class="pattern-card-trigger">on: (any) → workflow_dispatch</span>
+  </div>
+  <div class="pattern-card-desc">
+    A coordinator workflow that triggers other workflows. It receives an event, decides which sub-workflows to run (and in what order), dispatches them, and optionally collects their results. The orchestrator itself does minimal work — it delegates.
+  </div>
+  <div class="pattern-card-good-for">
+    <strong>Good for:</strong> Complex multi-step processes, conditional workflow chains, fan-out/fan-in patterns, release pipelines with agent steps.
+  </div>
+</div>
+
+<div class="pattern-card">
+  <div class="pattern-card-header">
+    <span class="pattern-card-icon">🧠</span>
+    <span class="pattern-card-name">MemoryOps</span>
+    <span class="pattern-card-trigger">on: (any) → commits to .agent/</span>
+  </div>
+  <div class="pattern-card-desc">
+    The agent stores context, state, or learned information in repository files (typically under <code>.agent/</code> or <code>.github/memory/</code>) between runs. Each run reads previous state, does work, and writes updated state back. This gives agents persistence across invocations.
+  </div>
+  <div class="pattern-card-good-for">
+    <strong>Good for:</strong> Stateful automation, progressive analysis that builds on previous runs, tracking decisions over time, accumulated knowledge bases.
+  </div>
+</div>
+
+<h2>Pattern Selection Guide</h2>
+
+<p>Given a goal, which pattern fits? Use this decision table:</p>
+
+<table class="decision-table">
+  <thead>
+    <tr>
+      <th>I want to...</th>
+      <th>Pattern</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Auto-label and triage new issues</td>
+      <td><strong>IssueOps</strong></td>
+      <td>Triggers on issue creation, responds with labels/comments</td>
+    </tr>
+    <tr>
+      <td>Run an agent when I type a command in a PR</td>
+      <td><strong>ChatOps</strong></td>
+      <td>Listens for <code>/slash</code> in comments, responds inline</td>
+    </tr>
+    <tr>
+      <td>Get a daily report on repo health</td>
+      <td><strong>MonitorOps</strong></td>
+      <td>Schedule-triggered, read-only, creates issue report</td>
+    </tr>
+    <tr>
+      <td>Auto-generate PRs to fix stale dependencies</td>
+      <td><strong>SpecOps</strong></td>
+      <td>Proposes concrete changes as a PR for review</td>
+    </tr>
+    <tr>
+      <td>Chain multiple workflows in sequence</td>
+      <td><strong>OrchestratorOps</strong></td>
+      <td>Dispatches sub-workflows, manages flow control</td>
+    </tr>
+    <tr>
+      <td>Build an agent that remembers past runs</td>
+      <td><strong>MemoryOps</strong></td>
+      <td>Persists state in repo files between invocations</td>
+    </tr>
+    <tr>
+      <td>Validate issue templates before accepting</td>
+      <td><strong>IssueOps</strong></td>
+      <td>Reads issue body on creation, comments if invalid</td>
+    </tr>
+    <tr>
+      <td>Let reviewers request specific checks on a PR</td>
+      <td><strong>ChatOps</strong></td>
+      <td><code>/check-security</code> or <code>/explain</code> commands in PR comments</td>
+    </tr>
+    <tr>
+      <td>Track which TODOs get resolved over time</td>
+      <td><strong>MemoryOps</strong></td>
+      <td>Stores TODO inventory in a file, diffs between runs</td>
+    </tr>
+    <tr>
+      <td>Run a weekly refactoring pass and propose fixes</td>
+      <td><strong>SpecOps</strong></td>
+      <td>Schedule + PR creation for human review</td>
+    </tr>
+    <tr>
+      <td>First triage, then assign, then notify — in order</td>
+      <td><strong>OrchestratorOps</strong></td>
+      <td>Sequences dependent steps across workflows</td>
+    </tr>
+    <tr>
+      <td>Detect when a metric degrades week-over-week</td>
+      <td><strong>MonitorOps + MemoryOps</strong></td>
+      <td>Schedule + state file to compare current vs previous</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Combining Patterns</h2>
+
+<p>Real workflows often combine two patterns. Here are the most common combinations:</p>
+
+<div class="combo-box">
+  <div class="combo-box-title">MonitorOps + IssueOps</div>
+  <div class="combo-box-flow">
+    <span class="pattern-tag">schedule</span>
+    <span class="arrow">→</span>
+    <span>agent creates issue</span>
+    <span class="arrow">→</span>
+    <span class="pattern-tag">issue opened</span>
+    <span class="arrow">→</span>
+    <span>second agent triages it</span>
+  </div>
+  <div class="combo-box-desc">A scheduled scan finds problems and files issues. An IssueOps workflow then auto-labels and assigns those issues. Two simple workflows, each doing one thing well.</div>
+</div>
+
+<div class="combo-box">
+  <div class="combo-box-title">ChatOps + SpecOps</div>
+  <div class="combo-box-flow">
+    <span class="pattern-tag">/refactor module</span>
+    <span class="arrow">→</span>
+    <span>agent analyzes</span>
+    <span class="arrow">→</span>
+    <span class="pattern-tag">opens PR</span>
+  </div>
+  <div class="combo-box-desc">A slash command triggers analysis, and the agent proposes changes as a PR rather than just commenting. On-demand code changes with human review before merge.</div>
+</div>
+
+<div class="combo-box">
+  <div class="combo-box-title">MonitorOps + MemoryOps</div>
+  <div class="combo-box-flow">
+    <span class="pattern-tag">schedule</span>
+    <span class="arrow">→</span>
+    <span>agent reads previous state</span>
+    <span class="arrow">→</span>
+    <span>compares</span>
+    <span class="arrow">→</span>
+    <span class="pattern-tag">writes new state + reports delta</span>
+  </div>
+  <div class="combo-box-desc">A scheduled workflow that tracks changes over time. Each run reads the last snapshot, compares to current state, reports the difference, and saves the new snapshot. Enables trend detection.</div>
+</div>
+
+<div class="combo-box">
+  <div class="combo-box-title">IssueOps + ChatOps</div>
+  <div class="combo-box-flow">
+    <span class="pattern-tag">issue opened</span>
+    <span class="arrow">→</span>
+    <span>agent triages + comments</span>
+    <span class="arrow">→</span>
+    <span class="pattern-tag">/approve or /reject</span>
+    <span class="arrow">→</span>
+    <span>agent acts</span>
+  </div>
+  <div class="combo-box-desc">Agent auto-triages on creation, then waits for a human slash command to take the next action. Combines automatic first-response with human-in-the-loop decision-making.</div>
+</div>
+
+<h2>Connection to Your Work</h2>
+
+<p>The workflows you've already built (or are planning) map directly to these patterns:</p>
+
+<div class="connection-box">
+  <div class="connection-box-title">Your workflows → named patterns</div>
+  <div class="connection-item">
+    <span class="connection-label">/comply</span>
+    <span><strong>IssueOps + ChatOps</strong> — triggers on PR events (IssueOps shape), responds to <code>/comply</code> commands in comments (ChatOps shape). The auto-triage is IssueOps; the on-demand invocation is ChatOps.</span>
+  </div>
+  <div class="connection-item">
+    <span class="connection-label">daily-status</span>
+    <span><strong>MonitorOps</strong> — runs on schedule, reads the repo, creates an issue report. Pure monitoring pattern.</span>
+  </div>
+  <div class="connection-item">
+    <span class="connection-label">dep-updates</span>
+    <span><strong>SpecOps</strong> — if you ever build a workflow that auto-opens PRs to bump dependencies, that's SpecOps: analysis → proposed change → human review.</span>
+  </div>
+  <div class="connection-item">
+    <span class="connection-label">orchestrator</span>
+    <span><strong>OrchestratorOps</strong> — if your <code>/comply</code> dispatches sub-checks (security, style, coverage) as separate workflow runs, the parent is an orchestrator.</span>
+  </div>
+</div>
+
+<p>Recognizing the pattern means you can look at gh-aw's documentation for that pattern and immediately find configuration options, best practices, and examples that apply to your workflow.</p>
+
+<h2>Anatomy of a Pattern in Practice</h2>
+
+<p>Here's how IssueOps looks as a concrete workflow — the most common starting point for solo developers:</p>
+
+<div class="workflow-file">
+  <div class="workflow-file-header">.github/workflows/auto-triage.md</div>
+  <pre><code>---
+description: "Auto-triage new issues with labels and priority"
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+engine:
+  id: copilot
+  model: gpt-4.1-mini
+
+max-ai-credits: 300
+
+safe-outputs:
+  add-labels:
+    allowed: [bug, feature, question, docs, good-first-issue, priority-high, priority-low]
+  add-comment:
+    max-length: 500
+---
+
+Triage this newly opened issue.
+
+Read the issue title and body. Based on the content:
+
+1. **Classify** — is this a bug report, feature request, question, or docs issue?
+2. **Prioritize** — does it describe data loss, security, or production breakage (high)?
+   Or is it cosmetic, nice-to-have, or unclear (low)?
+3. **Comment** — post a brief acknowledgment explaining your classification.
+   If the issue is missing reproduction steps (for bugs), ask for them.
+
+Apply the appropriate labels from the allowed set.
+
+If the issue is clearly spam or completely empty, apply no labels and
+comment asking for clarification.</code></pre>
+</div>
+
+<p>Notice how the pattern shapes every decision: the trigger (<code>issues: opened</code>), the permissions (write issues, read contents), and the safe-outputs (only specific labels allowed, comment length capped). The pattern constrains the agent so you don't have to think about safety boundaries from scratch.</p>
+
+<h2>The Other Nine Patterns (Brief)</h2>
+
+<p>For completeness, here are the remaining patterns you'll encounter in gh-aw documentation. You won't need most of these until your automation becomes more complex:</p>
+
+<table class="decision-table">
+  <thead>
+    <tr>
+      <th>Pattern</th>
+      <th>One-Liner</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>BatchOps</strong></td>
+      <td>Process many items (issues, files) in a single run with rate limiting</td>
+    </tr>
+    <tr>
+      <td><strong>GateOps</strong></td>
+      <td>Block a merge/deploy until agent validates conditions</td>
+    </tr>
+    <tr>
+      <td><strong>ReviewOps</strong></td>
+      <td>Automated code review on PRs with inline comments</td>
+    </tr>
+    <tr>
+      <td><strong>DeployOps</strong></td>
+      <td>Agent-assisted deployment decisions and rollbacks</td>
+    </tr>
+    <tr>
+      <td><strong>DocOps</strong></td>
+      <td>Auto-generate or update documentation from code changes</td>
+    </tr>
+    <tr>
+      <td><strong>TestOps</strong></td>
+      <td>Generate or maintain tests based on code changes</td>
+    </tr>
+    <tr>
+      <td><strong>SecurityOps</strong></td>
+      <td>Security scanning with contextual triage (not just "vulnerability found")</td>
+    </tr>
+    <tr>
+      <td><strong>MigrationOps</strong></td>
+      <td>Large-scale codebase migration with progressive PRs</td>
+    </tr>
+    <tr>
+      <td><strong>FeedbackOps</strong></td>
+      <td>Collect and synthesize user feedback from issues/discussions</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>These follow the same principles — named trigger, scoped permissions, constrained output — just applied to more specialized use cases.</p>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">You want a workflow that runs every Monday, checks for outdated dependencies, and opens a PR to bump them. Which pattern (or combination) is this?</div>
+  <ul class="quiz-options">
+    <li>MonitorOps — it runs on a schedule and reports findings</li>
+    <li>ChatOps — you'd trigger it with <code>/update-deps</code></li>
+    <li data-correct="true">SpecOps — it runs on a schedule and proposes concrete changes as a PR</li>
+    <li>OrchestratorOps — it needs to chain multiple steps</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct — SpecOps is the pattern for "analyze then propose changes as a PR." The key distinction from MonitorOps: MonitorOps only reports (creates an issue), while SpecOps takes action (creates a PR with actual code changes for review).</div>
+  <div class="quiz-feedback incorrect">This is SpecOps. The distinguishing feature is the output: it doesn't just <em>report</em> that deps are outdated (that would be MonitorOps) — it <em>proposes the fix</em> as a pull request. Schedule + PR creation = SpecOps.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">Your team wants an agent that auto-labels incoming issues AND lets reviewers type <code>/prioritize high</code> to override the label. Which patterns are combined?</div>
+  <ul class="quiz-options">
+    <li>MonitorOps + SpecOps</li>
+    <li>OrchestratorOps + IssueOps</li>
+    <li data-correct="true">IssueOps + ChatOps</li>
+    <li>MemoryOps + IssueOps</li>
+  </ul>
+  <div class="quiz-feedback correct">Right — auto-labeling on issue creation is IssueOps (triggered by the issue event). The <code>/prioritize</code> slash command is ChatOps (triggered by a comment). Two workflows, one for each pattern, working on the same issue.</div>
+  <div class="quiz-feedback incorrect">The answer is IssueOps + ChatOps. Auto-labeling triggers on the issue event (IssueOps pattern). The <code>/prioritize</code> command triggers on a comment (ChatOps pattern). Each pattern handles one interaction mode.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">You want a weekly code quality scan that compares this week's results to last week's and only reports <em>regressions</em>. Which pattern combination enables this?</div>
+  <ul class="quiz-options">
+    <li>MonitorOps alone — it runs weekly and reports</li>
+    <li>SpecOps — it should propose fixes for regressions</li>
+    <li>OrchestratorOps + MonitorOps — one triggers the other</li>
+    <li data-correct="true">MonitorOps + MemoryOps — schedule with persistent state for comparison</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly — MonitorOps provides the schedule and reporting, but to compare week-over-week you need the agent to <em>remember</em> last week's results. MemoryOps adds that persistence by storing a state file in the repo that each run reads and updates.</div>
+  <div class="quiz-feedback incorrect">The answer is MonitorOps + MemoryOps. Plain MonitorOps has no memory between runs — it can't compare to last week because it doesn't store last week's data. Adding MemoryOps (a state file in the repo) gives the agent persistence to detect regressions by comparing current vs stored results.</div>
+</div>
+
+<h2>What's Next</h2>
+
+<p>You now know how to identify which pattern fits your automation goal — and when to combine patterns for more complex scenarios. The next lesson covers <strong>testing and debugging workflows</strong> — how to develop workflows iteratively, test them locally, and diagnose failures when your agent doesn't behave as expected.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://github.github.com/gh-aw/patterns/issue-ops/">IssueOps Pattern Reference</a> — the complete documentation for the IssueOps pattern, including configuration options, event filtering, and examples. Other patterns follow the same documentation structure at <code>/patterns/&lt;pattern-name&gt;/</code>.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me about which pattern fits your specific use case, how to combine patterns, or how any of the 15 patterns work in detail.
+</div>
+
+<div class="lesson-nav">
+  <a href="0005-background-agents.html" class="lesson-nav-prev" title="Background Agents">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0007-cross-provider-portability.html" class="lesson-nav-next" title="Cross-Provider Portability">Next →</a>
+</div>
+
+<script>
+// Quiz interaction
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        // Highlight the correct answer
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3: The Security Model — Safe Outputs and Sandboxing</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    /* Security flow diagram */
+    .security-flow {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .flow-node {
+      flex: 1;
+      padding: 0.8rem 1rem;
+      border-radius: 6px;
+      font-family: var(--font-heading);
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-align: center;
+      line-height: 1.4;
+      border: 2px solid;
+    }
+    .flow-node.read-only {
+      background: #eff6ff;
+      border-color: #3b82f6;
+      color: #1e40af;
+    }
+    .flow-node.artifact {
+      background: #fef9c3;
+      border-color: #ca8a04;
+      color: #854d0e;
+    }
+    .flow-node.detection {
+      background: #fef2f2;
+      border-color: #ef4444;
+      color: #991b1b;
+    }
+    .flow-node.write {
+      background: #d1fae5;
+      border-color: #059669;
+      color: #065f46;
+    }
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.4rem 0;
+      color: var(--color-muted);
+      font-size: 1.2rem;
+    }
+    .flow-arrow::after {
+      content: '▼';
+    }
+    .flow-arrow.horizontal::after {
+      content: '▶';
+    }
+
+    /* Trust layer stack */
+    .trust-stack {
+      border: 2px solid var(--color-text);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .trust-stack-title {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      text-align: center;
+      padding: 0.6rem;
+      background: var(--color-text);
+      color: var(--color-bg);
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+    }
+    .trust-layer {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--color-border);
+      align-items: start;
+    }
+    .trust-layer:last-child { border-bottom: none; }
+    .trust-layer-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding-top: 0.15rem;
+    }
+    .trust-layer-desc {
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+    .trust-layer.substrate { background: #fef2f2; }
+    .trust-layer.config { background: #eff6ff; }
+    .trust-layer.plan { background: #f0fdf4; }
+
+    /* Permission badge */
+    .perm-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .perm-badge.readonly {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .perm-badge.write {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .perm-badge.none {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    /* Firewall diagram */
+    .firewall-diagram {
+      border: 2px solid var(--color-border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      background: #fafafa;
+    }
+    .fw-container {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .fw-box {
+      padding: 0.8rem;
+      border-radius: 6px;
+      font-family: var(--font-heading);
+      font-size: 0.8rem;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .fw-agent {
+      background: #eff6ff;
+      border: 2px solid #3b82f6;
+      color: #1e40af;
+    }
+    .fw-proxy {
+      background: #fef9c3;
+      border: 2px solid #ca8a04;
+      color: #854d0e;
+    }
+    .fw-internet {
+      background: #f5f5f0;
+      border: 2px solid var(--color-border);
+      color: var(--color-muted);
+    }
+    .fw-arrow {
+      font-size: 1.1rem;
+      color: var(--color-muted);
+    }
+    .fw-allowed-list {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--color-border);
+      font-size: 0.82rem;
+    }
+    .fw-allowed-list code {
+      font-size: 0.75rem;
+    }
+
+    /* Sanitization table highlight */
+    .sanitize-example {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+    }
+
+    /* Legend */
+    .diagram-legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      font-size: 0.8rem;
+      font-family: var(--font-heading);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 2px solid;
+    }
+    .legend-swatch.ro { background: #eff6ff; border-color: #3b82f6; }
+    .legend-swatch.ar { background: #fef9c3; border-color: #ca8a04; }
+    .legend-swatch.td { background: #fef2f2; border-color: #ef4444; }
+    .legend-swatch.wr { background: #d1fae5; border-color: #059669; }
+
+    @media (max-width: 600px) {
+      .trust-layer {
+        grid-template-columns: 1fr;
+        gap: 0.3rem;
+      }
+      .fw-container {
+        grid-template-columns: 1fr;
+        gap: 0.3rem;
+      }
+      .fw-arrow { transform: rotate(90deg); }
+      .flow-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0002-gh-aw-quick-start.html" class="lesson-back-top" title="gh-aw Quick Start"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-triggers-and-events.html" class="lesson-next-top" title="Triggers and Events">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>The Security Model — Safe Outputs and Sandboxing</h1>
+
+<div class="lesson-meta">
+  Lesson 3 · Safe Agentic Workflows · ~12 minutes
+</div>
+
+<p>You've built hooks and commands that <em>guide</em> an agent. But to trust an agent with real autonomy — running unattended on your codebase — you need something stronger: a security model that makes catastrophic mistakes <strong>structurally impossible</strong>, not merely discouraged.</p>
+
+<p>gh-aw solves this with <strong>defense-in-depth</strong>: multiple independent layers where any single layer's failure is contained by the others.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://github.github.com/gh-aw/introduction/architecture/">gh-aw Security Architecture</a> — The complete reference for everything in this lesson. Read it after if you want the full detail.</p>
+</div>
+
+<h2>The Core Insight: Read-Only Agents</h2>
+
+<p>Here's the single most important design decision in gh-aw:</p>
+
+<div class="callout tip">
+  <div class="callout-title">Key principle</div>
+  <p><strong>The agent job runs with read-only permissions.</strong> It cannot write to your repository, create PRs, post comments, or modify any external state. All writes happen in <em>separate jobs</em> that execute only after the agent's output has been validated.</p>
+</div>
+
+<p>This means even a fully compromised agent — one that's been prompt-injected, confused, or running arbitrary code — <strong>cannot directly damage anything</strong>. It can only produce an output artifact. What happens to that artifact is decided by trusted code the agent never touches.</p>
+
+<h2>The Three Trust Layers</h2>
+
+<div class="trust-stack">
+  <div class="trust-stack-title">DEFENSE-IN-DEPTH — THREE TRUST LAYERS</div>
+  <div class="trust-layer substrate">
+    <div class="trust-layer-label">LAYER 1:<br>SUBSTRATE</div>
+    <div class="trust-layer-desc">
+      <strong>Container isolation + network firewall</strong><br>
+      Hardware-enforced boundaries. Even arbitrary code can't escape.<br>
+      <em>Docker containers, iptables network rules, MCP server sandboxing, kernel-enforced memory isolation.</em>
+    </div>
+  </div>
+  <div class="trust-layer config">
+    <div class="trust-layer-label">LAYER 2:<br>CONFIGURATION</div>
+    <div class="trust-layer-desc">
+      <strong>Schema validation + action pinning + security scanners</strong><br>
+      Compile-time checks that reject bad configurations before they run.<br>
+      <em>JSON schema validation, SHA-pinned actions (prevents supply chain attacks), actionlint + zizmor + poutine scanning.</em>
+    </div>
+  </div>
+  <div class="trust-layer plan">
+    <div class="trust-layer-label">LAYER 3:<br>PLAN</div>
+    <div class="trust-layer-desc">
+      <strong>SafeOutputs + threat detection + secret redaction</strong><br>
+      Runtime behavior constraints. Controls what the agent can <em>do</em> with its channels.<br>
+      <em>Structured output artifacts, AI-powered threat analysis, credential scrubbing, content sanitization.</em>
+    </div>
+  </div>
+</div>
+
+<p>Each layer protects against different failure modes. The substrate stops container escapes. Configuration stops misconfigurations and supply chain attacks. The plan stops malicious or confused agent outputs from reaching production.</p>
+
+<h2>Safe Outputs: The Permission Separation Pattern</h2>
+
+<p>Safe Outputs is the mechanism that enforces the read-only agent principle. Here's exactly how it works:</p>
+
+<div class="diagram-legend">
+  <div class="legend-item"><div class="legend-swatch ro"></div> Read-only</div>
+  <div class="legend-item"><div class="legend-swatch ar"></div> Artifact (data)</div>
+  <div class="legend-item"><div class="legend-swatch td"></div> Threat detection</div>
+  <div class="legend-item"><div class="legend-swatch wr"></div> Scoped write</div>
+</div>
+
+<div class="security-flow">
+  <div class="flow-row">
+    <div class="flow-node read-only">
+      <strong>Agent Job</strong><br>
+      <span class="perm-badge readonly">read-only</span><br>
+      Reads code, reasons, produces JSON
+    </div>
+  </div>
+  <div class="flow-arrow"></div>
+  <div class="flow-row">
+    <div class="flow-node artifact">
+      <strong>Output Artifact</strong><br>
+      <code>agent_output.json</code><br>
+      Structured actions the agent wants to perform
+    </div>
+  </div>
+  <div class="flow-arrow"></div>
+  <div class="flow-row">
+    <div class="flow-node detection">
+      <strong>Threat Detection Job</strong><br>
+      <span class="perm-badge none">no write access</span><br>
+      AI analyzes for secrets, backdoors, policy violations
+    </div>
+  </div>
+  <div class="flow-arrow"></div>
+  <div class="flow-row">
+    <div class="flow-node write">
+      <strong>Safe Output Jobs</strong><br>
+      <span class="perm-badge write">scoped write</span><br>
+      <code>create_issue</code> · <code>add_comment</code> · <code>create_pull_request</code>
+    </div>
+  </div>
+</div>
+
+<p>The critical property: the agent <strong>requests</strong> actions via structured JSON. It says "I want to create a PR with this diff." It does <em>not</em> create the PR. A separate job — one the agent never influences — decides whether to execute that request.</p>
+
+<p>Each safe output job gets the <strong>minimum permissions needed</strong> for its specific action:</p>
+
+<table>
+  <thead>
+    <tr><th>Safe Output Job</th><th>Permissions Granted</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>create_issue</code></td><td><code>issues: write</code></td></tr>
+    <tr><td><code>add_comment</code></td><td><code>issues: write</code></td></tr>
+    <tr><td><code>create_pull_request</code></td><td><code>contents: write</code>, <code>pull-requests: write</code></td></tr>
+    <tr><td><code>add_labels</code></td><td><code>issues: write</code></td></tr>
+  </tbody>
+</table>
+
+<h2>Agent Workflow Firewall (AWF)</h2>
+
+<p>Even though the agent is read-only, it still runs code. A compromised agent could try to exfiltrate data over the network. The Agent Workflow Firewall prevents this:</p>
+
+<div class="firewall-diagram">
+  <div class="fw-container">
+    <div class="fw-box fw-agent">
+      <strong>Agent Container</strong><br>
+      Isolated Docker network<br>
+      No direct internet access
+    </div>
+    <div class="fw-arrow">▶</div>
+    <div class="fw-box fw-proxy">
+      <strong>Squid Proxy</strong><br>
+      Domain allowlist enforced<br>
+      All HTTP/HTTPS routed here
+    </div>
+    <div class="fw-arrow">▶</div>
+    <div class="fw-box fw-internet">
+      <strong>Internet</strong><br>
+      Only allowed domains reachable<br>
+      Everything else dropped
+    </div>
+  </div>
+  <div class="fw-allowed-list">
+    <strong>How it works:</strong> The agent is containerized. <code>iptables</code> rules redirect all HTTP/HTTPS traffic through a Squid proxy. The proxy enforces a domain allowlist configured in the workflow's <code>network:</code> frontmatter. Requests to unlisted domains are silently dropped.
+  </div>
+</div>
+
+<p>You configure allowed domains per workflow:</p>
+
+<pre><code>network:
+  firewall: true
+  allowed:
+    - defaults        # certificates, JSON schema
+    - python          # PyPI, Conda
+    - node            # npm, npmjs.com
+    - "api.example.com"  # your custom API</code></pre>
+
+<p>The firewall container drops its own <code>iptables</code> capabilities <em>before</em> launching the agent — so even arbitrary code execution inside the agent container can't modify the firewall rules.</p>
+
+<h2>Threat Detection Pipeline</h2>
+
+<p>Between the agent's output and the safe output jobs sits a <strong>threat detection job</strong>. This is a separate AI agent with a security-focused system prompt that analyzes the buffered output for:</p>
+
+<ul>
+  <li><strong>Secret leakage</strong> — API keys, tokens, credentials in outputs</li>
+  <li><strong>Malicious patches</strong> — backdoors, suspicious modifications, vulnerability injection</li>
+  <li><strong>Policy violations</strong> — scope violations, unauthorized operations</li>
+</ul>
+
+<p>The detection job has <strong>no write permissions</strong> and no access to the original agent's runtime. It only sees the artifacts. Its sole output is a pass/fail verdict:</p>
+
+<ul>
+  <li><strong>Pass</strong> → safe output jobs proceed</li>
+  <li><strong>Fail</strong> → <strong>entire workflow terminates</strong>. No writes are externalized. Nothing happens.</li>
+</ul>
+
+<div class="callout">
+  <div class="callout-title">Customizable detection</div>
+  <p>You can augment the AI detection with additional tools (Semgrep, TruffleHog) and custom prompts. For example, you might add: "Also reject any change to <code>.github/workflows/</code> files."</p>
+</div>
+
+<h2>Content Sanitization</h2>
+
+<p>Before user-generated content (issue titles, PR bodies, comments) even reaches the agent, gh-aw sanitizes it. This protects the agent from prompt injection via input:</p>
+
+<table>
+  <thead>
+    <tr><th>Mechanism</th><th>What It Does</th><th>Protects Against</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>@mention neutralization</td>
+      <td><span class="sanitize-example">@user → `@user`</span></td>
+      <td>Unintended user notifications</td>
+    </tr>
+    <tr>
+      <td>Bot trigger protection</td>
+      <td><span class="sanitize-example">fixes #123 → `fixes #123`</span></td>
+      <td>Automatic issue linking</td>
+    </tr>
+    <tr>
+      <td>XML/HTML tag conversion</td>
+      <td><span class="sanitize-example">&lt;script&gt; → (script)</span></td>
+      <td>Injection via markup</td>
+    </tr>
+    <tr>
+      <td>URI filtering</td>
+      <td>Only HTTPS from trusted domains</td>
+      <td>Data exfiltration URLs</td>
+    </tr>
+    <tr>
+      <td>Content limits</td>
+      <td>0.5 MB max, 65k lines max</td>
+      <td>Denial-of-service payloads</td>
+    </tr>
+    <tr>
+      <td>Control character removal</td>
+      <td>ANSI escapes stripped</td>
+      <td>Terminal manipulation</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Sanitization happens at the <em>activation stage boundary</em> — before the agent sees anything. The agent works with clean, normalized text.</p>
+
+<h2>Connection to Your Existing Patterns</h2>
+
+<p>If you've used the <code>/comply</code> pattern (or any independent reviewer pattern), you already understand the principle behind threat detection:</p>
+
+<div class="callout tip">
+  <div class="callout-title">Same principle, different scale</div>
+  <p>Your <code>/comply</code> hook uses an <strong>independent reviewer</strong> that examines an agent's work product without sharing its context. The threat detection pipeline is the same idea, formalized: a separate agent with a security-focused prompt reviews the output before it's applied. The difference is that gh-aw makes this a <em>structural guarantee</em> — it's not a suggestion, it's a gate that blocks execution.</p>
+</div>
+
+<p>The pattern scales: local agents use hooks as guardrails (best-effort enforcement via your coding tools), while gh-aw hardens this into kernel-enforced isolation + permission separation + AI threat analysis. Same layered thinking, different trust boundaries.</p>
+
+<h2>Security Layers Summary</h2>
+
+<table>
+  <thead>
+    <tr><th>Layer</th><th>Mechanism</th><th>What It Stops</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Substrate</td><td>VM + Docker containers</td><td>Memory corruption, host escape</td></tr>
+    <tr><td>Substrate</td><td>AWF network firewall (iptables + Squid)</td><td>Data exfiltration, unauthorized API calls</td></tr>
+    <tr><td>Substrate</td><td>MCP server sandboxing</td><td>Container escape, unauthorized tool access</td></tr>
+    <tr><td>Configuration</td><td>Schema validation + expression allowlist</td><td>Invalid configs, injection via expressions</td></tr>
+    <tr><td>Configuration</td><td>Action SHA pinning</td><td>Supply chain attacks, tag hijacking</td></tr>
+    <tr><td>Configuration</td><td>Security scanners (actionlint, zizmor, poutine)</td><td>Privilege escalation, misconfigurations</td></tr>
+    <tr><td>Plan</td><td>SafeOutputs (permission separation)</td><td>Direct write access abuse</td></tr>
+    <tr><td>Plan</td><td>Threat detection (AI + scanners)</td><td>Malicious patches, secret leaks</td></tr>
+    <tr><td>Plan</td><td>Content sanitization</td><td>Prompt injection via input</td></tr>
+    <tr><td>Plan</td><td>Secret redaction</td><td>Credential leakage in logs/artifacts</td></tr>
+  </tbody>
+</table>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">1. What permissions does the agent job itself have?</div>
+  <ul class="quiz-options">
+    <li>Full write access scoped to the repository</li>
+    <li data-correct="true">Read-only — it cannot write to any external state</li>
+    <li>Write access gated by a confirmation prompt</li>
+    <li>No permissions at all — it can't even read the repo</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The agent job is strictly read-only. It can read the codebase, use read-only MCP tools, and reason — but all writes are buffered as artifacts for separate jobs to execute.</div>
+  <div class="quiz-feedback incorrect">The agent job runs with <strong>read-only</strong> permissions. It can read the repository and use read-only tools, but it cannot write to any external state. All writes are deferred to separate safe output jobs that execute only after validation.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">2. What happens if the threat detection job identifies a problem in the agent's output?</div>
+  <ul class="quiz-options">
+    <li>The problematic section is removed and the rest proceeds</li>
+    <li>The agent is re-run with a corrective prompt</li>
+    <li data-correct="true">The entire workflow fails — no writes are externalized at all</li>
+    <li>A human is notified for manual approval</li>
+  </ul>
+  <div class="quiz-feedback correct">Right. Threat detection is a hard gate: if it fails, the workflow terminates and none of the safe output jobs execute. Zero writes reach the outside world.</div>
+  <div class="quiz-feedback incorrect">Threat detection is all-or-nothing. If it finds threats, the <strong>entire workflow terminates</strong> — no partial execution, no retry, no writes externalized. This is the safest default: when in doubt, do nothing.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">3. What does the Safe Outputs subsystem actually do?</div>
+  <ul class="quiz-options">
+    <li>Encrypts the agent's output before storing it</li>
+    <li>Gives the agent temporary write tokens that expire</li>
+    <li data-correct="true">Separates agent execution (read-only) from write execution (separate jobs with scoped permissions)</li>
+    <li>Logs everything the agent does for audit purposes</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly. SafeOutputs is permission isolation: the agent produces structured output artifacts, and separate jobs with minimum scoped permissions execute the actual writes. The agent never has write access.</div>
+  <div class="quiz-feedback incorrect">SafeOutputs enforces <strong>permission separation</strong>. The agent job is read-only and produces structured JSON artifacts describing desired actions. Separate jobs — each with only the permissions needed for their specific action — execute those writes after threat detection passes.</div>
+</div>
+
+<h2>What's Next</h2>
+
+<p>You now understand <em>why</em> you can trust an agent with autonomy: because the architecture makes destructive mistakes structurally impossible. In the next lesson, we'll move from theory to practice — <strong>writing your first gh-aw workflow</strong> that uses safe outputs to create a PR from an agent's work.</p>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me to explain any security layer in more detail, walk through a specific attack scenario and how it's mitigated, or compare this model to other sandboxing approaches you've seen.
+</div>
+
+<div class="lesson-nav">
+  <a href="0002-gh-aw-quick-start.html" class="lesson-nav-prev" title="gh-aw Quick Start">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0004-triggers-and-events.html" class="lesson-nav-next" title="Triggers and Events">Next →</a>
+</div>
+
+<script>
+// Quiz interaction
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>
