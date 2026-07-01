@@ -6,9 +6,190 @@
     <title>CIBC Spending Analyzer</title>
     <script type="module" crossorigin src="/sandbox/cibc-analyzer/assets/index-CQWvKmDM.js"></script>
     <link rel="stylesheet" crossorigin href="/sandbox/cibc-analyzer/assets/index-DY-NU0ZO.css">
+    <link rel="stylesheet" href="/sandbox/cibc-analyzer/assets/apple-overrides.css">
   </head>
   <body>
     <div id="root"></div>
     <script src="/sandbox/shared/nav.js"></script>
+    <script>
+      (function() {
+        let activeCategory = null;
+
+        function getAllCategoryCards() {
+          return Array.from(document.querySelectorAll('.bg-white.rounded-lg.p-4.shadow'))
+            .filter(el => el.offsetHeight > 50 && el.offsetHeight < 130 && el.offsetWidth < 600);
+        }
+
+        function getCategoryName(card) {
+          const text = card.textContent;
+          const match = text.match(/^([A-Za-z &]+)\$/);
+          return match ? match[1].trim() : null;
+        }
+
+        function highlightSector(categoryName) {
+          const sectors = document.querySelectorAll('.recharts-pie-sector path');
+          sectors.forEach(path => {
+            const name = path.getAttribute('name');
+            if (name && name.toLowerCase() === categoryName.toLowerCase()) {
+              path.style.opacity = '1';
+              path.style.transform = 'scale(1.08)';
+              path.style.transformOrigin = 'center';
+              path.style.filter = 'drop-shadow(0 4px 16px rgba(0,0,0,0.35))';
+              path.style.transition = 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            } else {
+              path.style.opacity = '0.25';
+              path.style.transform = 'scale(1)';
+              path.style.filter = 'none';
+              path.style.transition = 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            }
+          });
+        }
+
+        function resetSectors() {
+          const sectors = document.querySelectorAll('.recharts-pie-sector path');
+          sectors.forEach(path => {
+            path.style.opacity = '1';
+            path.style.transform = 'scale(1)';
+            path.style.filter = 'none';
+            path.style.transition = 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+          });
+        }
+
+        function setupInteractivity() {
+          const cards = getAllCategoryCards();
+          if (!cards.length) return;
+
+          cards.forEach(card => {
+            const catName = getCategoryName(card);
+            if (!catName) return;
+
+            card.style.cursor = 'pointer';
+            card.style.transition = 'all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            card.dataset.category = catName;
+
+            card.addEventListener('click', (e) => {
+              e.stopPropagation();
+              if (activeCategory === catName) {
+                activeCategory = null;
+                resetSectors();
+                cards.forEach(c => {
+                  c.style.opacity = '1';
+                  c.style.transform = '';
+                  c.style.boxShadow = '';
+                });
+              } else {
+                activeCategory = catName;
+                highlightSector(catName);
+                cards.forEach(c => {
+                  if (c.dataset.category === catName) {
+                    c.style.opacity = '1';
+                    c.style.transform = 'scale(1.03)';
+                    c.style.boxShadow = '0 8px 30px rgba(0,0,0,0.15)';
+                  } else {
+                    c.style.opacity = '0.35';
+                    c.style.transform = 'scale(0.97)';
+                    c.style.boxShadow = '';
+                  }
+                });
+              }
+            });
+
+            card.addEventListener('mouseenter', () => {
+              if (!activeCategory) highlightSector(catName);
+            });
+            card.addEventListener('mouseleave', () => {
+              if (!activeCategory) resetSectors();
+            });
+          });
+
+          document.addEventListener('click', (e) => {
+            if (activeCategory && !e.target.closest('.bg-white.rounded-lg.p-4.shadow')) {
+              activeCategory = null;
+              resetSectors();
+              cards.forEach(c => {
+                c.style.opacity = '1';
+                c.style.transform = '';
+                c.style.boxShadow = '';
+              });
+            }
+          });
+        }
+
+        // Fix savings calculations: app treats total as monthly, but data may span many months
+        function fixSavingsCalculations() {
+          // Get the number of months from the avg/month display
+          const allText = document.body.innerHTML;
+          const totalMatch = allText.match(/\$(\d[\d,.]+)\s*<\/div><div[^>]*>.*?avg\/month/s);
+          const avgMatch = allText.match(/\$([\d,.]+)\s*avg\/month/);
+          
+          if (!totalMatch || !avgMatch) return;
+          
+          const totalSpend = parseFloat(totalMatch[1].replace(/,/g, ''));
+          const avgMonth = parseFloat(avgMatch[1].replace(/,/g, ''));
+          const numMonths = Math.round(totalSpend / avgMonth);
+          
+          if (numMonths <= 1) return; // No fix needed
+          
+          // Find all savings cards and fix the numbers
+          let totalMonthlySavings = 0;
+          const savingsCards = document.querySelectorAll('.bg-white.rounded-lg.p-4.shadow');
+          savingsCards.forEach(card => {
+            const saveEl = card.querySelector('.text-lg.font-bold.text-green-600');
+            const yearEl = card.querySelector('.text-xs.text-gray-500');
+            const currentEl = Array.from(card.querySelectorAll('.text-sm.text-gray-500'))
+              .find(el => el.textContent.includes('Current:'));
+            
+            if (!saveEl || !yearEl || !currentEl) return;
+            
+            const currentMatch = currentEl.textContent.match(/\$([\d,.]+)/);
+            if (!currentMatch) return;
+            
+            const currentTotal = parseFloat(currentMatch[1].replace(/,/g, ''));
+            const monthlySpend = currentTotal / numMonths;
+            
+            // Determine the savings percentage from the original calculation
+            const origSave = parseFloat(saveEl.textContent.replace(/[^0-9.]/g, ''));
+            const origPercent = origSave / currentTotal;
+            
+            // Recalculate
+            const monthlySavings = monthlySpend * origPercent;
+            const yearlySavings = monthlySavings * 12;
+            totalMonthlySavings += monthlySavings;
+            
+            // Update display
+            currentEl.textContent = `Current: $${monthlySpend.toFixed(0)}/mo`;
+            saveEl.textContent = `Save: $${monthlySavings.toFixed(0)}/mo`;
+            yearEl.textContent = `$${yearlySavings.toFixed(0)}/year`;
+          });
+
+          // Fix the Total Savings Potential summary
+          if (totalMonthlySavings > 0) {
+            const totalMonthlyEl = document.querySelector('.text-4xl.font-bold.mt-2');
+            const totalYearlyEl = document.querySelector('.text-2xl.font-semibold.mt-2');
+            if (totalMonthlyEl && totalMonthlyEl.textContent.includes('$')) {
+              totalMonthlyEl.textContent = `$${totalMonthlySavings.toFixed(0)}/month`;
+            }
+            if (totalYearlyEl && totalYearlyEl.textContent.includes('$')) {
+              totalYearlyEl.textContent = `$${(totalMonthlySavings * 12).toFixed(0)}/year`;
+            }
+          }
+        }
+
+        // Initialize
+        let initialized = false;
+        const observer = new MutationObserver(() => {
+          const sectors = document.querySelectorAll('.recharts-pie-sector path');
+          const cards = getAllCategoryCards();
+          if (sectors.length && cards.length && !initialized) {
+            initialized = true;
+            setTimeout(() => {
+              setupInteractivity();
+              fixSavingsCalculations();
+            }, 300);
+          }
+        });
+        observer.observe(document.getElementById('root'), { childList: true, subtree: true });
+      })();
+    </script>
   </body>
 </html>

@@ -1,0 +1,329 @@
+/* Apple-style overrides for CIBC Spending Analyzer */
+
+:root {
+  --apple-bg: #fbfbfd;
+  --apple-card: rgba(255, 255, 255, 0.72);
+  --apple-border: rgba(0, 0, 0, 0.06);
+  --apple-text: #1d1d1f;
+  --apple-muted: #6e6e73;
+  --apple-accent: #0071e3;
+  --apple-radius: 16px;
+  --apple-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Base overrides */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
+  background: var(--apple-bg) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Cards & containers */
+.rounded-2xl, .rounded-xl, .rounded-lg {
+  border-radius: var(--apple-radius) !important;
+  border: 1px solid var(--apple-border) !important;
+  background: var(--apple-card) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--apple-shadow) !important;
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.3s ease !important;
+}
+
+.rounded-2xl:hover, .rounded-xl:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Headings */
+h1, .text-4xl, .text-3xl {
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  color: var(--apple-text) !important;
+}
+
+h2, .text-2xl {
+  font-weight: 600 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--apple-text) !important;
+}
+
+/* Muted text */
+.text-gray-500, .text-gray-600 {
+  color: var(--apple-muted) !important;
+}
+
+/* Primary buttons */
+.bg-blue-600, button[class*="bg-blue"] {
+  background: var(--apple-accent) !important;
+  border-radius: 12px !important;
+  border: none !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+}
+
+.bg-blue-600:hover, button[class*="bg-blue"]:hover {
+  background: #0077ed !important;
+  transform: scale(1.02);
+}
+
+/* Green action buttons */
+.bg-green-600, button[class*="bg-green"] {
+  background: #30d158 !important;
+  border-radius: 12px !important;
+  border: none !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+}
+
+.bg-green-600:hover, button[class*="bg-green"]:hover {
+  background: #28c04e !important;
+  transform: scale(1.02);
+}
+
+/* Gradient backgrounds → clean Apple gradient */
+.bg-gradient-to-br, .bg-gradient-to-r {
+  background: linear-gradient(135deg, #f5f5f7 0%, #fbfbfd 100%) !important;
+}
+
+/* Summary/stat cards */
+.shadow-lg {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid var(--apple-border) !important;
+  border-radius: 14px !important;
+}
+
+/* Input styling */
+input[type="file"], input, select, textarea {
+  border-radius: 10px !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  padding: 0.6rem 1rem !important;
+  font-size: 0.95rem !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none !important;
+  border-color: var(--apple-accent) !important;
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15) !important;
+}
+
+/* Table styling */
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+th {
+  background: #f5f5f7 !important;
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: var(--apple-muted) !important;
+}
+
+tr {
+  transition: background 0.15s ease !important;
+}
+
+tr:hover {
+  background: rgba(0, 113, 227, 0.03) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* Recharts Bar Chart (Top Merchants) */
+.recharts-cartesian-grid line {
+  stroke: rgba(0, 0, 0, 0.06) !important;
+  stroke-dasharray: none !important;
+}
+
+.recharts-bar-rectangle path,
+.recharts-bar-rectangle rect {
+  rx: 6;
+  ry: 6;
+  filter: none;
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+.recharts-bar-rectangle:hover path,
+.recharts-bar-rectangle:hover rect {
+  filter: brightness(1.1) drop-shadow(0 2px 8px rgba(0,0,0,0.15));
+}
+
+.recharts-rectangle {
+  rx: 6 !important;
+  ry: 6 !important;
+}
+
+/* Axis labels */
+.recharts-cartesian-axis-tick-value {
+  font-size: 0.8rem !important;
+  fill: var(--apple-muted) !important;
+  font-weight: 500 !important;
+}
+
+.recharts-yAxis .recharts-cartesian-axis-tick-value {
+  font-size: 0.78rem !important;
+  fill: var(--apple-text) !important;
+  font-weight: 500 !important;
+}
+
+/* Tooltip */
+.recharts-tooltip-wrapper {
+  filter: drop-shadow(0 4px 20px rgba(0,0,0,0.12)) !important;
+}
+
+.recharts-default-tooltip {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border-radius: 12px !important;
+  padding: 0.75rem 1rem !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.recharts-tooltip-label {
+  font-weight: 600 !important;
+  color: var(--apple-text) !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.recharts-tooltip-item {
+  color: var(--apple-muted) !important;
+  font-size: 0.85rem !important;
+}
+
+/* Section containers */
+.bg-gray-50.rounded-xl {
+  background: var(--apple-card) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid var(--apple-border) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--apple-shadow) !important;
+}
+
+/* Section headings */
+.text-2xl.font-bold.text-gray-800 {
+  color: var(--apple-text) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.025em !important;
+}
+
+/* Subtitle text */
+.text-sm.text-gray-600 {
+  color: var(--apple-muted) !important;
+}
+
+/* Recharts Pie Chart Legend */
+.recharts-default-legend {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+  padding: 1rem 0 !important;
+}
+
+.recharts-legend-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.6rem !important;
+  margin: 0 !important;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 10px !important;
+  transition: background 0.15s ease !important;
+}
+
+.recharts-legend-item:hover {
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+
+.recharts-legend-item-text {
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--apple-text) !important;
+}
+
+.recharts-legend-wrapper {
+  padding-top: 1rem !important;
+}
+
+/* Make the legend icon (color swatch) larger and rounder */
+.recharts-surface {
+  border-radius: 3px !important;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --apple-bg: #000000;
+    --apple-card: rgba(28, 28, 30, 0.72);
+    --apple-border: rgba(255, 255, 255, 0.08);
+    --apple-text: #f5f5f7;
+    --apple-muted: #a1a1a6;
+  }
+
+  .bg-gradient-to-br, .bg-gradient-to-r {
+    background: linear-gradient(135deg, #1c1c1e 0%, #000000 100%) !important;
+  }
+
+  .bg-white, .bg-gray-50 {
+    background: rgba(28, 28, 30, 0.72) !important;
+  }
+
+  th {
+    background: rgba(44, 44, 46, 0.8) !important;
+  }
+
+  input, select, textarea {
+    background: rgba(44, 44, 46, 0.6) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #f5f5f7 !important;
+  }
+
+  .recharts-legend-item:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .recharts-cartesian-grid line {
+    stroke: rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .recharts-default-tooltip {
+    background: rgba(28, 28, 30, 0.95) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .recharts-tooltip-label {
+    color: #f5f5f7 !important;
+  }
+
+  .bg-gray-50.rounded-xl {
+    background: rgba(28, 28, 30, 0.72) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+}
