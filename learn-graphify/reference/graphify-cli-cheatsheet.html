@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Graphify CLI Cheatsheet</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="../lessons/0001-your-first-knowledge-graph.html" class="lesson-back-top" title="Back to Lesson 1"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Lessons</a><a href="../lessons/index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span></span></nav>
+
+<h1>Graphify CLI Cheatsheet</h1>
+
+<div class="lesson-meta">
+  Reference · v0.8.39
+</div>
+
+<h2>Core Workflow</h2>
+
+<table>
+  <tr><th>Command</th><th>What it does</th></tr>
+  <tr><td><code>graphify .</code></td><td>Full build: extract + cluster + report. First time on a project.</td></tr>
+  <tr><td><code>graphify update .</code></td><td>Re-extract changed files, update graph. Fast refresh.</td></tr>
+  <tr><td><code>graphify update . --force</code></td><td>Force overwrite even if new graph has fewer nodes (post-refactor).</td></tr>
+  <tr><td><code>graphify watch .</code></td><td>Watch for changes, auto-rebuild.</td></tr>
+  <tr><td><code>graphify hook install</code></td><td>Git post-commit hook for automatic updates.</td></tr>
+</table>
+
+<h2>Query &amp; Explore</h2>
+
+<table>
+  <tr><th>Command</th><th>What it does</th></tr>
+  <tr><td><code>graphify path "A" "B"</code></td><td>Shortest path between two nodes.</td></tr>
+  <tr><td><code>graphify explain "X"</code></td><td>Plain-language explanation of a node + neighbors.</td></tr>
+  <tr><td><code>graphify benchmark</code></td><td>Measure token reduction vs. naive full-file approach.</td></tr>
+  <tr><td><code>graphify export callflow-html</code></td><td>Mermaid-based architecture page with call-flow diagrams.</td></tr>
+</table>
+
+<h2>Platform Integration</h2>
+
+<table>
+  <tr><th>Command</th><th>What it does</th></tr>
+  <tr><td><code>graphify kiro install</code></td><td>Project-scoped: writes <code>.kiro/skills/graphify/</code></td></tr>
+  <tr><td><code>graphify install</code></td><td>Claude Code: writes to CLAUDE.md + PreToolUse hook</td></tr>
+  <tr><td><code>graphify install --platform codex</code></td><td>Codex: writes to AGENTS.md</td></tr>
+</table>
+
+<h2>Multi-Repo</h2>
+
+<table>
+  <tr><th>Command</th><th>What it does</th></tr>
+  <tr><td><code>graphify . --global</code></td><td>Also merge into global graph (~/.graphify/global-graph.json)</td></tr>
+  <tr><td><code>graphify global list</code></td><td>List repos in the global graph.</td></tr>
+  <tr><td><code>graphify merge-graphs g1.json g2.json</code></td><td>Merge two graph files into one cross-repo graph.</td></tr>
+  <tr><td><code>graphify clone &lt;github-url&gt;</code></td><td>Clone a repo locally for graphing.</td></tr>
+</table>
+
+<h2>Output Files</h2>
+
+<table>
+  <tr><th>File</th><th>Purpose</th><th>Consumer</th></tr>
+  <tr><td><code>graphify-out/graph.json</code></td><td>Full graph: nodes + edges</td><td>AI assistant</td></tr>
+  <tr><td><code>graphify-out/GRAPH_REPORT.md</code></td><td>Summary: communities, key nodes, questions</td><td>Human + AI</td></tr>
+  <tr><td><code>graphify-out/graph.html</code></td><td>Interactive visualization</td><td>Human (browser)</td></tr>
+</table>
+
+<h2>Flags</h2>
+
+<table>
+  <tr><th>Flag</th><th>Effect</th></tr>
+  <tr><td><code>--no-cluster</code></td><td>Skip LLM clustering, write raw extraction only (fast, no API key needed).</td></tr>
+  <tr><td><code>--no-viz</code></td><td>Skip graph.html generation (large graphs, CI).</td></tr>
+  <tr><td><code>--no-label</code></td><td>Keep "Community N" placeholders instead of LLM-named clusters.</td></tr>
+  <tr><td><code>--backend=&lt;name&gt;</code></td><td>LLM backend for clustering (auto-detect by default).</td></tr>
+  <tr><td><code>--max-concurrency N</code></td><td>Parallel extraction chunks (default 4, set 1 for local LLMs).</td></tr>
+</table>
+
+<nav class="lesson-nav">
+  <a href="../lessons/0001-your-first-knowledge-graph.html">← Lesson 1</a>
+  <a href="../lessons/index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="../lessons/0002-capture-your-baseline.html">Lesson 2 →</a>
+</nav>
+
+<script src="../assets/copy-button.js"></script>
+
+</body>
+</html>

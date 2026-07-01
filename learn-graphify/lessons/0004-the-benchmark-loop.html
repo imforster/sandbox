@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4: The Benchmark Loop</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0003-querying-the-graph.html" class="lesson-back-top" title="Querying the Graph"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-keeping-the-graph-fresh.html" class="lesson-next-top" title="Keeping the Graph Fresh">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>The Benchmark Loop</h1>
+
+<div class="lesson-meta">
+  Lesson 4 · Learn Graphify · ~8 minutes
+</div>
+
+<p>You've built a graph and captured your baseline. Now measure the theoretical maximum savings — and learn how to use benchmarking as a feedback loop for graph quality.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you can run <code>graphify benchmark</code>, interpret the output, and use it to decide whether your graph needs tuning.</p>
+</div>
+
+<h2>What the Benchmark Measures</h2>
+
+<p>The <code>benchmark</code> command compares two approaches:</p>
+
+<ol>
+  <li><strong>Naive approach:</strong> Read every source file into context (total token count of your codebase)</li>
+  <li><strong>Graph approach:</strong> Read <code>graph.json</code> into context (token count of the graph)</li>
+</ol>
+
+<p>The ratio between these is your <strong>theoretical token reduction</strong>. It represents the maximum possible savings if the agent never needs to read a source file at all.</p>
+
+<pre><code>graphify benchmark</code></pre>
+
+<h2>Reading the Output</h2>
+
+<pre><code># Example output:
+# Source corpus: 1,247,832 tokens (423 files)
+# Graph size:      18,442 tokens
+# Reduction: 67.7x
+# 
+# Largest communities by token weight:
+#   Test Framework Assertions: 4,211 tokens (22.8%)
+#   MongoDB Connection Pool:   3,102 tokens (16.8%)
+#   Parametrize Helpers:       2,889 tokens (15.7%)</code></pre>
+
+<table>
+  <tr><th>Field</th><th>What it tells you</th></tr>
+  <tr><td><strong>Source corpus</strong></td><td>What the agent would consume without a graph</td></tr>
+  <tr><td><strong>Graph size</strong></td><td>What the agent actually consumes with graph context</td></tr>
+  <tr><td><strong>Reduction</strong></td><td>Theoretical max savings (your ceiling)</td></tr>
+  <tr><td><strong>Community weights</strong></td><td>Where the graph spends its tokens — heavily-connected areas cost more</td></tr>
+</table>
+
+<h2>Theoretical vs. Actual</h2>
+
+<p>Your actual savings will be lower than the benchmark number. The agent still reads <em>some</em> source files after consulting the graph — it just reads fewer of them, and the right ones.</p>
+
+<p>Rules of thumb:</p>
+<ul>
+  <li><strong>Benchmark says 60x+:</strong> Expect actual savings of 10x–20x in practice</li>
+  <li><strong>Benchmark says 10x–30x:</strong> Expect actual savings of 3x–8x</li>
+  <li><strong>Benchmark says &lt;5x:</strong> Small codebase — the graph adds minimal value; the agent could just read everything</li>
+</ul>
+
+<div class="callout">
+  <div class="callout-title">Note</div>
+  <p>If your benchmark is under 5x, your project might be small enough that Graphify isn't worth the overhead. That's fine — it's a tool for scale.</p>
+</div>
+
+<h2>Using Benchmarks as a Feedback Loop</h2>
+
+<p>Run <code>graphify benchmark</code> after each significant change to your graph config:</p>
+
+<ol>
+  <li>After initial build — record your baseline ratio</li>
+  <li>After excluding files (tests, generated code) — did the ratio improve?</li>
+  <li>After a major refactor — did the graph grow proportionally or blow up?</li>
+  <li>After switching clustering backends — did community quality change?</li>
+</ol>
+
+<p>If the ratio drops significantly after a code change, the graph may be bloated. Consider excluding generated files or using <code>--no-cluster</code> for a lean extraction.</p>
+
+<h2>Excluding Files for Better Ratios</h2>
+
+<p>Large codebases often have files that add noise without value:</p>
+
+<pre><code># Create a .graphifyignore file (same syntax as .gitignore)
+echo "*.generated.py
+docs/
+__pycache__/
+*.pyc" > .graphifyignore
+
+# Rebuild
+graphify .</code></pre>
+
+<p>Re-run <code>graphify benchmark</code> after excluding — you want a graph that's dense with signal, not padded with generated code.</p>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">If <code>graphify benchmark</code> reports a 45x reduction, what actual savings should you expect?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Exactly 45x fewer tokens in every AI session</li>
+    <li onclick="checkQuiz(this, true)">Roughly 8x–15x in practice, since the agent still reads some files</li>
+    <li onclick="checkQuiz(this, false)">Zero savings — the benchmark only measures disk space</li>
+    <li onclick="checkQuiz(this, false)">45x on first query, then diminishing returns each subsequent query</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">When should you <em>not</em> bother with Graphify?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">When your project uses Python instead of TypeScript</li>
+    <li onclick="checkQuiz(this, true)">When the benchmark ratio is under 5x — the codebase is small enough to read directly</li>
+    <li onclick="checkQuiz(this, false)">When you're using Claude Code instead of Kiro CLI</li>
+    <li onclick="checkQuiz(this, false)">When your project has more than 3 contributors</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Run <code>graphify benchmark</code> on your project</li>
+  <li>Record the reduction ratio alongside your Lesson 2 baseline numbers</li>
+  <li>If the ratio is under 10x, consider whether the project needs a graph at all</li>
+  <li>Try adding a <code>.graphifyignore</code> and re-benchmarking — see if the ratio improves</li>
+</ol>
+
+<nav class="lesson-nav">
+  <a href="0003-querying-the-graph.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0005-keeping-the-graph-fresh.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — try reviewing the section above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+
+</body>
+</html>

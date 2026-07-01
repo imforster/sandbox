@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 8: Pattern Extraction</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0007-multi-repo-graphs.html" class="lesson-back-top" title="Multi-Repo Graphs"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0009-integrating-with-ci.html" class="lesson-next-top" title="Integrating with CI">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Pattern Extraction</h1>
+
+<div class="lesson-meta">
+  Lesson 8 · Learn Graphify · ~10 minutes
+</div>
+
+<p>The graph doesn't just show you what exists — it reveals the <em>patterns</em> in how your code is organized. This lesson teaches you to extract those patterns and use them as constraints for AI-generated code.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you can identify architectural patterns from graph structure and feed them to the AI as explicit constraints — producing code that matches your project's conventions on the first attempt.</p>
+</div>
+
+<h2>What Are Patterns in a Graph?</h2>
+
+<p>Patterns are structural regularities. In a well-organized codebase, you'll see:</p>
+
+<ul>
+  <li><strong>Isomorphic subgraphs:</strong> Multiple file groups with the same shape (e.g., every operator has a test file, a utils file, and an __init__.py)</li>
+  <li><strong>Consistent import chains:</strong> All test files import the same set of framework modules</li>
+  <li><strong>Fan-out patterns:</strong> One base class with many inheritors following the same structure</li>
+  <li><strong>Layered dependencies:</strong> Tests → framework → utilities → driver (never backwards)</li>
+</ul>
+
+<h2>Finding Patterns in GRAPH_REPORT.md</h2>
+
+<p>The report's community descriptions hint at patterns. Look for:</p>
+
+<pre><code># In GRAPH_REPORT.md, you might see:
+#
+# Community: "Update Operator Tests"
+#   Key nodes: test_min_comparisons, test_max_comparisons, test_inc_basic, ...
+#   Common imports: framework.assertions, framework.test_case, framework.parametrize
+#   Structure: Each file inherits UpdateTestCase, defines TESTS list, has one test function</code></pre>
+
+<p>That last line is the pattern. Extract it explicitly.</p>
+
+<h2>Articulating Patterns as Constraints</h2>
+
+<p>Once you identify a pattern, express it as a constraint document the AI can reference:</p>
+
+<pre><code># .graphify-patterns.md
+
+## Update Operator Test Pattern
+Every operator test file in the "Update Operator Tests" community:
+1. Imports: framework.assertions, framework.test_case, framework.parametrize
+2. Defines a dataclass extending UpdateTestCase (frozen=True)
+3. Has a single TESTS: list[TestCase] at module level
+4. Has a single parametrized test function using pytest_params()
+5. Test IDs are prefixed with the operator name (e.g., min_, max_)
+6. Module docstring describes what the file tests
+7. File naming: test_{operator}_{aspect}.py</code></pre>
+
+<p>Feed this to the AI alongside the graph for highly consistent output.</p>
+
+<h2>Using the Graph to Detect Pattern Violations</h2>
+
+<p>Ask the AI to audit against the extracted pattern:</p>
+
+<pre><code>"Using the graph, find all test files in the 'Update Operator Tests' community
+that DON'T import framework.parametrize. These are likely violating
+our standard pattern."</code></pre>
+
+<p>Or check for structural drift:</p>
+
+<pre><code>"Compare the import edges of test_min_comparisons.py vs test_inc_basic.py.
+Do they follow the same pattern? What's different?"</code></pre>
+
+<h2>Architectural Boundaries</h2>
+
+<p>The graph makes boundaries visible. A well-architected project has clear layers with dependencies flowing in one direction:</p>
+
+<pre><code># Expected dependency direction:
+# test files → framework → utilities → driver
+#
+# Violations (circular or backwards dependencies):
+# "framework.assertions imports test_helpers" ← boundary violation</code></pre>
+
+<p>Ask the AI to check for these:</p>
+
+<pre><code>"Using the graph edges, are there any imports that flow backwards —
+from framework/ into tests/, or from utilities/ back into framework/?"</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">Key Insight</div>
+  <p>Patterns extracted from the graph are more reliable than patterns you <em>think</em> exist. The graph shows what the code actually does, not what the README says it should do. Trust the graph over documentation when they conflict.</p>
+</div>
+
+<h2>Pattern Extraction Workflow</h2>
+
+<ol>
+  <li><strong>Identify a community</strong> with 5+ nodes that look similar</li>
+  <li><strong>List common edges:</strong> What imports, inherits, and calls do they share?</li>
+  <li><strong>Articulate the pattern</strong> in a constraint document</li>
+  <li><strong>Validate:</strong> Do all members match? Note exceptions.</li>
+  <li><strong>Use as prompt context</strong> when generating new code in that community</li>
+</ol>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">What makes graph-extracted patterns more reliable than documented conventions?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, true)">The graph shows actual code structure, which may have drifted from documentation</li>
+    <li onclick="checkQuiz(this, false)">Graph patterns are automatically enforced by tree-sitter at parse time</li>
+    <li onclick="checkQuiz(this, false)">Documentation cannot describe structural patterns, only behavioral ones</li>
+    <li onclick="checkQuiz(this, false)">The LLM that clusters communities also validates correctness</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">How do you use an extracted pattern to improve AI-generated code?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Add it to .graphifyignore so the AI only sees conforming files</li>
+    <li onclick="checkQuiz(this, true)">Feed it as an explicit constraint in the prompt alongside the graph</li>
+    <li onclick="checkQuiz(this, false)">Patterns are automatically applied when the graph is loaded</li>
+    <li onclick="checkQuiz(this, false)">Run graphify lint to enforce the pattern before generating code</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Open <code>GRAPH_REPORT.md</code> and pick the largest community</li>
+  <li>Identify the structural pattern: shared imports, inheritance, naming</li>
+  <li>Write it down as a constraint document (3-5 rules)</li>
+  <li>Ask the AI to generate a new file following that pattern — does it match?</li>
+</ol>
+
+<nav class="lesson-nav">
+  <a href="0007-multi-repo-graphs.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0009-integrating-with-ci.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — try reviewing the section above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+
+</body>
+</html>

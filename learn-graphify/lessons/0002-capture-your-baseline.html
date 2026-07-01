@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 2: Capture Your Baseline</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0001-your-first-knowledge-graph.html" class="lesson-back-top" title="Your First Knowledge Graph"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0003-querying-the-graph.html" class="lesson-next-top" title="Querying the Graph">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Capture Your Baseline</h1>
+
+<div class="lesson-meta">
+  Lesson 2 · Learn Graphify · ~15 minutes
+</div>
+
+<p>You can't prove Graphify helps without a "before" measurement. This lesson sets up a lightweight evaluation protocol you'll run <em>before</em> building your first graph — so you have real numbers to compare against.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you'll have 2-3 baseline task measurements that you can re-run with Graphify later to produce a concrete before/after comparison.</p>
+</div>
+
+<h2>Why Evaluate</h2>
+
+<p>The published Graphify benchmarks report <a href="https://www.roborhythms.com/graphify-review/">6x–49x token reduction</a> on 100–500 file repos. But those numbers measure a specific thing: tokens consumed during code discovery (grep/glob). Your actual workflow might benefit differently — fewer round-trips, higher first-attempt correctness, faster pattern reuse. You need your own numbers.</p>
+
+<h2>What to Measure</h2>
+
+<p>Pick metrics that matter for your stated goal (less back-and-forth, more predictable outcomes):</p>
+
+<table>
+  <tr>
+    <th>Metric</th>
+    <th>How to capture</th>
+    <th>Why it matters</th>
+  </tr>
+  <tr>
+    <td><strong>Round-trips</strong></td>
+    <td>Count human→agent message pairs until task completes</td>
+    <td>Direct measure of "back and forth"</td>
+  </tr>
+  <tr>
+    <td><strong>Token usage</strong></td>
+    <td><code>graphify benchmark</code> (after graph exists) or Anthropic dashboard</td>
+    <td>Cost proxy; also correlates with context bloat</td>
+  </tr>
+  <tr>
+    <td><strong>First-attempt correctness</strong></td>
+    <td>Did the agent's first code output pass tests / match patterns? (yes/no)</td>
+    <td>Measures whether graph context improves precision</td>
+  </tr>
+  <tr>
+    <td><strong>Wall-clock time</strong></td>
+    <td>Start to "task done" timestamp</td>
+    <td>End-to-end productivity signal</td>
+  </tr>
+</table>
+
+<div class="callout">
+  <div class="callout-title">Note</div>
+  <p>Keep it simple. You don't need all four. Pick <strong>round-trips</strong> (easiest to count) plus one other. Resist the urge to over-instrument.</p>
+</div>
+
+<h2>Pick Your Eval Tasks</h2>
+
+<p>Choose 2-3 tasks that are <strong>representative</strong> of your real work on the DocumentDB project and <strong>repeatable</strong> (you could give the same prompt to the agent twice and compare). Good candidates:</p>
+
+<ol>
+  <li><strong>Pattern reuse task</strong> — "Write a new test file for operator X following the existing pattern in operator Y." The agent needs to discover the pattern first.</li>
+  <li><strong>Discovery task</strong> — "What assertion helpers are available and when should I use each one?" The agent needs to navigate the framework.</li>
+  <li><strong>Integration task</strong> — "Add a new error code constant and use it in an existing test." Requires finding the right file, understanding conventions, and making a change.</li>
+</ol>
+
+<div class="callout warning">
+  <div class="callout-title">Important</div>
+  <p>Run these tasks <em>without</em> Graphify first. That's the whole point — you need the baseline before the intervention.</p>
+</div>
+
+<h2>The Eval Record Template</h2>
+
+<p>For each task, record this in a simple markdown file:</p>
+
+<pre><code># Eval: [Task Name]
+
+## Setup
+- Date: YYYY-MM-DD
+- Tool: Claude Code / Kiro CLI
+- Graphify: off / on
+- Project: DocumentDB Perf Tests
+
+## Prompt
+[Exact prompt you gave the agent]
+
+## Results
+- Round-trips: N
+- First-attempt correct: yes/no
+- Wall-clock: Xm Ys
+- Notes: [anything notable about the session]</code></pre>
+
+<h2>Step-by-Step: Run Your Baseline</h2>
+
+<p>Create an eval directory in this workspace:</p>
+
+<pre><code>mkdir -p ~/Graphify/evals</code></pre>
+
+<p>Pick your 2-3 tasks from the list above (or invent your own — they should match real work you'd do this week).</p>
+
+<p>Open a fresh Kiro CLI or Claude Code session on the DocumentDB project — <strong>without</strong> building a Graphify graph first.</p>
+
+<p>Run each task. Count round-trips. Note if the first output was correct. Record wall-clock time.</p>
+
+<p>Save each result:</p>
+
+<pre><code>~/Graphify/evals/baseline-[task-slug].md</code></pre>
+
+<h2>After the Baseline</h2>
+
+<p>Once you have baseline numbers, you'll:</p>
+<ol>
+  <li>Build your Graphify graph (Lesson 1 steps)</li>
+  <li>Re-run the <em>same</em> tasks with graph context active</li>
+  <li>Compare side-by-side</li>
+</ol>
+
+<p>You'll also run <code>graphify benchmark</code> after building the graph — it measures the theoretical token reduction (graph size vs. raw file corpus). This gives you the "max possible" savings; your actual savings will be lower but should track the same direction.</p>
+
+<h2>Expected Results</h2>
+
+<p>Based on <a href="https://www.roborhythms.com/graphify-review/">independent benchmarks</a> for repos in the 100–500 file range:</p>
+<ul>
+  <li>Token savings: 6x–15x</li>
+  <li>Round-trip reduction: 2x–4x (agent finds the right files faster, fewer "let me search for that" cycles)</li>
+  <li>First-attempt correctness: likely improves for pattern-reuse tasks where the agent can see existing conventions in the graph</li>
+</ul>
+
+<p>If your DocumentDB project is 500+ files, you may see higher savings.</p>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">Why must the baseline be captured <em>before</em> building the Graphify graph?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Building the graph corrupts the original source files irreversibly</li>
+    <li onclick="checkQuiz(this, true)">You need an uncontaminated comparison point to prove improvement</li>
+    <li onclick="checkQuiz(this, false)">The graph build process consumes tokens that skew measurements</li>
+    <li onclick="checkQuiz(this, false)">Graphify disables non-graph search after the initial graph build</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Which metric most directly measures "less back and forth with the agent"?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Token usage reported on the Anthropic billing dashboard page</li>
+    <li onclick="checkQuiz(this, false)">Wall-clock time from the first prompt to the completed task</li>
+    <li onclick="checkQuiz(this, true)">Round-trips counted as human-to-agent message pairs per task</li>
+    <li onclick="checkQuiz(this, false)">First-attempt correctness measured as a binary pass or fail</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Run <code>mkdir -p ~/Graphify/evals</code></li>
+  <li>Pick 2-3 eval tasks representative of your DocumentDB work</li>
+  <li>Run them in a fresh session <strong>without</strong> Graphify and record results</li>
+  <li>Save as <code>~/Graphify/evals/baseline-*.md</code></li>
+</ol>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p>Read <a href="https://www.roborhythms.com/graphify-review/">Graphify Review: The 71x Claude Code Token Savings</a> — specifically the "Where Does the 71x Token Savings Claim Come From?" section for the methodology behind the published numbers and realistic expectations by codebase size.</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0001-your-first-knowledge-graph.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0003-querying-the-graph.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+
+  items.forEach(item => {
+    item.style.pointerEvents = 'none';
+    item.classList.remove('correct', 'incorrect');
+  });
+
+  li.classList.add(correct ? 'correct' : 'incorrect');
+
+  feedback.textContent = correct
+    ? '✓ Correct!'
+    : '✗ Not quite — try reviewing the section above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+
+  if (!correct) {
+    setTimeout(() => {
+      items.forEach(item => {
+        if (!item.classList.contains('incorrect')) {
+          item.style.pointerEvents = 'auto';
+        }
+      });
+    }, 800);
+  }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+
+</body>
+</html>

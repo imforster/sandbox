@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 7: Multi-Repo Graphs</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0006-graph-driven-prompts.html" class="lesson-back-top" title="Graph-Driven Prompts"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0008-pattern-extraction.html" class="lesson-next-top" title="Pattern Extraction">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Multi-Repo Graphs</h1>
+
+<div class="lesson-meta">
+  Lesson 7 · Learn Graphify · ~10 minutes
+</div>
+
+<p>Real projects span multiple repositories. A test framework in one repo, application code in another, shared utilities in a third. This lesson covers building cross-repo graphs so your AI agent can navigate between them.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you can give the AI a unified graph that spans multiple repos — so it understands how your test framework connects to the code it tests.</p>
+</div>
+
+<h2>The Global Graph</h2>
+
+<p>By default, each <code>graphify .</code> produces a project-local graph. The <code>--global</code> flag also merges the result into a shared graph at <code>~/.graphify/global-graph.json</code>:</p>
+
+<pre><code># Build project graph AND merge into global
+graphify . --global</code></pre>
+
+<p>Do this for each repo you want in the unified view. The global graph accumulates nodes from every project.</p>
+
+<pre><code># Check what's in the global graph
+graphify global list</code></pre>
+
+<h2>When Multi-Repo Matters</h2>
+
+<p>You need a cross-repo graph when the AI needs to understand boundaries that span repositories:</p>
+
+<ul>
+  <li>A test framework repo consumed by multiple application repos</li>
+  <li>A shared utilities package imported across services</li>
+  <li>A monorepo split into separate repos (e.g., after extraction)</li>
+  <li>Library code you own that downstream repos depend on</li>
+</ul>
+
+<div class="callout">
+  <div class="callout-title">Note</div>
+  <p>For your DocumentDB project, this might mean graphing both the performance test repo and the framework/utilities it imports — so the agent understands the full call chain from test case to assertion helper.</p>
+</div>
+
+<h2>Merging Graphs Manually</h2>
+
+<p>If you don't want a persistent global graph, merge two graph files on demand:</p>
+
+<pre><code># Merge two project graphs into a combined file
+graphify merge-graphs \
+  ~/project-a/graphify-out/graph.json \
+  ~/project-b/graphify-out/graph.json \
+  -o combined-graph.json</code></pre>
+
+<p>The merged graph shows cross-repo edges — imports that cross repository boundaries become visible connections.</p>
+
+<h2>Graphing External Repos</h2>
+
+<p>Need to graph a repo you haven't cloned yet?</p>
+
+<pre><code># Clone and graph in one step
+graphify clone https://github.com/org/shared-framework.git</code></pre>
+
+<p>This clones to a temp directory, extracts the graph, and merges it globally. Useful for quickly adding context about a dependency without keeping a full local checkout.</p>
+
+<h2>Working with the Combined Graph</h2>
+
+<p>Once you have a multi-repo graph, queries work across boundaries:</p>
+
+<pre><code># Find path from your test to a framework utility
+graphify path "test_min_comparisons" "assertResult" --graph combined-graph.json
+
+# Explain a node in the framework repo
+graphify explain "BaseTestCase" --graph ~/.graphify/global-graph.json</code></pre>
+
+<p>In an AI session, load the global graph instead of the project-local one for cross-repo awareness.</p>
+
+<h2>Trade-offs</h2>
+
+<table>
+  <tr><th>Approach</th><th>Size</th><th>Freshness</th><th>Use case</th></tr>
+  <tr><td>Project-local graph</td><td>Small, focused</td><td>Easy to keep fresh</td><td>Single-repo tasks</td></tr>
+  <tr><td>Global graph</td><td>Larger</td><td>Needs rebuild per repo</td><td>Cross-repo navigation</td></tr>
+  <tr><td>On-demand merge</td><td>You control</td><td>Point-in-time</td><td>Specific investigations</td></tr>
+</table>
+
+<div class="callout warning">
+  <div class="callout-title">Token Budget</div>
+  <p>A multi-repo graph is bigger. If your combined graph exceeds 50k tokens, the savings ratio drops. Monitor with <code>graphify benchmark --graph combined-graph.json</code> — if the graph itself is a significant fraction of the codebase tokens, you may be better off with scoped project graphs.</p>
+</div>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">What does the <code>--global</code> flag do when building a graph?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Makes the graph available to all users on the system</li>
+    <li onclick="checkQuiz(this, true)">Merges the project graph into a shared graph at ~/.graphify/global-graph.json</li>
+    <li onclick="checkQuiz(this, false)">Pushes the graph to a remote Neo4j database</li>
+    <li onclick="checkQuiz(this, false)">Installs the Graphify skill globally for all projects</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">When should you <em>not</em> use a multi-repo graph?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">When repos share common imports or utilities</li>
+    <li onclick="checkQuiz(this, true)">When the combined graph is so large it negates the token savings</li>
+    <li onclick="checkQuiz(this, false)">When you're working on a single feature in one repo</li>
+    <li onclick="checkQuiz(this, false)">Both B and C are valid reasons</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Run <code>graphify . --global</code> on your primary project</li>
+  <li>If you have a second related repo, graph it with <code>--global</code> too</li>
+  <li>Run <code>graphify global list</code> to confirm both appear</li>
+  <li>Try <code>graphify path</code> between a node in each repo</li>
+</ol>
+
+<nav class="lesson-nav">
+  <a href="0006-graph-driven-prompts.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0008-pattern-extraction.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — try reviewing the section above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+
+</body>
+</html>

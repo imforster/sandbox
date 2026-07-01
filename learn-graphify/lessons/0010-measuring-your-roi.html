@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 10: Measuring Your ROI</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0009-integrating-with-ci.html" class="lesson-back-top" title="Integrating with CI"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span></span></nav>
+
+<h1>Measuring Your ROI</h1>
+
+<div class="lesson-meta">
+  Lesson 10 · Learn Graphify · ~15 minutes
+</div>
+
+<p>You captured a baseline in Lesson 2. You've been using Graphify for several sessions. Now it's time to close the loop — re-run the same tasks, compare results, and decide whether the investment is paying off.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you have concrete data showing whether Graphify improves your development workflow — and if it does, by how much.</p>
+</div>
+
+<h2>The Comparison Protocol</h2>
+
+<p>Use the exact same tasks from your Lesson 2 baseline. This is critical — different tasks produce incomparable numbers.</p>
+
+<ol>
+  <li>Start a fresh AI session with <code>/graphify</code> loaded</li>
+  <li>Run the same prompt you used in the baseline</li>
+  <li>Record the same metrics: round-trips, first-attempt correctness, wall-clock time</li>
+  <li>Compare side-by-side</li>
+</ol>
+
+<h2>Recording the "After" Eval</h2>
+
+<pre><code># Eval: [Task Name] — WITH GRAPHIFY
+
+## Setup
+- Date: YYYY-MM-DD
+- Tool: Kiro CLI
+- Graphify: on (graph loaded via /graphify)
+- Project: DocumentDB Perf Tests
+- Graph freshness: updated [today / N days ago]
+
+## Prompt
+[Exact same prompt as baseline]
+
+## Results
+- Round-trips: N
+- First-attempt correct: yes/no
+- Wall-clock: Xm Ys
+- Files the agent read: N (vs. baseline)
+- Notes: [observations about behavior differences]
+
+## Comparison
+- Round-trip delta: N → M (X% reduction)
+- Correctness: [same / improved / regressed]
+- Time delta: Xm → Ym</code></pre>
+
+<h2>What Good Results Look Like</h2>
+
+<table>
+  <tr><th>Metric</th><th>Marginal improvement</th><th>Strong improvement</th><th>Exceptional</th></tr>
+  <tr><td>Round-trips</td><td>20-30% fewer</td><td>50-60% fewer</td><td>70%+ fewer</td></tr>
+  <tr><td>First-attempt correct</td><td>Same</td><td>Improved (no → yes)</td><td>Consistently yes</td></tr>
+  <tr><td>Wall-clock time</td><td>10-20% faster</td><td>30-50% faster</td><td>60%+ faster</td></tr>
+</table>
+
+<div class="callout">
+  <div class="callout-title">Note</div>
+  <p>Even a 20% round-trip reduction pays off over time. If you run 10 AI sessions per day and each saves 2-3 exchanges, that's 20-30 fewer messages per day — less context window pressure, lower costs, faster flow.</p>
+</div>
+
+<h2>Where Graphify Helps Most</h2>
+
+<p>Based on your data, you'll likely see the biggest improvements on:</p>
+
+<ul>
+  <li><strong>Pattern reuse tasks</strong> — the agent sees conventions in the graph without reading every example</li>
+  <li><strong>Discovery tasks</strong> — structural questions answered from graph data, zero file reads</li>
+  <li><strong>Large-scope tasks</strong> — tasks that touch many files benefit most from reduced discovery</li>
+</ul>
+
+<p>You'll likely see smaller improvements on:</p>
+
+<ul>
+  <li><strong>Single-file edits</strong> — the agent only needed one file anyway</li>
+  <li><strong>Behavioral debugging</strong> — graph can't help with runtime issues</li>
+  <li><strong>Novel code</strong> — no existing patterns to reference</li>
+</ul>
+
+<h2>Calculating Cost Savings</h2>
+
+<p>If you're tracking token usage (from the Anthropic dashboard or API logs):</p>
+
+<pre><code># Rough cost calculation:
+# Baseline tokens per session: B
+# With-graph tokens per session: G
+# Sessions per month: S
+# Cost per million tokens: $C (input) / $D (output)
+#
+# Monthly savings = (B - G) × S × ($C / 1_000_000)
+#
+# Example:
+# B = 500,000 tokens, G = 80,000 tokens
+# S = 200 sessions/month, $C = $3/M input
+# Savings = 420,000 × 200 × $0.000003 = $252/month</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">Honest Assessment</div>
+  <p>If your comparison shows marginal or no improvement, that's valid data too. Graphify adds the most value on codebases with 200+ files and repetitive structure. If your project is smaller or highly dynamic, the overhead of maintaining the graph may not pay off. That's fine — knowing this is the win.</p>
+</div>
+
+<h2>Building a Longitudinal Record</h2>
+
+<p>Don't stop at one comparison. Track over time:</p>
+
+<pre><code># ~/Graphify/evals/log.md
+
+| Date | Task | Metric | Baseline | With Graph | Delta |
+|------|------|--------|----------|------------|-------|
+| 2025-01-15 | Pattern reuse | Round-trips | 8 | 3 | -62% |
+| 2025-01-15 | Discovery | Round-trips | 5 | 2 | -60% |
+| 2025-01-20 | Integration | Round-trips | 6 | 4 | -33% |
+| 2025-01-20 | New feature | Round-trips | 4 | 3 | -25% |</code></pre>
+
+<p>Over weeks, you'll see which task types benefit most and can adjust your workflow accordingly — maybe only loading the graph for discovery-heavy tasks.</p>
+
+<h2>Deciding to Keep or Drop</h2>
+
+<p>After your comparison, ask:</p>
+
+<ol>
+  <li><strong>Is the improvement worth the maintenance cost?</strong> (Git hook is near-zero; CI workflows have some overhead)</li>
+  <li><strong>Which task types benefit?</strong> Maybe load the graph selectively, not always.</li>
+  <li><strong>Is the graph still accurate enough?</strong> If your project changes faster than the graph updates, the value degrades.</li>
+</ol>
+
+<p>If the answer is "keep it," congratulations — you've validated a new tool in your workflow with data. If the answer is "drop it," that's equally valuable knowledge. You know exactly what it costs and what it buys.</p>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">Why must you use the exact same prompts from your baseline evaluation?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Different prompts would cause Graphify to build a different graph</li>
+    <li onclick="checkQuiz(this, true)">Different tasks produce incomparable numbers — you need a controlled comparison</li>
+    <li onclick="checkQuiz(this, false)">The AI agent caches results from the first run and reuses them</li>
+    <li onclick="checkQuiz(this, false)">Graphify only optimizes for prompts it has seen before</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">When is it reasonable to <em>stop</em> using Graphify on a project?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">When the codebase grows beyond 1000 files</li>
+    <li onclick="checkQuiz(this, true)">When the measured improvement doesn't justify the maintenance overhead</li>
+    <li onclick="checkQuiz(this, false)">After you've used it for more than 30 days</li>
+    <li onclick="checkQuiz(this, false)">When you switch from Claude to a different AI provider</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Pull up your Lesson 2 baseline eval files</li>
+  <li>Start a session with <code>/graphify</code> and re-run each task</li>
+  <li>Record results in the "after" template above</li>
+  <li>Calculate your deltas</li>
+  <li>Make your keep/drop/modify decision based on data</li>
+</ol>
+
+<div class="primary-source">
+  <div class="primary-source-label">Course Complete</div>
+  <p>You've gone from zero to a fully-instrumented Graphify workflow: build, measure, maintain, leverage, scale, and prove. The graph is a tool — use it where it helps, skip it where it doesn't. The evaluation data tells you which is which.</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0009-integrating-with-ci.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <span class="lesson-nav-disabled">Course Complete</span>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — try reviewing the section above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+
+</body>
+</html>

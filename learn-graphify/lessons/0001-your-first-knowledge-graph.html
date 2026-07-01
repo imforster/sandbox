@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1: Your First Knowledge Graph</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><span></span><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0002-capture-your-baseline.html" class="lesson-next-top" title="Capture Your Baseline">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Your First Knowledge Graph</h1>
+
+<div class="lesson-meta">
+  Lesson 1 · Learn Graphify · ~10 minutes
+</div>
+
+<p>By the end of this lesson, you'll have a working knowledge graph of your DocumentDB Performance Test infrastructure and understand what the three output files are for.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, your next Kiro CLI session on the DocumentDB project can start with <code>/graphify</code> and skip the discovery phase entirely.</p>
+</div>
+
+<h2>What Graphify Does</h2>
+
+<p>When you point an AI assistant at a large codebase, it has two bad options: read every file (blowing the context window) or guess which files matter (missing connections). Graphify gives it a third option: <strong>read a structured map</strong> of your code's relationships — classes, functions, imports, call chains — then only read the actual files it needs.</p>
+
+<p>The mechanism is <a href="https://tree-sitter.github.io/tree-sitter/">tree-sitter</a> AST parsing. It pulls structure from your code locally (nothing leaves your machine) and writes three files:</p>
+
+<ul>
+  <li><code>graph.json</code> — the full graph: nodes (entities) and edges (relationships). This is what the AI queries.</li>
+  <li><code>GRAPH_REPORT.md</code> — a human-readable summary: key concepts, surprising connections, suggested questions to ask.</li>
+  <li><code>graph.html</code> — interactive visualization: click nodes, filter by type, search.</li>
+</ul>
+
+<h2>Step 1: Install the Kiro Skill</h2>
+
+<p>Navigate to your DocumentDB project root and run:</p>
+
+<pre><code>cd ~/path/to/documentdb-perf-tests
+graphify kiro install</code></pre>
+
+<p>This writes a <code>.kiro/skills/graphify/</code> directory and a steering file into the project so Kiro CLI knows about the <code>/graphify</code> command.</p>
+
+<div class="callout">
+  <div class="callout-title">Note</div>
+  <p><code>kiro install</code> is project-scoped by default. The skill lives in the repo, not globally. Other repos won't have it until you run the same command there (or use <code>graphify install --platform kiro</code> globally — but project-scoped is better for team repos).</p>
+</div>
+
+<h2>Step 2: Build the Graph</h2>
+
+<p>From the project root:</p>
+
+<pre><code>graphify .</code></pre>
+
+<p>Or, if you want to run it from elsewhere:</p>
+
+<pre><code>graphify /absolute/path/to/project</code></pre>
+
+<p>This takes 10–60 seconds depending on codebase size. Tree-sitter parses every Python file and extracts:</p>
+
+<ul>
+  <li>Classes, functions, methods</li>
+  <li>Import relationships</li>
+  <li>Call graphs (who calls whom)</li>
+  <li>Inline rationale comments (<code># WHY:</code> and <code># HACK:</code> prefixes)</li>
+</ul>
+
+<p>After extraction, Graphify clusters related nodes into communities (groups of tightly-connected code). This is what makes the report useful — it names the clusters so you can navigate by concept, not by file.</p>
+
+<h2>Step 3: Inspect the Output</h2>
+
+<p>Open the visualization:</p>
+
+<pre><code>open graphify-out/graph.html</code></pre>
+
+<p>And read the report:</p>
+
+<pre><code>cat graphify-out/GRAPH_REPORT.md</code></pre>
+
+<p>The report will show you:</p>
+<ul>
+  <li><strong>Communities</strong> — named clusters of related code (e.g., "Test Framework Assertions", "MongoDB Connection Management")</li>
+  <li><strong>Key nodes</strong> — the most-connected entities (often the core abstractions)</li>
+  <li><strong>Suggested questions</strong> — things you can ask the AI that the graph can answer efficiently</li>
+</ul>
+
+<h2>Step 4: Use It in a Session</h2>
+
+<p>Start a new Kiro CLI session in the project and type:</p>
+
+<pre><code>/graphify</code></pre>
+
+<p>The AI assistant will load <code>graph.json</code> as context instead of reading your entire codebase. It can then answer structural questions like:</p>
+
+<ul>
+  <li>"What calls <code>execute_command()</code>?"</li>
+  <li>"Show me all test files that use the <code>assertResult</code> helper"</li>
+  <li>"What's the dependency chain from <code>BaseTestCase</code> to the actual test runner?"</li>
+</ul>
+
+<div class="callout warning">
+  <div class="callout-title">Staleness</div>
+  <p>The graph is a snapshot. If you add new files or refactor significantly, run <code>graphify update .</code> to refresh it without a full rebuild. For automatic freshness, consider <code>graphify hook install</code> which adds a post-commit git hook.</p>
+</div>
+
+<h2>Key Concepts</h2>
+
+<ul>
+  <li><strong>Node</strong> — an entity in your code: a class, function, module, or file.</li>
+  <li><strong>Edge</strong> — a relationship: "imports", "calls", "inherits from", "defined in".</li>
+  <li><strong>Community</strong> — a cluster of nodes that are more connected to each other than to the rest of the graph. Named by the LLM during clustering.</li>
+  <li><strong>graph.json</strong> — the machine-readable graph. This is what costs tokens — but far fewer than reading all files.</li>
+</ul>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">What does <code>graphify update .</code> do differently from <code>graphify .</code>?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">It deletes the old graph and builds a completely new one from scratch</li>
+    <li onclick="checkQuiz(this, true)">It re-extracts code files and updates the graph without a full rebuild</li>
+    <li onclick="checkQuiz(this, false)">It pushes the current graph to a remote Neo4j or FalkorDB instance</li>
+    <li onclick="checkQuiz(this, false)">It updates Graphify itself to the latest version from the registry</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Which output file does the AI assistant primarily consume during a session?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">graph.html — the interactive visualization rendered in the browser</li>
+    <li onclick="checkQuiz(this, true)">graph.json — the structured node and edge data for querying</li>
+    <li onclick="checkQuiz(this, false)">GRAPH_REPORT.md — the human-readable summary of key concepts</li>
+    <li onclick="checkQuiz(this, false)">SKILL.md — the skill definition that tells the assistant commands</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Navigate to your DocumentDB Performance Test infrastructure project</li>
+  <li>Run <code>graphify kiro install</code></li>
+  <li>Run <code>graphify .</code></li>
+  <li>Open <code>graphify-out/graph.html</code> in your browser and explore the communities</li>
+  <li>Read <code>graphify-out/GRAPH_REPORT.md</code> — note which clusters it found</li>
+</ol>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p>Read the <a href="https://betterstack.com/community/guides/ai/ai-development/graphify-codebase/">BetterStack guide: Building a Knowledge Graph of Your Codebase</a> for a deeper walkthrough of what tree-sitter extracts and how the clustering works.</p>
+</div>
+
+<nav class="lesson-nav">
+  <span class="lesson-nav-disabled">← Previous</span>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0002-capture-your-baseline.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+
+  items.forEach(item => {
+    item.style.pointerEvents = 'none';
+    item.classList.remove('correct', 'incorrect');
+  });
+
+  li.classList.add(correct ? 'correct' : 'incorrect');
+
+  feedback.textContent = correct
+    ? '✓ Correct!'
+    : '✗ Not quite — try reviewing the section above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+
+  if (!correct) {
+    setTimeout(() => {
+      items.forEach(item => {
+        if (!item.classList.contains('incorrect')) {
+          item.style.pointerEvents = 'auto';
+        }
+      });
+    }, 800);
+  }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+
+</body>
+</html>

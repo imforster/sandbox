@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3: Querying the Graph</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0002-capture-your-baseline.html" class="lesson-back-top" title="Capture Your Baseline"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-the-benchmark-loop.html" class="lesson-next-top" title="The Benchmark Loop">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Querying the Graph</h1>
+
+<div class="lesson-meta">
+  Lesson 3 · Learn Graphify · ~10 minutes
+</div>
+
+<p>You've built a graph. Now learn to ask it the right questions — both from the CLI and from inside an AI session.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you'll know how to use <code>graphify path</code> and <code>graphify explain</code> to answer structural questions without reading source files, and how to phrase prompts that leverage graph context.</p>
+</div>
+
+<h2>Two Query Modes</h2>
+
+<p>Graphify gives you two ways to query:</p>
+
+<table>
+  <tr><th>Mode</th><th>When to use</th><th>Command</th></tr>
+  <tr><td><strong>CLI queries</strong></td><td>Quick lookup outside an AI session</td><td><code>graphify path</code>, <code>graphify explain</code></td></tr>
+  <tr><td><strong>AI-assisted</strong></td><td>Complex questions during development</td><td>Prompt the agent with graph loaded</td></tr>
+</table>
+
+<h2>CLI: Finding Paths</h2>
+
+<p>The <code>path</code> command finds the shortest connection between two nodes in your graph:</p>
+
+<pre><code>graphify path "BaseTestCase" "execute_command"</code></pre>
+
+<p>This returns a chain of nodes and edges showing how those two entities connect — through imports, inheritance, or calls. Use it when you want to understand coupling between modules without reading intermediate files.</p>
+
+<pre><code># Output example:
+# BaseTestCase → (inherits) → UpdateTestCase → (calls) → execute_command</code></pre>
+
+<div class="callout">
+  <div class="callout-title">Note</div>
+  <p>Node names must match what tree-sitter extracted. Use the graph visualization (<code>graph.html</code>) or <code>GRAPH_REPORT.md</code> to find exact names if you're unsure.</p>
+</div>
+
+<h2>CLI: Explaining Nodes</h2>
+
+<p>The <code>explain</code> command gives a plain-language description of a node and its immediate neighbors:</p>
+
+<pre><code>graphify explain "assertResult"</code></pre>
+
+<p>This shows what calls the node, what it calls, what it imports, and what community it belongs to. Think of it as a focused "tell me about this thing" without opening the source file.</p>
+
+<h2>AI-Assisted Queries</h2>
+
+<p>When the graph is loaded in a Kiro CLI or Claude Code session, you can ask structural questions that the agent answers from the graph rather than grepping files:</p>
+
+<ul>
+  <li><strong>Dependency questions:</strong> "What imports <code>framework.assertions</code>?"</li>
+  <li><strong>Call chain questions:</strong> "What's the path from a test file to the actual database call?"</li>
+  <li><strong>Community questions:</strong> "What functions are in the 'Connection Management' cluster?"</li>
+  <li><strong>Pattern questions:</strong> "Which test files follow the same structure as <code>test_min_comparisons.py</code>?"</li>
+</ul>
+
+<h2>Good vs. Bad Queries</h2>
+
+<p>The graph answers <strong>structural</strong> questions well. It cannot answer <strong>behavioral</strong> questions (what does this code actually do at runtime).</p>
+
+<table>
+  <tr><th>Good (structural)</th><th>Bad (behavioral)</th></tr>
+  <tr><td>"What calls <code>execute_command</code>?"</td><td>"What does <code>execute_command</code> return when the query fails?"</td></tr>
+  <tr><td>"Show all test files using <code>assertResult</code>"</td><td>"Which assertions pass on DocumentDB but fail on MongoDB?"</td></tr>
+  <tr><td>"What's the inheritance chain for <code>UpdateTestCase</code>?"</td><td>"How long does the test suite take to run?"</td></tr>
+</table>
+
+<div class="callout warning">
+  <div class="callout-title">Key Insight</div>
+  <p>The graph replaces <strong>discovery</strong>, not <strong>understanding</strong>. Once the agent knows which files matter (from the graph), it still reads those files to understand behavior. The savings come from not reading the other 400 files.</p>
+</div>
+
+<h2>Prompt Patterns That Work</h2>
+
+<p>These prompt shapes get the most out of graph context:</p>
+
+<pre><code># "Show me the shape" — asks for structure, not implementation
+"What's the dependency graph around the test runner?"
+
+# "Find similar" — leverages community clustering
+"What other files are in the same community as test_min_comparisons.py?"
+
+# "Trace the path" — follows edges
+"How does a test case get from BaseTestCase to an actual MongoDB command?"
+
+# "What's connected" — neighborhood exploration
+"What are the 5 most-connected nodes in the graph?"</code></pre>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">When should you use <code>graphify path</code> instead of asking the AI agent?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, true)">For quick structural lookups outside an AI session</li>
+    <li onclick="checkQuiz(this, false)">When you need to understand what a function returns</li>
+    <li onclick="checkQuiz(this, false)">When the graph is out of date and needs refreshing</li>
+    <li onclick="checkQuiz(this, false)">Only when the codebase has more than 1000 files</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Which question type is the graph <em>not</em> good at answering?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">What imports the assertions module?</li>
+    <li onclick="checkQuiz(this, false)">What community is execute_command in?</li>
+    <li onclick="checkQuiz(this, true)">What error code does the server return for invalid namespaces?</li>
+    <li onclick="checkQuiz(this, false)">What's the shortest path between two classes?</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Run <code>graphify explain</code> on the most important class in your project</li>
+  <li>Run <code>graphify path</code> between two entities you know are related</li>
+  <li>Start an AI session with graph context and ask a structural question</li>
+  <li>Notice: did the agent answer from the graph or did it still read files?</li>
+</ol>
+
+<nav class="lesson-nav">
+  <a href="0002-capture-your-baseline.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0004-the-benchmark-loop.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — try reviewing the section above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+
+</body>
+</html>

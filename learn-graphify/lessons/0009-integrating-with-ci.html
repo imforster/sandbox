@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 9: Integrating with CI</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0008-pattern-extraction.html" class="lesson-back-top" title="Pattern Extraction"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0010-measuring-your-roi.html" class="lesson-next-top" title="Measuring Your ROI">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Integrating with CI</h1>
+
+<div class="lesson-meta">
+  Lesson 9 · Learn Graphify · ~10 minutes
+</div>
+
+<p>Keep your graph current and detect architectural drift automatically. This lesson shows how to run Graphify in CI pipelines — rebuilding the graph on merge, detecting boundary violations, and reporting changes in PRs.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, your graph stays fresh without manual intervention's, and PRs that break architectural boundaries get flagged automatically.</p>
+</div>
+
+<h2>Why CI Integration?</h2>
+
+<p>Local hooks (Lesson 5) work for individual developers. CI integration solves team-level problems:</p>
+
+<ul>
+  <li><strong>Freshness:</strong> The committed graph is always up-to-date with main</li>
+  <li><strong>Drift detection:</strong> PRs that introduce circular dependencies get flagged</li>
+  <li><strong>Benchmark tracking:</strong> Token reduction ratio tracked over time</li>
+  <li><strong>Team onboarding:</strong> New developers clone the repo with a ready-to-use graph</li>
+</ul>
+
+<h2>Strategy 1: Rebuild on Merge</h2>
+
+<p>The simplest approach — rebuild and commit the graph whenever main changes:</p>
+
+<pre><code># .github/workflows/update-graph.yml
+name: Update Knowledge Graph
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'graphify-out/**'
+
+jobs:
+  update-graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Graphify
+        run: pip install graphify-cli
+
+      - name: Build graph
+        run: graphify . --no-viz
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Commit updated graph
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add graphify-out/
+          git diff --cached --quiet && exit 0
+          git commit -m "Update knowledge graph [skip ci]"
+          git push</code></pre>
+
+<div class="callout">
+  <div class="callout-title">Note</div>
+  <p>Use <code>--no-viz</code> in CI to skip the HTML visualization (saves time, reduces commit noise). Use <code>--no-cluster</code> if you don't have an LLM API key in CI — you'll get raw extraction without named communities.</p>
+</div>
+
+<h2>Strategy 2: Drift Detection on PRs</h2>
+
+<p>Run the graph on the PR branch and compare against main to detect structural changes:</p>
+
+<pre><code># .github/workflows/graph-check.yml
+name: Graph Drift Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Graphify
+        run: pip install graphify-cli
+
+      - name: Build PR graph
+        run: graphify . --no-viz --no-cluster
+
+      - name: Compare with main graph
+        run: |
+          # Download main's graph for comparison
+          git fetch origin main
+          git show origin/main:graphify-out/graph.json > /tmp/main-graph.json 2>/dev/null || exit 0
+
+          # Count node/edge changes
+          PR_NODES=$(jq '.nodes | length' graphify-out/graph.json)
+          MAIN_NODES=$(jq '.nodes | length' /tmp/main-graph.json)
+          echo "Nodes: $MAIN_NODES → $PR_NODES (Δ $((PR_NODES - MAIN_NODES)))"
+
+      - name: Run benchmark
+        run: graphify benchmark | tee /tmp/benchmark.txt
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const benchmark = fs.readFileSync('/tmp/benchmark.txt', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### 📊 Graph Impact\n\`\`\`\n${benchmark}\n\`\`\``
+            });</code></pre>
+
+<h2>Strategy 3: Boundary Enforcement</h2>
+
+<p>Define architectural rules and fail the build when they're violated:</p>
+
+<pre><code># .graphify-rules.yml (hypothetical — implement with jq or a script)
+boundaries:
+  - name: "Tests don't import from other test directories"
+    rule: "no edge from tests/operators/min/* to tests/operators/max/*"
+
+  - name: "Framework doesn't depend on tests"
+    rule: "no edge from framework/* to tests/*"
+
+  - name: "No circular imports"
+    rule: "no cycles in import edges"</code></pre>
+
+<p>Until Graphify has native rule support, you can implement basic checks with <code>jq</code>:</p>
+
+<pre><code># Check for backwards dependencies: framework importing from tests
+VIOLATIONS=$(jq '[.edges[] | select(.source | startswith("framework/"))
+  | select(.target | startswith("tests/"))] | length' graphify-out/graph.json)
+
+if [ "$VIOLATIONS" -gt 0 ]; then
+  echo "❌ Found $VIOLATIONS boundary violations: framework imports from tests"
+  exit 1
+fi</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">Cost Consideration</div>
+  <p>Running with clustering (LLM calls) in CI costs money per run. Use <code>--no-cluster</code> for drift detection and boundary checks — you only need the raw graph structure for those. Save clustering for the scheduled rebuild on main.</p>
+</div>
+
+<h2>Committing the Graph or Not</h2>
+
+<table>
+  <tr><th>Approach</th><th>Pros</th><th>Cons</th></tr>
+  <tr><td>Commit <code>graphify-out/</code></td><td>Always available; clone and go</td><td>Adds to repo size; merge conflicts</td></tr>
+  <tr><td>Generate on demand</td><td>Clean repo; no conflicts</td><td>Requires API key locally; slower start</td></tr>
+  <tr><td>CI artifact</td><td>Available for download; not in tree</td><td>Extra step to fetch before sessions</td></tr>
+</table>
+
+<p>For most teams, <strong>committing the graph</strong> is best — it means <code>git clone</code> gives you everything needed to start an AI-assisted session immediately.</p>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">Why use <code>--no-cluster</code> in CI drift detection workflows?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Clustering is not supported on Linux runners</li>
+    <li onclick="checkQuiz(this, true)">Drift detection only needs raw structure, and clustering costs LLM API calls</li>
+    <li onclick="checkQuiz(this, false)">Clustering takes hours and would time out the workflow</li>
+    <li onclick="checkQuiz(this, false)">The cluster names change every run, creating false positives</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">What's the main advantage of committing <code>graphify-out/</code> to the repo?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">It makes the graph immutable and prevents tampering</li>
+    <li onclick="checkQuiz(this, false)">GitHub renders graph.json as a searchable file by default</li>
+    <li onclick="checkQuiz(this, true)">Clone-and-go — anyone can start an AI session immediately without building</li>
+    <li onclick="checkQuiz(this, false)">It triggers GitHub's code intelligence features on the graph data</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Decide: commit the graph or generate on demand?</li>
+  <li>Add one of the workflow files above to your project's <code>.github/workflows/</code></li>
+  <li>If committing: add <code>graphify-out/</code> to version control and push</li>
+  <li>Open a test PR and verify the workflow runs</li>
+</ol>
+
+<nav class="lesson-nav">
+  <a href="0008-pattern-extraction.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0010-measuring-your-roi.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — try reviewing the section above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5: Keeping the Graph Fresh</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0004-the-benchmark-loop.html" class="lesson-back-top" title="The Benchmark Loop"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0006-graph-driven-prompts.html" class="lesson-next-top" title="Graph-Driven Prompts">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Keeping the Graph Fresh</h1>
+
+<div class="lesson-meta">
+  Lesson 5 · Learn Graphify · ~8 minutes
+</div>
+
+<p>A stale graph is worse than no graph — it sends the AI to files that no longer exist or misses new code entirely. This lesson covers three freshness strategies: manual, automatic, and continuous.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, your graph stays current without you thinking about it.</p>
+</div>
+
+<h2>The Staleness Problem</h2>
+
+<p>The graph is a snapshot of your code at build time. Every file you add, rename, or refactor makes it slightly less accurate. When the agent consults a stale graph:</p>
+
+<ul>
+  <li>It may reference deleted functions or classes</li>
+  <li>It misses new files that haven't been indexed</li>
+  <li>Community clustering may not reflect current architecture</li>
+</ul>
+
+<p>The fix is a freshness strategy that matches your development cadence.</p>
+
+<h2>Strategy 1: Manual Update</h2>
+
+<p>Run when you remember (or when the agent gives bad structural answers):</p>
+
+<pre><code>graphify update .</code></pre>
+
+<p>This re-extracts only changed files and patches the existing graph. Faster than a full rebuild because it skips unchanged code.</p>
+
+<pre><code># After a major refactor where files were deleted:
+graphify update . --force</code></pre>
+
+<p>The <code>--force</code> flag allows the graph to shrink (normally it warns if the new graph has fewer nodes, assuming something went wrong).</p>
+
+<div class="callout">
+  <div class="callout-title">Note</div>
+  <p>Manual updates work fine if you commit infrequently or work in focused bursts. The graph only needs to be current at the <em>start</em> of an AI session.</p>
+</div>
+
+<h2>Strategy 2: Git Hook</h2>
+
+<p>Automatically update the graph after every commit:</p>
+
+<pre><code>graphify hook install</code></pre>
+
+<p>This adds a <code>post-commit</code> hook to <code>.git/hooks/</code> that runs <code>graphify update .</code> after each commit. The update is fast (usually under 5 seconds for incremental changes).</p>
+
+<table>
+  <tr><th>Pros</th><th>Cons</th></tr>
+  <tr><td>Zero friction — just commit normally</td><td>Adds a few seconds to every commit</td></tr>
+  <tr><td>Graph is always current at session start</td><td>Hook is local — won't propagate to clones</td></tr>
+  <tr><td>No extra commands to remember</td><td>May conflict with other post-commit hooks</td></tr>
+</table>
+
+<div class="callout warning">
+  <div class="callout-title">Team Repos</div>
+  <p>Git hooks are local and won't propagate when teammates clone. For team workflows, consider documenting the hook in your README or using a hook manager like <code>pre-commit</code> (which supports post-commit hooks too).</p>
+</div>
+
+<h2>Strategy 3: Watch Mode</h2>
+
+<p>For active development sessions where you're making many changes before committing:</p>
+
+<pre><code>graphify watch .</code></pre>
+
+<p>This watches the filesystem for changes and auto-rebuilds affected portions of the graph. Best used in a dedicated terminal tab during a development session.</p>
+
+<pre><code># Typical workflow:
+# Terminal 1: graphify watch .
+# Terminal 2: your editor
+# Terminal 3: kiro CLI session (always has fresh graph)</code></pre>
+
+<h2>Choosing Your Strategy</h2>
+
+<table>
+  <tr><th>Cadence</th><th>Best strategy</th></tr>
+  <tr><td>Few commits per day, focused sessions</td><td>Manual — update before starting an AI session</td></tr>
+  <tr><td>Many commits, want zero friction</td><td>Git hook — automatic on every commit</td></tr>
+  <tr><td>Rapid iteration, uncommitted changes matter</td><td>Watch mode — real-time freshness</td></tr>
+</table>
+
+<p>For most developers, the <strong>git hook</strong> is the sweet spot: no extra commands, negligible overhead, always current.</p>
+
+<h2>Detecting Staleness</h2>
+
+<p>How do you know when the graph is stale? Watch for these signals:</p>
+
+<ul>
+  <li>The agent references a function or class that no longer exists</li>
+  <li>The agent misses a newly-created file when answering structural questions</li>
+  <li><code>graphify benchmark</code> shows a significantly different file count than <code>git ls-files | wc -l</code></li>
+</ul>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">What does <code>graphify update . --force</code> do that a regular update doesn't?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Forces a full rebuild from scratch, ignoring the existing graph</li>
+    <li onclick="checkQuiz(this, true)">Allows the graph to shrink — accepts a result with fewer nodes than before</li>
+    <li onclick="checkQuiz(this, false)">Bypasses the LLM clustering step for faster execution</li>
+    <li onclick="checkQuiz(this, false)">Forces the graph to overwrite graph.html even if visualization is disabled</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Which freshness strategy requires zero extra commands after setup?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Manual update — you run it when you remember</li>
+    <li onclick="checkQuiz(this, true)">Git hook — runs automatically after every commit</li>
+    <li onclick="checkQuiz(this, false)">Watch mode — requires a dedicated terminal process</li>
+    <li onclick="checkQuiz(this, false)">All of them require at least one explicit command</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Install the git hook: <code>graphify hook install</code></li>
+  <li>Make a small code change and commit — verify the hook ran</li>
+  <li>Check the graph output timestamp to confirm it updated</li>
+</ol>
+
+<nav class="lesson-nav">
+  <a href="0004-the-benchmark-loop.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0006-graph-driven-prompts.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — try reviewing the section above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6: Graph-Driven Prompts</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0005-keeping-the-graph-fresh.html" class="lesson-back-top" title="Keeping the Graph Fresh"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0007-multi-repo-graphs.html" class="lesson-next-top" title="Multi-Repo Graphs">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Graph-Driven Prompts</h1>
+
+<div class="lesson-meta">
+  Lesson 6 · Learn Graphify · ~12 minutes
+</div>
+
+<p>The graph is only as useful as the prompts that leverage it. This lesson teaches you how to write prompts that exploit community clustering and structural knowledge — turning the graph from passive context into active guidance.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, your AI sessions start faster and resolve tasks with fewer round-trips because you're front-loading structural context the agent would otherwise spend tokens discovering.</p>
+</div>
+
+<h2>The Session Primer Pattern</h2>
+
+<p>Instead of starting a session cold, open with a primer that orients the agent using the graph report:</p>
+
+<pre><code># At the start of a Kiro CLI session:
+/graphify
+
+# Then immediately:
+"I'm working in the [Community Name] cluster. My task is [X].
+Before writing any code, tell me which files in this community
+I need to read and what patterns they follow."</code></pre>
+
+<p>This two-step opening eliminates the discovery phase. The agent already has the graph; your prompt tells it <em>where</em> in the graph to focus.</p>
+
+<h2>Community-Scoped Prompts</h2>
+
+<p>The <code>GRAPH_REPORT.md</code> names your communities. Use those names in prompts to scope the agent's attention:</p>
+
+<pre><code># Bad — agent searches the entire graph
+"Write a new test file for the $min operator"
+
+# Good — agent focuses on the right cluster
+"Looking at the 'Update Operator Tests' community in the graph,
+write a new test file for $min following the same pattern as
+the other operator test files in that community."</code></pre>
+
+<p>Community names act as landmarks. The agent uses them to pull the relevant subgraph and ignore everything else.</p>
+
+<h2>The "Show Me the Pattern" Prompt</h2>
+
+<p>When you need to replicate an existing convention, ask the agent to extract the pattern <em>from the graph</em> first:</p>
+
+<pre><code>"From the graph, identify the common structure shared by test files
+in the 'Comparison Operators' community. List:
+1. The base class they inherit from
+2. The imports they share
+3. The test function signature pattern
+4. How they define test data
+
+Then use that pattern to create test_min_comparisons.py."</code></pre>
+
+<p>This forces the agent to articulate the pattern before writing code — catching mismatches before they happen.</p>
+
+<h2>The "What Would Break" Prompt</h2>
+
+<p>Before making a change, ask the graph about impact:</p>
+
+<pre><code>"I'm going to rename `execute_command` to `run_command`.
+Using the graph, show me every file that imports or calls this function
+so I know the full blast radius before I start."</code></pre>
+
+<p>The graph answers this instantly from edge data — no file reading needed.</p>
+
+<h2>The "Fill the Gap" Prompt</h2>
+
+<p>Use the graph to find what's missing:</p>
+
+<pre><code>"Looking at the 'Update Operator Tests' community, which operators
+have test files and which don't? I want to know what's missing."</code></pre>
+
+<p>The graph has nodes for all files. Absence is visible.</p>
+
+<h2>Anti-Patterns</h2>
+
+<p>Prompts that waste graph context:</p>
+
+<table>
+  <tr><th>Anti-pattern</th><th>Why it wastes tokens</th><th>Better approach</th></tr>
+  <tr><td>"Read all the test files and tell me about them"</td><td>Defeats the purpose — forces file reading</td><td>"From the graph, summarize the test communities"</td></tr>
+  <tr><td>"Write this code" (no context)</td><td>Agent doesn't know to consult the graph</td><td>Scope to a community or reference existing nodes</td></tr>
+  <tr><td>"Is my code correct?"</td><td>Behavioral question — graph can't answer</td><td>Ask for structural alignment: "Does this follow the pattern in [community]?"</td></tr>
+</table>
+
+<div class="callout warning">
+  <div class="callout-title">Key Insight</div>
+  <p>The best graph-driven prompts are <strong>scoped</strong> (name a community or node), <strong>structural</strong> (ask about relationships, not behavior), and <strong>comparative</strong> (reference existing patterns to replicate).</p>
+</div>
+
+<h2>Building a Prompt Library</h2>
+
+<p>As you find prompts that work well with your graph, save them. Create a simple file in your project:</p>
+
+<pre><code># .graphify-prompts.md
+
+## Start-of-session primer
+/graphify then: "I'm working in [COMMUNITY]. My task is [TASK]."
+
+## New test file
+"From the [COMMUNITY] community, extract the shared pattern
+and create a new test file for [OPERATOR]."
+
+## Impact analysis
+"Using the graph, show all callers of [FUNCTION]."
+
+## Gap analysis
+"Which nodes in [COMMUNITY] have no incoming edges from test files?"</code></pre>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">What makes a prompt "graph-driven" rather than just a normal prompt?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">It must use the exact syntax from graphify CLI commands</li>
+    <li onclick="checkQuiz(this, true)">It references communities, nodes, or structural relationships the graph provides</li>
+    <li onclick="checkQuiz(this, false)">It must start with the /graphify command before the question</li>
+    <li onclick="checkQuiz(this, false)">It can only ask about Python files that tree-sitter supports</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Why is "Write a new test file for $min" worse than scoping to a community?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">The agent can't write test files without community information</li>
+    <li onclick="checkQuiz(this, true)">Without scope, the agent may search broadly or miss the existing pattern</li>
+    <li onclick="checkQuiz(this, false)">Community-scoped prompts use fewer tokens in the request</li>
+    <li onclick="checkQuiz(this, false)">The graph only indexes files that belong to named communities</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Open <code>GRAPH_REPORT.md</code> and note 2-3 community names</li>
+  <li>Start an AI session with <code>/graphify</code></li>
+  <li>Try the session primer pattern: scope to a community, then ask a task question</li>
+  <li>Compare: did the agent need fewer file reads than your Lesson 2 baseline?</li>
+</ol>
+
+<nav class="lesson-nav">
+  <a href="0005-keeping-the-graph-fresh.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0007-multi-repo-graphs.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — try reviewing the section above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+
+</body>
+</html>

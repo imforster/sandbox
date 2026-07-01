@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learn Graphify — Lesson Index</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    .course-header {
+      margin-bottom: 3rem;
+    }
+    .course-header h1 {
+      font-size: 2.8rem;
+      letter-spacing: -0.035em;
+      margin-bottom: 0.75rem;
+    }
+    .course-header p {
+      color: var(--color-muted);
+      font-size: 1.05rem;
+      line-height: 1.5;
+      max-width: 600px;
+    }
+    .lesson-list {
+      list-style: none;
+      padding: 0;
+    }
+    .lesson-list li {
+      margin-bottom: 0;
+      padding: 0;
+    }
+    .lesson-card {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr auto;
+      gap: 1rem;
+      align-items: baseline;
+      padding: 1.1rem 1rem;
+      text-decoration: none;
+      color: var(--color-text);
+      border-radius: 10px;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .lesson-card:hover {
+      background: var(--color-card-bg);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-card);
+      text-decoration: none;
+    }
+    .lesson-num {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--color-muted);
+      font-weight: 600;
+    }
+    .lesson-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .lesson-title {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--color-accent);
+    }
+    .lesson-desc {
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      line-height: 1.4;
+    }
+    .lesson-time {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--color-muted);
+      white-space: nowrap;
+      background: var(--color-code-bg);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+    .section-label {
+      font-family: var(--font-heading);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-muted);
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      padding-left: 1rem;
+    }
+    .resources-link {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--color-border);
+      font-size: 0.9rem;
+    }
+    .resources-link a {
+      font-weight: 500;
+    }
+    @media (max-width: 600px) {
+      .lesson-card {
+        grid-template-columns: 2rem 1fr;
+      }
+      .lesson-time { display: none; }
+      .course-header h1 { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="course-header">
+  <h1>Learn Graphify</h1>
+  <p>A hands-on course on using Graphify knowledge graphs to reduce context window bloat, minimize round-trips, and make AI-assisted development more predictable.</p>
+</div>
+
+<div class="section-label">Getting Started</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0001-your-first-knowledge-graph.html">
+      <span class="lesson-num">01</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Your First Knowledge Graph</span>
+        <span class="lesson-desc">Install the skill, build a graph, and explore the three output files.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0002-capture-your-baseline.html">
+      <span class="lesson-num">02</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Capture Your Baseline</span>
+        <span class="lesson-desc">Set up a lightweight evaluation protocol with before-and-after measurements.</span>
+      </span>
+      <span class="lesson-time">~15 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0003-querying-the-graph.html">
+      <span class="lesson-num">03</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Querying the Graph</span>
+        <span class="lesson-desc">Use path, explain, and AI-assisted queries to answer structural questions.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0004-the-benchmark-loop.html">
+      <span class="lesson-num">04</span>
+      <span class="lesson-info">
+        <span class="lesson-title">The Benchmark Loop</span>
+        <span class="lesson-desc">Run graphify benchmark, interpret token reduction, and use it as a feedback loop.</span>
+      </span>
+      <span class="lesson-time">~8 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Maintenance &amp; Workflow</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0005-keeping-the-graph-fresh.html">
+      <span class="lesson-num">05</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Keeping the Graph Fresh</span>
+        <span class="lesson-desc">Manual updates, git hooks, and watch mode — three strategies for staleness.</span>
+      </span>
+      <span class="lesson-time">~8 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0006-graph-driven-prompts.html">
+      <span class="lesson-num">06</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Graph-Driven Prompts</span>
+        <span class="lesson-desc">Session primers, community-scoped prompts, and the patterns that reduce round-trips.</span>
+      </span>
+      <span class="lesson-time">~12 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Scaling Up</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0007-multi-repo-graphs.html">
+      <span class="lesson-num">07</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Multi-Repo Graphs</span>
+        <span class="lesson-desc">Global graphs, merge-graphs, and cross-repository navigation.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0008-pattern-extraction.html">
+      <span class="lesson-num">08</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Pattern Extraction</span>
+        <span class="lesson-desc">Identify conventions and architectural boundaries from graph structure.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0009-integrating-with-ci.html">
+      <span class="lesson-num">09</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Integrating with CI</span>
+        <span class="lesson-desc">Auto-rebuild on merge, drift detection on PRs, boundary enforcement.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0010-measuring-your-roi.html">
+      <span class="lesson-num">10</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Measuring Your ROI</span>
+        <span class="lesson-desc">Re-run your baseline, compare results, and decide if the investment pays off.</span>
+      </span>
+      <span class="lesson-time">~15 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="resources-link">
+  <p><strong>Reference:</strong> <a href="../reference/graphify-cli-cheatsheet.html">Graphify CLI Cheatsheet</a></p>
+  <p style="color: var(--color-muted); font-size: 0.85rem; margin-top: 0.5rem;">Total course time: ~108 minutes · 10 lessons · Interactive quizzes in each</p>
+</div>
+
+</body>
+</html>
