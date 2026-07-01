@@ -19,8 +19,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Cards & containers */
-.rounded-2xl, .rounded-xl, .rounded-lg {
+/* Cards & containers (exclude gradient cards and colored buttons) */
+.rounded-2xl:not([class*="bg-gradient"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-purple"]),
+.rounded-xl:not([class*="bg-gradient"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-purple"]),
+.rounded-lg:not([class*="bg-gradient"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-purple"]) {
   border-radius: var(--apple-radius) !important;
   border: 1px solid var(--apple-border) !important;
   background: var(--apple-card) !important;
@@ -30,7 +32,8 @@ body {
   transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.3s ease !important;
 }
 
-.rounded-2xl:hover, .rounded-xl:hover {
+.rounded-2xl:not([class*="bg-gradient"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-purple"]):hover,
+.rounded-xl:not([class*="bg-gradient"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-purple"]):hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12) !important;
 }
