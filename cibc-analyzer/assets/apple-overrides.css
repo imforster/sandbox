@@ -333,9 +333,9 @@ tr:hover {
     color: #30d158 !important;
   }
 
-  /* Header card with light gradient — needs dark text override in dark mode */
+  /* Header card & upload screen with light gradient — dark mode treatment */
   .from-blue-50 {
-    background: rgba(28, 28, 30, 0.9) !important;
+    background: #000000 !important;
   }
 
   .from-blue-50 * {
@@ -343,8 +343,41 @@ tr:hover {
   }
 
   .from-blue-50 .text-gray-600,
-  .from-blue-50 .text-sm {
+  .from-blue-50 .text-sm,
+  .from-blue-50 .text-gray-500 {
     color: #a1a1a6 !important;
+  }
+
+  .from-blue-50 .text-yellow-600 {
+    color: #ffd60a !important;
+  }
+
+  /* Upload card (white rounded-2xl inside the upload screen) */
+  .from-blue-50 .bg-white.rounded-2xl {
+    background: rgba(44, 44, 46, 0.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+
+  /* Savings Opportunities section (green gradient → dark) */
+  .from-green-50,
+  [class*="from-green-50"] {
+    background: rgba(44, 44, 46, 0.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .from-green-50 *,
+  [class*="from-green-50"] * {
+    color: #f5f5f7 !important;
+  }
+
+  .from-green-50 .text-gray-600,
+  .from-green-50 .text-gray-500,
+  .from-green-50 .text-sm {
+    color: #a1a1a6 !important;
+  }
+
+  .from-green-50 .text-green-600 {
+    color: #30d158 !important;
   }
 
   /* Savings section */
