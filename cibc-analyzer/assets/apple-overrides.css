@@ -83,10 +83,7 @@ h2, .text-2xl {
   transform: scale(1.02);
 }
 
-/* Gradient backgrounds → clean Apple gradient */
-.bg-gradient-to-br, .bg-gradient-to-r {
-  background: linear-gradient(135deg, #f5f5f7 0%, #fbfbfd 100%) !important;
-}
+/* Keep original gradient cards (summary stats) intact */
 
 /* Summary/stat cards */
 .shadow-lg {
@@ -285,10 +282,6 @@ tr:hover {
     --apple-border: rgba(255, 255, 255, 0.08);
     --apple-text: #f5f5f7;
     --apple-muted: #a1a1a6;
-  }
-
-  .bg-gradient-to-br, .bg-gradient-to-r {
-    background: linear-gradient(135deg, #1c1c1e 0%, #000000 100%) !important;
   }
 
   .bg-white, .bg-gray-50 {
