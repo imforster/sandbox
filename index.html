@@ -5,28 +5,321 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Sandbox</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 700px; margin: 4rem auto; padding: 0 1rem; color: #1a1a1a; }
-        h1 { margin-bottom: 0.5rem; }
-        p.subtitle { color: #666; margin-top: 0; }
-        ul { list-style: none; padding: 0; }
-        li { margin: 0.75rem 0; }
-        a { color: #0066cc; text-decoration: none; font-size: 1.1rem; }
-        a:hover { text-decoration: underline; }
-        .desc { color: #666; font-size: 0.9rem; margin-left: 0.5rem; }
+        :root {
+            --bg: #fbfbfd;
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --card-border: rgba(0, 0, 0, 0.06);
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #86868b;
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+            --gradient-start: #fbfbfd;
+            --gradient-end: #f5f5f7;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+            --radius: 20px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            min-height: 100vh;
+        }
+
+        .page {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 5rem 0 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at center, rgba(0, 113, 227, 0.04) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .hero-image {
+            width: 100%;
+            max-width: 700px;
+            height: 280px;
+            margin: 0 auto 2.5rem;
+            border-radius: 24px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .hero-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .hero-image::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0) 60%, rgba(0,0,0,0.15) 100%);
+            border-radius: 24px;
+            pointer-events: none;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 0.75rem;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+            letter-spacing: -0.01em;
+        }
+
+        /* Project Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.25rem;
+            padding-bottom: 5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 1.75rem;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: var(--radius);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%);
+            pointer-events: none;
+        }
+
+        .card:hover {
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: var(--shadow-lg);
+            border-color: rgba(0, 113, 227, 0.2);
+        }
+
+        .card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .card-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .card-arrow {
+            margin-top: auto;
+            padding-top: 0.5rem;
+            color: var(--accent);
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            opacity: 0;
+            transform: translateX(-4px);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover .card-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Icon backgrounds */
+        .icon-brain { background: linear-gradient(135deg, #ffecd2, #fcb69f); }
+        .icon-dsql { background: linear-gradient(135deg, #a1c4fd, #c2e9fb); }
+        .icon-cibc { background: linear-gradient(135deg, #d4fc79, #96e6a1); }
+        .icon-game { background: linear-gradient(135deg, #fbc2eb, #a6c1ee); }
+        .icon-habit { background: linear-gradient(135deg, #f6d365, #fda085); }
+        .icon-agent { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .icon-graph { background: linear-gradient(135deg, #89f7fe, #66a6ff); }
+        .icon-ideo { background: linear-gradient(135deg, #ff9a9e, #fecfef); }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem 0 3rem;
+            color: var(--text-tertiary);
+            font-size: 0.8rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 734px) {
+            .hero { padding: 3rem 0 2rem; }
+            .hero h1 { font-size: 2.5rem; }
+            .hero .subtitle { font-size: 1.1rem; }
+            .hero-image { height: 180px; border-radius: 18px; }
+            .grid { grid-template-columns: 1fr; }
+            .page { padding: 0 1.25rem; }
+        }
+
+        /* Dark mode */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000;
+                --card-bg: rgba(28, 28, 30, 0.72);
+                --card-border: rgba(255, 255, 255, 0.08);
+                --text-primary: #f5f5f7;
+                --text-secondary: #a1a1a6;
+                --text-tertiary: #6e6e73;
+                --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+                --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+                --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+            }
+
+            .hero::before {
+                background: radial-gradient(ellipse at center, rgba(0, 113, 227, 0.08) 0%, transparent 60%);
+            }
+
+            .card::before {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 50%);
+            }
+
+            .card:hover {
+                border-color: rgba(0, 113, 227, 0.4);
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>AI Sandbox</h1>
-    <p class="subtitle">Demos and prototypes</p>
-    <ul>
-        <li><a href="brain-dump/brain-dump.html">Brain Dump</a><span class="desc">— quick capture tool</span></li>
-        <li><a href="dsql-goldenpath/index.html">DSQL Golden Path</a><span class="desc">— Aurora DSQL onboarding guide</span></li>
-        <li><a href="cibc-analyzer/index.html">CIBC Analyzer</a><span class="desc">— spending analysis from CSV exports</span></li>
-        <li><a href="tic-tac-toe-v2/index.html">Tic Tac Toe v2</a><span class="desc">— two-player game</span></li>
-        <li><a href="habit-tracker/index.html">Habit Tracker</a><span class="desc">— offline-first habit tracker with streaks & calendar</span></li>
-        <li><a href="safe-agentic-workflows/">Safe Agentic Workflows</a><span class="desc">— 10-lesson course on AI agent automation with guardrails</span></li>
-        <li><a href="learn-graphify/">Learn Graphify</a><span class="desc">— 10-lesson course on knowledge graphs for AI-assisted development</span></li>
-        <li><a href="https://blog.imfsoftware.com/ideo-design-sprint-game/">IDEO Design Sprint Game</a><span class="desc">— interactive design sprint card game</span></li>
-    </ul>
+    <div class="page">
+        <section class="hero">
+            <!-- Hero image: Sand dunes by Unsplash -->
+            <div class="hero-image">
+                <img src="hero-sandbox.jpg" alt="Golden sand dunes with light and shadow patterns" loading="eager">
+            </div>
+
+            <h1>AI Sandbox</h1>
+            <p class="subtitle">Demos, prototypes & experiments</p>
+        </section>
+
+        <div class="grid">
+            <a href="brain-dump/brain-dump.html" class="card">
+                <div class="card-icon icon-brain">🧠</div>
+                <div class="card-title">Brain Dump</div>
+                <div class="card-desc">Quick capture tool for thoughts and ideas</div>
+                <div class="card-arrow">Explore →</div>
+            </a>
+
+            <a href="dsql-goldenpath/index.html" class="card">
+                <div class="card-icon icon-dsql">🛤️</div>
+                <div class="card-title">DSQL Golden Path</div>
+                <div class="card-desc">Aurora DSQL onboarding guide</div>
+                <div class="card-arrow">Explore →</div>
+            </a>
+
+            <a href="cibc-analyzer/index.html" class="card">
+                <div class="card-icon icon-cibc">📊</div>
+                <div class="card-title">CIBC Analyzer</div>
+                <div class="card-desc">Spending analysis from CSV exports</div>
+                <div class="card-arrow">Explore →</div>
+            </a>
+
+            <a href="tic-tac-toe-v2/index.html" class="card">
+                <div class="card-icon icon-game">🎮</div>
+                <div class="card-title">Tic Tac Toe v2</div>
+                <div class="card-desc">Two-player game</div>
+                <div class="card-arrow">Explore →</div>
+            </a>
+
+            <a href="habit-tracker/index.html" class="card">
+                <div class="card-icon icon-habit">✅</div>
+                <div class="card-title">Habit Tracker</div>
+                <div class="card-desc">Offline-first habit tracker with streaks & calendar</div>
+                <div class="card-arrow">Explore →</div>
+            </a>
+
+            <a href="safe-agentic-workflows/" class="card">
+                <div class="card-icon icon-agent">🤖</div>
+                <div class="card-title">Safe Agentic Workflows</div>
+                <div class="card-desc">10-lesson course on AI agent automation with guardrails</div>
+                <div class="card-arrow">Explore →</div>
+            </a>
+
+            <a href="learn-graphify/" class="card">
+                <div class="card-icon icon-graph">🕸️</div>
+                <div class="card-title">Learn Graphify</div>
+                <div class="card-desc">10-lesson course on knowledge graphs for AI-assisted development</div>
+                <div class="card-arrow">Explore →</div>
+            </a>
+
+            <a href="https://blog.imfsoftware.com/ideo-design-sprint-game/" class="card">
+                <div class="card-icon icon-ideo">🎲</div>
+                <div class="card-title">IDEO Design Sprint Game</div>
+                <div class="card-desc">Interactive design sprint card game</div>
+                <div class="card-arrow">Explore →</div>
+            </a>
+        </div>
+
+        <footer class="footer">
+            Built with curiosity · Photo by <a href="https://unsplash.com" style="color: var(--text-tertiary); text-decoration: underline;">Unsplash</a>
+        </footer>
+    </div>
 </body>
 </html>
