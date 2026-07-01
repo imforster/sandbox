@@ -287,26 +287,111 @@ tr:hover {
     --apple-muted: #a1a1a6;
   }
 
+  /* Background overrides */
   .bg-white, .bg-gray-50 {
     background: rgba(28, 28, 30, 0.72) !important;
   }
 
-  th {
-    background: rgba(44, 44, 46, 0.8) !important;
+  /* Text color overrides for readability */
+  .text-gray-800 {
+    color: #f5f5f7 !important;
   }
 
+  .text-gray-600 {
+    color: #a1a1a6 !important;
+  }
+
+  .text-gray-500 {
+    color: #8e8e93 !important;
+  }
+
+  .text-lg.font-bold, .text-2xl.font-bold, .font-bold.text-lg {
+    color: #f5f5f7 !important;
+  }
+
+  .font-semibold {
+    color: #e5e5ea !important;
+  }
+
+  /* Category card text */
+  .bg-white.rounded-lg.p-4.shadow,
+  .bg-white.rounded-lg.p-4.shadow * {
+    color: #f5f5f7;
+  }
+
+  .bg-white.rounded-lg.p-4.shadow .text-gray-600,
+  .bg-white.rounded-lg.p-4.shadow .text-sm {
+    color: #a1a1a6 !important;
+  }
+
+  .bg-white.rounded-lg.p-4.shadow .text-gray-500,
+  .bg-white.rounded-lg.p-4.shadow .text-xs {
+    color: #8e8e93 !important;
+  }
+
+  .bg-white.rounded-lg.p-4.shadow .text-green-600 {
+    color: #30d158 !important;
+  }
+
+  /* Header card with light gradient — needs dark text override in dark mode */
+  .from-blue-50 {
+    background: rgba(28, 28, 30, 0.9) !important;
+  }
+
+  .from-blue-50 * {
+    color: #f5f5f7 !important;
+  }
+
+  .from-blue-50 .text-gray-600,
+  .from-blue-50 .text-sm {
+    color: #a1a1a6 !important;
+  }
+
+  /* Savings section */
+  .text-green-600 {
+    color: #30d158 !important;
+  }
+
+  .text-yellow-600 {
+    color: #ffd60a !important;
+  }
+
+  .text-blue-600 {
+    color: #64d2ff !important;
+  }
+
+  /* Table and data elements */
+  th {
+    background: rgba(44, 44, 46, 0.8) !important;
+    color: #a1a1a6 !important;
+  }
+
+  td {
+    color: #e5e5ea !important;
+  }
+
+  /* Form elements */
   input, select, textarea {
     background: rgba(44, 44, 46, 0.6) !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
     color: #f5f5f7 !important;
   }
 
+  /* Charts */
   .recharts-legend-item:hover {
     background: rgba(255, 255, 255, 0.05) !important;
   }
 
   .recharts-cartesian-grid line {
     stroke: rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .recharts-cartesian-axis-tick-value {
+    fill: #a1a1a6 !important;
+  }
+
+  .recharts-yAxis .recharts-cartesian-axis-tick-value {
+    fill: #e5e5ea !important;
   }
 
   .recharts-default-tooltip {
@@ -318,8 +403,18 @@ tr:hover {
     color: #f5f5f7 !important;
   }
 
+  .recharts-tooltip-item {
+    color: #a1a1a6 !important;
+  }
+
+  /* Section containers */
   .bg-gray-50.rounded-xl {
     background: rgba(28, 28, 30, 0.72) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  /* Download/action buttons */
+  .border-t {
     border-color: rgba(255, 255, 255, 0.08) !important;
   }
 }
