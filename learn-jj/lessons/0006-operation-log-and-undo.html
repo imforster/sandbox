@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6: The Operation Log and Undo</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0005-working-with-github.html" class="lesson-back-top" title="Working with GitHub"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span></span></nav>
+
+<h1>The Operation Log and Undo</h1>
+
+<div class="lesson-meta">
+  Lesson 6 · jj for Git Users · ~8 minutes
+</div>
+
+<p>Every mutation to a jj repository is recorded as an <strong>operation</strong>. The operation log is an immutable, human-readable history of everything you've done — and it gives you a one-command undo for any operation. This is the safety net that makes jj's fearless history rewriting possible.</p>
+
+<p>If git's reflog is a detective's notebook (cryptic, per-ref, expires after 90 days), jj's operation log is a full flight recorder (atomic, human-readable, covers everything, never expires).</p>
+
+<h2><code>jj op log</code> — View Operation History</h2>
+
+<p>Every time you run a jj command that mutates the repo, it creates an operation entry. View the history with <code>jj op log</code>:</p>
+
+<pre><code>$ jj op log
+@  4a8f2c1d2e3f user@host 2024-03-15 14:23:01 UTC
+│  rebase commit sqpuoqvx and descendants
+○  8b3e4d5f6a7b user@host 2024-03-15 14:22:45 UTC
+│  edit commit tpylkqrs
+○  c9d0e1f2a3b4 user@host 2024-03-15 14:20:12 UTC
+│  new empty commit
+○  1e2f3a4b5c6d user@host 2024-03-15 14:19:58 UTC
+│  describe commit sqpuoqvx
+○  5f6a7b8c9d0e user@host 2024-03-15 14:15:30 UTC
+│  snapshot working copy
+○  a1b2c3d4e5f6 user@host 2024-03-15 14:10:00 UTC
+   git fetch</code></pre>
+
+<p>Each entry shows:</p>
+<ul>
+  <li><strong>Operation ID</strong> — the unique identifier you use to restore or reference it</li>
+  <li><strong>User and host</strong> — who did it (useful in shared repos)</li>
+  <li><strong>Timestamp</strong> — when it happened</li>
+  <li><strong>Description</strong> — what the operation did, in plain English</li>
+</ul>
+
+<div class="callout tip">
+  <div class="callout-title">Operations are atomic</div>
+  <p>Each operation captures the <em>entire repo state</em> — all commits, all bookmarks, all refs at once. This is fundamentally different from git's reflog, which tracks individual refs separately. One jj operation = one consistent snapshot of everything.</p>
+</div>
+
+<h2><code>jj undo</code> — One Command, No Fear</h2>
+
+<p>Made a mistake? Undo the last operation with a single command:</p>
+
+<pre><code># You just did a bad rebase:
+$ jj rebase -d wrong-commit
+# Oops. Undo it:
+$ jj undo
+# Repository is back to exactly how it was before the rebase.</code></pre>
+
+<p>That's it. No <code>git reflog</code> + <code>git reset --hard</code> dance. No finding the right SHA. No worrying about which ref to reset. One command restores the entire repo state.</p>
+
+<pre><code># Undo works for any operation:
+$ jj squash --into wrong-commit    # Mistake!
+$ jj undo                           # Fixed.
+
+$ jj git push                       # Pushed too early!
+$ jj undo                           # Local state restored.
+# (Note: the remote push already happened — undo restores local state only)</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">Undo restores local state only</div>
+  <p><code>jj undo</code> reverses the local repo state. If the undone operation was a push, the commits are already on the remote. You'd need to force-push again to update the remote. For local-only operations (rebase, edit, squash, split), undo is a complete reversal.</p>
+</div>
+
+<h2><code>jj op restore</code> — Jump to Any Point</h2>
+
+<p>Undo goes back one step. <code>jj op restore</code> lets you jump to <em>any</em> point in your operation history — like time travel for your entire repository:</p>
+
+<pre><code># View operation history:
+$ jj op log
+@  4a8f2c1d  rebase commit sqpuoqvx and descendants
+○  8b3e4d5f  edit commit tpylkqrs
+○  c9d0e1f2  new empty commit
+○  1e2f3a4b  describe commit sqpuoqvx
+○  5f6a7b8c  snapshot working copy
+
+# Restore to how things were 3 operations ago:
+$ jj op restore 1e2f3a4b
+# Repo is now exactly as it was at that point in time.</code></pre>
+
+<p>This is far more powerful than git's reflog because it restores <em>everything</em> — all commits, all bookmarks, all working copy state — as a single atomic snapshot.</p>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>Git: recover from a bad rebase</h4>
+    <pre><code># Something went wrong 3 operations ago...
+$ git reflog
+# Find the right SHA among cryptic entries:
+# abc1234 HEAD@{0}: rebase (continue)
+# def5678 HEAD@{1}: rebase (pick)
+# 789abcd HEAD@{2}: rebase (start)
+# fab4321 HEAD@{3}: commit: my work  ← this one!
+
+$ git reset --hard fab4321
+# ⚠️ Only resets HEAD — other branches unchanged
+# ⚠️ Stash might be lost
+# ⚠️ Hope you picked the right SHA...</code></pre>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj: recover from a bad rebase</h4>
+    <pre><code># Something went wrong...
+$ jj op log
+# Human-readable descriptions:
+# 4a8f  rebase commit and descendants
+# 8b3e  edit commit tpylkqrs
+# c9d0  new empty commit  ← before the mess
+
+$ jj op restore c9d0
+# Done. Entire repo restored atomically.
+# All commits, all bookmarks, everything.</code></pre>
+  </div>
+</div>
+
+<h2>Why Better Than Git Reflog</h2>
+
+<p>The operation log solves every pain point of git's reflog:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>git reflog</th>
+      <th>jj op log</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Scope</td>
+      <td>Per-ref (HEAD, each branch separately)</td>
+      <td>Entire repo as one atomic snapshot</td>
+    </tr>
+    <tr>
+      <td>Readability</td>
+      <td>Cryptic (<code>HEAD@{3}: rebase (pick): abc123</code>)</td>
+      <td>Human-readable (<code>rebase commit and descendants</code>)</td>
+    </tr>
+    <tr>
+      <td>Expiration</td>
+      <td>Expires after 90 days (gc.reflogExpire)</td>
+      <td>Never expires — permanent history</td>
+    </tr>
+    <tr>
+      <td>Restore</td>
+      <td>Must find the right SHA + <code>reset --hard</code></td>
+      <td><code>jj op restore &lt;id&gt;</code> — one command</td>
+    </tr>
+    <tr>
+      <td>Coverage</td>
+      <td>Misses some operations (worktree, stash internals)</td>
+      <td>Every repo mutation recorded</td>
+    </tr>
+    <tr>
+      <td>Multi-ref</td>
+      <td>Each ref has its own reflog — must piece together state</td>
+      <td>One operation = one consistent state of all refs</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Use Cases</h2>
+
+<h3>Bad rebase recovery</h3>
+
+<pre><code># Rebased onto wrong commit:
+$ jj rebase -d wrong-thing
+# Immediate fix:
+$ jj undo</code></pre>
+
+<h3>Experimentation without risk</h3>
+
+<pre><code># Try a risky refactor:
+$ jj op log | head -1   # Note current operation ID: abc123
+# ... try things, edit history, rebase, squash ...
+# Didn't work out? Restore:
+$ jj op restore abc123
+# Back to exactly where you started.</code></pre>
+
+<h3>Accidental squash recovery</h3>
+
+<pre><code># Squashed into the wrong commit:
+$ jj squash --into wrong-ancestor
+# Undo:
+$ jj undo
+# Changes are back in the original commit.</code></pre>
+
+<h3>Recovering after accidental bookmark deletion</h3>
+
+<pre><code># Accidentally deleted a bookmark:
+$ jj bookmark delete important-branch
+# Undo restores the bookmark and everything it pointed to:
+$ jj undo</code></pre>
+
+<div class="callout">
+  <div class="callout-title">The safety net philosophy</div>
+  <p>The operation log is what makes jj's aggressive history rewriting safe. You can <code>jj edit</code>, <code>jj split</code>, <code>jj squash</code>, and <code>jj rebase</code> fearlessly because every operation is reversible. If anything goes wrong, <code>jj undo</code> or <code>jj op restore</code> gets you back instantly. This is why jj users rewrite history constantly — the cost of mistakes is near zero.</p>
+</div>
+
+<h2>Advanced: Operation Diffs</h2>
+
+<p>You can see what changed between operations using <code>jj op diff</code>:</p>
+
+<pre><code># See what the last operation changed:
+$ jj op diff
+
+# See what a specific operation changed:
+$ jj op diff --from 8b3e4d5f --to 4a8f2c1d</code></pre>
+
+<p>This shows exactly which commits were added, removed, or modified — useful for understanding what happened before deciding whether to undo.</p>
+
+<h2>The Mental Model</h2>
+
+<div class="diagram">
+Git:    commits ← reflog (per-ref, cryptic, expires)
+        Working state NOT fully captured.
+
+jj:     commits ← operations ← operation log
+        Each operation = full atomic snapshot.
+        Never expires. Human-readable. One-command restore.
+
+Think of it like:
+  git reflog  = browser history (per-tab, messy, auto-deletes)
+  jj op log   = Time Machine backup (whole system, browsable, permanent)
+</div>
+
+<p>The operation log doesn't just record what happened — it enables a fundamentally different relationship with your version control tool. When any mistake is instantly reversible, you stop being careful and start being creative.</p>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">What does <code>jj op log</code> show that <code>git reflog</code> doesn't?</div>
+  <ul class="quiz-options">
+    <li>Individual file changes within each commit</li>
+    <li data-correct="true">Atomic operations covering all refs at once, not per-ref history</li>
+    <li>The diff between consecutive commits</li>
+    <li>Only operations that modified the working copy</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! Each jj operation is an atomic snapshot of the entire repo state — all commits, all bookmarks, all refs together. Git's reflog tracks each ref separately, so you have to piece together what the repo looked like at a given point by cross-referencing multiple reflogs.</div>
+  <div class="quiz-feedback incorrect">Not quite. The key difference is atomicity: each jj operation captures the entire repo state (all commits, bookmarks, and refs) as one snapshot. Git's reflog is per-ref — HEAD has its own reflog, each branch has its own. You can't easily reconstruct the full repo state at a point in time from git's reflog.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">How do you undo the last operation in jj?</div>
+  <ul class="quiz-options">
+    <li><code>jj reset --hard HEAD@{1}</code></li>
+    <li><code>jj op restore --last</code></li>
+    <li data-correct="true"><code>jj undo</code></li>
+    <li><code>jj revert HEAD</code></li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! Just <code>jj undo</code>. No arguments needed. It reverses the last operation and restores the entire repo to its previous state. The simplest possible recovery command.</div>
+  <div class="quiz-feedback incorrect">Not quite. The command is simply <code>jj undo</code> — no arguments, no SHAs, no ref syntax. It reverses the most recent operation atomically. The git-style commands (<code>reset --hard</code>, <code>revert</code>) don't exist in jj.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">How do you restore the repo to exactly how it was 5 operations ago?</div>
+  <ul class="quiz-options">
+    <li>Run <code>jj undo</code> five times in a row</li>
+    <li><code>jj op restore HEAD~5</code></li>
+    <li data-correct="true">Find the operation ID in <code>jj op log</code> and run <code>jj op restore &lt;id&gt;</code></li>
+    <li><code>jj reset --operations 5</code></li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! Use <code>jj op log</code> to find the operation ID, then <code>jj op restore &lt;id&gt;</code>. This atomically restores the entire repo — all commits, bookmarks, and state — to exactly how it was at that point. No partial restoration, no ref-by-ref reconstruction.</div>
+  <div class="quiz-feedback incorrect">Not quite. The correct approach: look at <code>jj op log</code> to find the operation ID you want to restore to, then run <code>jj op restore &lt;id&gt;</code>. This restores the full repo state atomically. Running <code>jj undo</code> multiple times would work but isn't the intended pattern for jumping back multiple steps.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://docs.jj-vcs.dev/latest/operation-log">jj Documentation — Operation Log</a> — official reference for the operation log, undo, restore, and advanced operation management.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> The operation log is the foundation of jj's safety model. If you want to explore specific recovery scenarios, understand how op log interacts with remote pushes, or compare it to a git workflow you currently use — ask me.
+</div>
+
+<div class="lesson-nav">
+  <a href="0005-working-with-github.html">← Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <span class="lesson-nav-disabled">Coming soon</span>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => { if (o.dataset.correct === 'true') o.classList.add('correct'); });
+      }
+    });
+  });
+});
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

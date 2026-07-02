@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5: Working with GitHub</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0004-rewriting-history.html" class="lesson-back-top" title="Rewriting History"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0006-operation-log-and-undo.html" class="lesson-next-top" title="The Operation Log">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Working with GitHub</h1>
+
+<div class="lesson-meta">
+  Lesson 5 · jj for Git Users · ~10 minutes
+</div>
+
+<p>jj doesn't use branches internally — but GitHub still needs them. This lesson covers the bridge: <strong>bookmarks</strong>. You'll learn how to push changes to GitHub, create PRs, address review feedback, and keep your stack up to date — all while staying in jj's superior workflow.</p>
+
+<p>The good news: you only need bookmarks when interacting with remotes. Inside your local repo, you never think about them.</p>
+
+<h2>Bookmarks: jj's Branches</h2>
+
+<p>A <strong>bookmark</strong> in jj is equivalent to a git branch — a named pointer to a commit. The key difference: bookmarks are only needed for remote interaction. Locally, you identify commits by change ID or description. Bookmarks exist purely to give GitHub something to push to.</p>
+
+<pre><code># Create a bookmark pointing at a specific revision:
+$ jj bookmark create my-feature -r @-
+
+# Create a bookmark pointing at the current working copy's parent:
+$ jj bookmark create my-feature -r @-
+
+# List all bookmarks:
+$ jj bookmark list</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">You rarely create bookmarks manually</div>
+  <p>The <code>jj git push --change</code> command auto-creates bookmarks for you. Manual bookmark creation is only needed when you want a specific name (e.g., matching a Jira ticket). For most PRs, let jj name them automatically.</p>
+</div>
+
+<h2>Pushing to a Remote</h2>
+
+<p>Once a bookmark exists, push it to GitHub:</p>
+
+<pre><code># Push all bookmarks that have local changes:
+$ jj git push
+
+# Push a specific bookmark:
+$ jj git push -b my-feature</code></pre>
+
+<h3>The shortcut: push by change ID</h3>
+
+<p>The most common workflow skips manual bookmark creation entirely. <code>--change</code> creates a bookmark named after the change ID and pushes it in one step:</p>
+
+<pre><code># Auto-create a bookmark for the parent commit and push it:
+$ jj git push --change @-
+
+# Push a specific change by its ID:
+$ jj git push --change sqpuoqvx</code></pre>
+
+<p>This creates a bookmark like <code>push-sqpuoqvx</code> and pushes it. GitHub sees a branch; you never had to think about naming it.</p>
+
+<div class="callout">
+  <div class="callout-title">When to use --change vs -b</div>
+  <p>Use <code>--change</code> for quick single-commit PRs where you don't care about the branch name. Use <code>-b</code> (with a manually created bookmark) when you want a human-readable branch name, or when pushing a multi-commit stack under one bookmark.</p>
+</div>
+
+<h2>Fetching Remote Changes</h2>
+
+<p>Pull the latest from the remote with <code>jj git fetch</code>. This updates your remote-tracking bookmarks (like <code>main@origin</code>) without touching your local commits:</p>
+
+<pre><code># Fetch all remotes:
+$ jj git fetch
+
+# After fetching, update your stack to sit on top of the latest main:
+$ jj rebase -d main</code></pre>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>Git: update feature branch</h4>
+    <pre><code># Pull latest main and rebase your branch:
+$ git checkout main
+$ git pull
+$ git checkout my-feature
+$ git rebase main
+# Resolve conflicts if any...
+# Or: git pull --rebase origin main</code></pre>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj: update your stack</h4>
+    <pre><code># Pull latest and rebase in two commands:
+$ jj git fetch
+$ jj rebase -d main
+# Done. No checkout dance.
+# Conflicts stored if any — resolve at leisure.</code></pre>
+  </div>
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">No checkout needed</div>
+  <p>Unlike git, you don't need to "be on" a branch to rebase it. <code>jj rebase -d main</code> rebases your current stack's root onto main regardless of where your working copy is. You never switch branches — because jj doesn't have branches to switch between.</p>
+</div>
+
+<h2>The Full PR Workflow</h2>
+
+<p>Here's the complete cycle from local work to merged PR:</p>
+
+<pre><code># 1. Do your work (normal jj workflow — no branch needed yet):
+$ jj new -m "add user authentication"
+# ... write code ...
+$ jj new -m "add auth tests"
+# ... write tests ...
+
+# 2. Ready for review — push with auto-bookmark:
+$ jj git push --change @-
+# Creates bookmark and pushes. Output shows the branch name.
+
+# 3. Create the PR using GitHub CLI:
+$ gh pr create --head push-sqpuoqvx --title "Add user authentication"
+
+# 4. Reviewer requests changes. Address them:
+$ jj edit sqpuoqvx          # Jump to the commit that needs fixing
+# Make the fix (auto-amends)
+$ jj new                     # Return to top of stack
+
+# 5. Force-push the updated bookmark:
+$ jj git push
+# jj detects the bookmark moved and force-pushes automatically.
+
+# 6. PR merged! Clean up:
+$ jj git fetch               # Pulls the merge
+$ jj bookmark forget push-sqpuoqvx   # Optional cleanup</code></pre>
+
+<div class="diagram">
+Local workflow:                       GitHub:
+
+jj new → write code                   (nothing yet)
+jj new → write tests                  (nothing yet)
+jj git push --change @-      →→→     Branch appears, ready for PR
+gh pr create                 →→→     PR opened
+jj edit → fix → jj new               (review comments addressed)
+jj git push                  →→→     PR updated (force-push)
+                             ←←←     PR merged
+jj git fetch                          main updated locally
+</div>
+
+<h2>Addressing Review Feedback</h2>
+
+<p>This is where jj's history rewriting (Lesson 4) pays off in the PR workflow. When a reviewer asks for changes to a specific commit in your stack:</p>
+
+<pre><code># Reviewer says: "Fix the error handling in commit sqpuoqvx"
+
+$ jj edit sqpuoqvx       # Jump directly to that commit
+# Fix the error handling
+$ jj new                  # Back to top of stack
+$ jj git push             # Force-pushes the updated bookmark</code></pre>
+
+<p>No <code>git commit --fixup</code>. No <code>git rebase --autosquash</code>. No separate "address review" commits that you squash later. You fix the actual commit, and the PR updates cleanly.</p>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>Git: address review on commit 2 of 3</h4>
+    <pre><code># Option A: fixup commit (messy history)
+$ git commit -m "fixup: address review"
+$ git push
+
+# Option B: amend the right commit (complex)
+$ git rebase -i HEAD~3
+# Mark commit 2 as "edit"
+# Make fix, amend, continue
+# Resolve any conflicts...
+$ git push --force-with-lease</code></pre>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj: address review on commit 2 of 3</h4>
+    <pre><code># Direct and clean:
+$ jj edit &lt;change-id&gt;    # Jump to commit 2
+# Make the fix
+$ jj new                  # Done
+$ jj git push             # Auto force-pushes</code></pre>
+  </div>
+</div>
+
+<div class="callout warning">
+  <div class="callout-title">Force-pushing is normal</div>
+  <p>In jj, every time you rewrite history and push, it's a force-push. jj handles this automatically — you don't need <code>--force</code> or <code>--force-with-lease</code>. This is safe because your PR branch is yours. Just don't rewrite commits that others are building on (same rule as git).</p>
+</div>
+
+<h2>Using <code>gh pr create</code> with jj</h2>
+
+<p>The GitHub CLI works perfectly with jj. The only thing to know: use <code>--head</code> to specify your bookmark name:</p>
+
+<pre><code># After pushing:
+$ gh pr create --head push-sqpuoqvx --base main
+
+# Or with more options:
+$ gh pr create \
+  --head my-feature \
+  --base main \
+  --title "Add user authentication" \
+  --body "Implements OAuth2 flow for the login page"
+
+# List your PRs:
+$ gh pr list --author @me
+
+# Check PR status:
+$ gh pr status</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Naming bookmarks for PRs</div>
+  <p>If you plan to use <code>gh pr create</code>, consider creating a named bookmark instead of relying on the auto-generated <code>push-xxxxx</code> name. It makes the <code>--head</code> flag more readable: <code>--head add-auth</code> vs <code>--head push-sqpuoqvx</code>.</p>
+</div>
+
+<h2>Multi-Commit PRs</h2>
+
+<p>For a PR containing multiple commits (a stack), point the bookmark at the top of your stack:</p>
+
+<pre><code># Your stack:
+# main ← add-model ← add-migration ← add-endpoint (@)
+
+# Create bookmark at the top:
+$ jj bookmark create my-feature -r @-
+
+# Push (includes all commits between main and the bookmark):
+$ jj git push -b my-feature
+
+# GitHub PR will show all 3 commits.</code></pre>
+
+<p>When you rewrite any commit in the stack (edit, split, squash), the bookmark stays at the top. Just <code>jj git push</code> again to update the PR.</p>
+
+<h2>Keeping Your Stack Up to Date</h2>
+
+<p>When the remote <code>main</code> moves forward (other PRs merge), update your local stack:</p>
+
+<pre><code># Fetch latest:
+$ jj git fetch
+
+# Rebase your entire stack onto the new main:
+$ jj rebase -d main
+
+# If conflicts arise, jj log shows them:
+$ jj log
+# Resolve conflicted commits at your leisure.
+
+# Push updated stack:
+$ jj git push</code></pre>
+
+<p>This replaces the git workflow of <code>git fetch origin</code> → <code>git rebase origin/main</code> → resolve conflicts serially → force push. In jj, conflicts don't block the rebase — they're stored and resolved whenever you're ready.</p>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">When do you need to create a bookmark in jj?</div>
+  <ul class="quiz-options">
+    <li>Before every commit, just like creating a branch in git</li>
+    <li>Whenever you want to track where you are in the history</li>
+    <li data-correct="true">Only when you need to push to or interact with a remote</li>
+    <li>When you want to name a commit for easier reference</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! Bookmarks exist solely for remote interaction. Locally, you use change IDs to reference commits. You never need to "create a branch" before starting work — that's a git habit you can drop.</div>
+  <div class="quiz-feedback incorrect">Not quite. Bookmarks are only needed when pushing to a remote (like GitHub). Locally, jj uses change IDs to identify commits. You don't need to create a bookmark before working — only before pushing.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">What does <code>jj git push --change @-</code> do?</div>
+  <ul class="quiz-options">
+    <li>Pushes all local bookmarks to the remote</li>
+    <li>Creates a new commit and pushes it</li>
+    <li data-correct="true">Auto-creates a bookmark for the parent commit and pushes it to the remote</li>
+    <li>Pushes the working copy commit to the remote</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! <code>--change @-</code> targets the parent commit (<code>@-</code>), automatically creates a bookmark named after its change ID (like <code>push-sqpuoqvx</code>), and pushes it. One command replaces "create branch + push."</div>
+  <div class="quiz-feedback incorrect">Not quite. <code>jj git push --change @-</code> takes the parent commit (<code>@-</code>), auto-creates a bookmark for it (named after the change ID), and pushes that bookmark to the remote. It's a shortcut that combines bookmark creation and pushing.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">After <code>jj git fetch</code>, how do you update your working stack on top of the latest main?</div>
+  <ul class="quiz-options">
+    <li><code>jj git pull --rebase</code></li>
+    <li><code>jj checkout main &amp;&amp; jj merge</code></li>
+    <li data-correct="true"><code>jj rebase -d main</code></li>
+    <li><code>jj bookmark track main</code></li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! <code>jj rebase -d main</code> rebases your current stack onto the latest main. No need to checkout main first, no need for a merge step. Two commands total: fetch then rebase.</div>
+  <div class="quiz-feedback incorrect">Not quite. After fetching, use <code>jj rebase -d main</code> to move your stack on top of the updated main. There's no <code>jj pull</code> or <code>jj checkout</code> — those are git concepts that don't apply here.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://docs.jj-vcs.dev/latest/github">jj Documentation — Working with GitHub</a> — official guide covering bookmarks, pushing, PRs, and GitHub-specific workflows in detail.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> The git-to-jj bridge for GitHub workflows can feel unfamiliar at first. Ask me about specific scenarios — stacked PRs, handling merge conflicts on push, working with forks, or anything else about the remote interaction model.
+</div>
+
+<div class="lesson-nav">
+  <a href="0004-rewriting-history.html">← Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0006-operation-log-and-undo.html" class="lesson-nav-next" title="The Operation Log">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => { if (o.dataset.correct === 'true') o.classList.add('correct'); });
+      }
+    });
+  });
+});
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

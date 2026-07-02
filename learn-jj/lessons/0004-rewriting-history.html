@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4: Rewriting History</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0003-core-workflow.html" class="lesson-back-top" title="The Core Workflow"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-working-with-github.html" class="lesson-next-top" title="Working with GitHub">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Rewriting History</h1>
+
+<div class="lesson-meta">
+  Lesson 4 · jj for Git Users · ~12 minutes
+</div>
+
+<p>This is the payoff lesson. Everything from Lessons 1–3 — the working copy as a commit, auto-rebase, conflicts as data — exists to make history rewriting <strong>safe and routine</strong>. In git, rewriting history is an advanced operation you do carefully. In jj, it's the normal workflow.</p>
+
+<p>You'll learn six operations that cover every history rewriting scenario: jumping into past commits, splitting, squashing, reordering, and automatically distributing fixups. Each one is dramatically simpler than its git equivalent.</p>
+
+<h2><code>jj edit</code> — Jump Into Any Commit</h2>
+
+<p>The most powerful command. <code>jj edit</code> moves your working copy into an existing commit so you can modify it directly. Any changes you make amend that commit in place, and all descendants are automatically rebased on top.</p>
+
+<pre><code># You have a stack: A ← B ← C ← D (@)
+# You realize commit B has a typo.
+
+$ jj edit B       # @ moves to B
+# Fix the typo in your editor — it auto-amends into B
+$ jj new          # Create a fresh commit, returning to the top of your stack</code></pre>
+
+<div class="diagram">
+Before:       A ← B ← C ← D (@)
+
+jj edit B:    A ← B (@) ← C ← D
+
+Fix typo:     A ← B' (@) ← C' ← D'    ← auto-rebased!
+
+jj new:       A ← B' ← C' ← D' ← @ (empty, fresh)
+</div>
+
+<p>That's it. No interactive rebase. No marking commits as "edit". No <code>--continue</code>. No praying for clean conflict resolution at each step.</p>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>Git: fix a commit 3 back</h4>
+    <pre><code># Fix commit B in a stack of A ← B ← C ← D:
+$ git rebase -i B~1
+# Editor opens — mark B as "edit"
+# Save and close
+$ # Make the fix
+$ git add -A
+$ git commit --amend --no-edit
+$ git rebase --continue
+# ⚠️ Conflict at C? Resolve, git add, continue.
+# ⚠️ Conflict at D? Resolve again.
+# Finally done (or gave up and ran --abort)</code></pre>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj: fix a commit 3 back</h4>
+    <pre><code># Fix commit B in a stack of A ← B ← C ← D:
+$ jj edit B
+# Make the fix (auto-amended into B)
+$ jj new
+# Done. Descendants rebased automatically.
+# If conflicts: stored in commits as data.
+# Resolve whenever you want — nothing blocks.</code></pre>
+  </div>
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">edit vs new</div>
+  <p><code>jj new</code> creates a fresh empty commit on top of the current one — "start something new." <code>jj edit</code> moves your working copy <em>into</em> an existing commit — "go back and fix something." They are complementary: you <code>edit</code> to jump somewhere, then <code>new</code> to leave.</p>
+</div>
+
+<h2><code>jj split</code> — Break One Commit Into Two</h2>
+
+<p>You made a commit that does two things and want to separate them. <code>jj split</code> breaks the current commit into two sequential commits. You choose what goes in the first; everything else goes in the second.</p>
+
+<pre><code># Current commit has changes to auth.rs AND readme.md.
+# You want those as separate commits.
+
+$ jj split
+# Interactive editor opens — select which changes go in the FIRST commit.
+# Everything else automatically goes into the SECOND commit.</code></pre>
+
+<p>You can also split by file path without the interactive editor:</p>
+
+<pre><code># Put auth.rs changes first, readme.md changes second:
+$ jj split auth.rs</code></pre>
+
+<div class="diagram">
+Before:       A ← BigCommit (@) ← C
+
+After split:  A ← Part1 ← Part2 (@) ← C'
+
+Part1 gets what you selected.
+Part2 gets everything else.
+Descendants (C) are automatically rebased.
+</div>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>Git: split a commit</h4>
+    <pre><code># Split the most recent commit:
+$ git reset HEAD~1
+$ git add auth.rs
+$ git commit -m "auth changes"
+$ git add readme.md
+$ git commit -m "docs update"
+
+# Split a commit 3 back? Buckle up:
+$ git rebase -i HEAD~3
+# Mark as "edit" in editor
+$ git reset HEAD~1
+$ git add auth.rs &amp;&amp; git commit -m "part 1"
+$ git add readme.md &amp;&amp; git commit -m "part 2"
+$ git rebase --continue
+# Hope nothing conflicts...</code></pre>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj: split a commit</h4>
+    <pre><code># Split any commit — same ease regardless of position:
+$ jj edit &lt;change-id&gt;   # jump to it (skip if already there)
+$ jj split               # interactively choose
+$ jj new                 # return to top
+
+# Or split by file path:
+$ jj split auth.rs
+
+# Split the current commit in one step:
+$ jj split</code></pre>
+  </div>
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">Splitting any commit in the stack</div>
+  <p>Because <code>jj edit</code> lets you jump to any commit, you can combine it with <code>jj split</code> to break apart any commit in your history. Descendants always auto-rebase. The position of the commit in your stack doesn't affect the difficulty.</p>
+</div>
+
+<h2><code>jj squash</code> — Move Changes Into Parent</h2>
+
+<p><code>jj squash</code> moves all changes from the current commit into its parent. If the current commit becomes empty afterward, it's automatically discarded. This is like <code>git commit --amend</code>, but far more flexible.</p>
+
+<pre><code># You have: A ← B ← WIP-fix (@)
+# You want the WIP-fix changes folded into B.
+
+$ jj squash
+# Changes from @ move into B.
+# If @ is now empty, it vanishes. Done.</code></pre>
+
+<h3>Interactive squash: choose what to move</h3>
+
+<p>Don't want to squash everything? Use <code>-i</code> to interactively select which hunks to move into the parent:</p>
+
+<pre><code>$ jj squash -i
+# Interactive diff editor opens.
+# Select hunks to move into parent.
+# Unselected hunks stay in the current commit.</code></pre>
+
+<h3>Squash into any ancestor</h3>
+
+<p>This is where jj goes far beyond git. You can squash changes into <em>any</em> ancestor commit, not just the immediate parent:</p>
+
+<pre><code># Stack: A ← B ← C ← D (@)
+# Move some changes from D directly into B:
+
+$ jj squash --into B
+# Changes from @ move into B. C and D are auto-rebased.</code></pre>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>Git: squash into ancestor</h4>
+    <pre><code># Move changes into an ancestor commit:
+$ git stash
+$ git rebase -i &lt;ancestor&gt;~1
+# Mark ancestor as "edit" in editor
+$ git stash pop
+$ git add -A
+$ git commit --amend --no-edit
+$ git rebase --continue
+# Resolve any conflicts along the way...</code></pre>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj: squash into ancestor</h4>
+    <pre><code># Move changes into any ancestor:
+$ jj squash --into &lt;change-id&gt;
+# Done. One command. Auto-rebase handles the rest.</code></pre>
+  </div>
+</div>
+
+<h2>Reordering Commits with <code>jj rebase</code></h2>
+
+<p>Need to change the order of commits in a stack? <code>jj rebase</code> has three key flags for different scenarios:</p>
+
+<pre><code># Stack: A ← B ← C ← D (@)
+# You want C to come after D instead.
+
+$ jj rebase -r C -A D
+# -r: the single revision to move
+# -A: place it After this revision</code></pre>
+
+<div class="diagram">
+Before:   A ← B ← C ← D (@)
+
+After:    A ← B ← D' ← C' (@)
+
+-r C detaches C from the chain.
+-A D places it after D.
+Everything rebases automatically.
+</div>
+
+<p>You can also move a commit and all its descendants together with <code>-s</code> (source):</p>
+
+<pre><code># Move commit C and everything after it onto a different base:
+$ jj rebase -s C -d A
+# Now: A ← C' ← D' (B is orphaned from this branch)</code></pre>
+
+<div class="callout">
+  <div class="callout-title">Rebase flag reference</div>
+  <p><code>-r</code> moves a single revision, re-parenting its children to its former parent. <code>-s</code> moves a revision and all its descendants together as a subtree. <code>-d</code> sets the destination parent. <code>-A</code> inserts after a specific revision in an existing chain.</p>
+</div>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>Git: reorder commits</h4>
+    <pre><code># Reorder commits in a stack:
+$ git rebase -i HEAD~4
+# Editor opens with all 4 commits listed.
+# Manually rearrange the lines.
+# Save and close.
+# ⚠️ Conflicts possible at each step.
+# Resolve, add, continue for each one.</code></pre>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj: reorder commits</h4>
+    <pre><code># Reorder commits in a stack:
+$ jj rebase -r C -A D
+# One command. Immediate. Auto-rebase.
+
+# Or move a subtree:
+$ jj rebase -s C -d main
+# Moves C and all descendants onto main.</code></pre>
+  </div>
+</div>
+
+<h2>Why Auto-Rebase Makes All of This Safe</h2>
+
+<p>Every operation above — edit, split, squash, rebase — modifies commits that have descendants. In git, this is where things get terrifying. In jj, every history rewrite immediately and automatically propagates to all descendants.</p>
+
+<p>The key insight: if conflicts arise during auto-rebase, they're stored as data in the affected commits. Your operation always succeeds. You're never stuck in a half-finished rebase state with no clear way out.</p>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>Git: the rebase fear loop</h4>
+    <pre><code># Rewriting commit 5 back in a stack:
+$ git rebase -i HEAD~5
+# ⚠️ Conflict at commit 3!
+# Must resolve NOW or abort everything.
+$ git add . &amp;&amp; git rebase --continue
+# ⚠️ Another conflict at commit 4!
+# Resolve again...
+$ git add . &amp;&amp; git rebase --continue
+# Finally done. Or gave up: git rebase --abort
+# (losing all progress)</code></pre>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj: fearless rewriting</h4>
+    <pre><code># Rewriting commit 5 back in a stack:
+$ jj edit &lt;change-id&gt;
+# Make changes. Done immediately.
+# If descendants conflict:
+$ jj log   # Shows which commits have conflicts
+# Fix them whenever you want, in any order.
+# No blocked state. No --abort. No lost work.</code></pre>
+  </div>
+</div>
+
+<div class="callout warning">
+  <div class="callout-title">Conflicts are deferred, not ignored</div>
+  <p>When auto-rebase creates conflicts, jj marks those commits clearly in <code>jj log</code> (you'll see "conflict" markers). You still need to resolve them before pushing. The difference: you choose <em>when</em> to resolve, and you can continue working on other commits in the meantime. You're never forced to stop everything mid-operation.</p>
+</div>
+
+<h2><code>jj absorb</code> — Auto-Distribute Fixups</h2>
+
+<p><code>jj absorb</code> is the cherry on top. You have uncommitted changes in your working copy that are clearly fixups to specific earlier commits. Instead of manually figuring out which commit each fix belongs to, <code>absorb</code> does it automatically.</p>
+
+<pre><code># You've made small fixes to 3 files.
+# Each fix touches lines introduced by different prior commits.
+
+$ jj absorb
+# jj analyzes each changed line, finds which commit introduced it,
+# and squashes each hunk into the appropriate ancestor commit.
+# All descendants auto-rebase.</code></pre>
+
+<p>Think of it as an automatic <code>git commit --fixup</code> + <code>git rebase --autosquash</code>, but in a single command with no manual commit creation or rebase step.</p>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>Git: fixup workflow</h4>
+    <pre><code># Fix belongs in commit abc123:
+$ git add file.rs
+$ git commit --fixup=abc123
+# Repeat for each fix...
+$ git commit --fixup=def456
+$ git add other.rs
+$ git commit --fixup=abc123
+
+# Now autosquash them all:
+$ git rebase -i --autosquash HEAD~5
+# Hope no conflicts...</code></pre>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj: absorb</h4>
+    <pre><code># All fixes are in your working copy:
+$ jj absorb
+# Done. Each hunk sent to the right commit.
+# No fixup commits. No rebase step.</code></pre>
+  </div>
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">When to use absorb</div>
+  <p>Use <code>jj absorb</code> when you've accumulated small fixes in your working copy that logically belong in different prior commits. It's most useful when preparing a stack for code review — you address feedback, then <code>absorb</code> sends each fix to the right place automatically.</p>
+</div>
+
+<h2>Putting It All Together</h2>
+
+<p>Here's a realistic workflow showing these commands in sequence — preparing a feature stack for review:</p>
+
+<pre><code># Your feature stack:
+$ jj log --short
+@  vrukpmsm  (empty) working copy
+○  zsqolypn  add API endpoint
+○  tpylkqrs  add database migration
+○  kwmxnslp  add data model
+
+# Reviewer says: "Split the API endpoint commit — tests are mixed in."
+$ jj edit zsqolypn
+$ jj split tests/
+$ jj describe -m "add API tests"
+$ jj new
+
+# Reviewer says: "The model commit has a typo in a field name."
+$ jj edit kwmxnslp
+# Fix the typo
+$ jj new
+
+# You notice two small fixes that belong in different commits:
+$ jj absorb
+# Each fix sent to the right ancestor automatically.
+
+# All done. Every descendant auto-rebased after each operation.
+# Force-push to update the PR:
+$ jj git push</code></pre>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">What is the key difference between <code>jj edit</code> and <code>jj new</code>?</div>
+  <ul class="quiz-options">
+    <li>jj new amends the current commit while jj edit creates a fresh one</li>
+    <li data-correct="true">jj edit moves your working copy into an existing commit; jj new creates a fresh empty commit on top</li>
+    <li>jj edit only works on the parent commit while jj new works on any commit</li>
+    <li>jj edit opens an interactive editor while jj new uses the command line</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! <code>jj edit</code> makes an existing commit your working copy — changes amend it in place. <code>jj new</code> creates a fresh empty commit on top of wherever you are. They're complementary: edit to jump back, new to move forward.</div>
+  <div class="quiz-feedback incorrect">Not quite. <code>jj edit</code> moves your working copy <em>into</em> an existing commit so any changes amend it. <code>jj new</code> creates a fresh empty commit on top of the current one. Think: "edit = go back and fix," "new = start something fresh."</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">How do you split a commit that contains changes to 3 files into two commits?</div>
+  <ul class="quiz-options">
+    <li>Use <code>jj rebase -i</code> and mark the commit for splitting</li>
+    <li>Use <code>jj undo</code> to remove half the changes, then recommit separately</li>
+    <li data-correct="true">Run <code>jj split</code> and interactively choose which changes go in each commit</li>
+    <li>Use <code>jj squash -i</code> to move half the changes into a new child</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! <code>jj split</code> opens an interactive editor where you select what goes in the first commit. Everything you don't select automatically becomes the second commit. You can also pass file paths directly: <code>jj split file1.rs file2.rs</code>.</div>
+  <div class="quiz-feedback incorrect">Not quite. <code>jj split</code> is the dedicated command for this. It opens an interactive selector (or accepts file paths as arguments) to choose what goes in the first commit. The rest goes in the second. No rebase or undo needed.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">After <code>jj edit</code> modifies a commit mid-stack, what happens to its descendants?</div>
+  <ul class="quiz-options">
+    <li>They are deleted and must be recreated manually</li>
+    <li>They become detached and require a manual <code>jj rebase</code></li>
+    <li>The edit is blocked until you first detach all descendant commits</li>
+    <li data-correct="true">They are automatically rebased on top of the modified commit</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! Auto-rebase is the key feature that makes all jj history rewriting safe. Descendants are immediately rebased. If conflicts arise, they're stored as data in the affected commits — your operation always succeeds and you resolve conflicts on your own schedule.</div>
+  <div class="quiz-feedback incorrect">Not quite. jj's auto-rebase automatically propagates changes to all descendants whenever an ancestor is modified. If conflicts arise, they're stored as data in the affected commits. Nothing blocks — you resolve conflicts whenever you choose.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://docs.jj-vcs.dev/latest/tutorial#moving-content-changes-between-commits">Official jj Tutorial — Moving content between commits</a> — covers edit, split, squash, and absorb with additional examples and edge cases.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> This lesson covers the core of what makes jj special. If anything about edit, split, squash, rebase, or absorb is unclear — or you want to walk through a specific scenario from your own git workflow that would be simpler in jj — ask me.
+</div>
+
+<div class="lesson-nav">
+  <a href="0003-core-workflow.html">← Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0005-working-with-github.html" class="lesson-nav-next" title="Working with GitHub">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => { if (o.dataset.correct === 'true') o.classList.add('correct'); });
+      }
+    });
+  });
+});
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

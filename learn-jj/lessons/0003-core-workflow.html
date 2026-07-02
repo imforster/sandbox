@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3: The Core Workflow</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0002-install-and-clone.html" class="lesson-back-top" title="Install and Clone"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-rewriting-history.html" class="lesson-next-top" title="Rewriting History">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>The Core Workflow</h1>
+
+<div class="lesson-meta">
+  Lesson 3 · jj for Git Users · ~10 minutes
+</div>
+
+<p>The daily loop: edit, describe, new. Plus diff, log, and your first revsets. This lesson covers the commands you'll use 90% of the time.</p>
+
+<h2>The Basic Loop</h2>
+
+<p>In git, a commit is an <em>action</em> you take when you're ready. In jj, a commit is a <em>place</em> you're currently editing. This one shift simplifies everything. Your daily workflow becomes:</p>
+
+<ol>
+  <li><strong>Edit files</strong> — they're instantly part of the current commit (no add, no staging)</li>
+  <li><strong>Describe</strong> — set or update the commit message whenever you want</li>
+  <li><strong>New</strong> — when you're done, create a fresh commit and start the next change</li>
+</ol>
+
+<p>That's it. Those three actions replace git's edit → add → commit cycle entirely.</p>
+
+<div class="diagram">┌─────────────────────────────────────────┐
+│           The jj Loop                   │
+│                                         │
+│   Edit files ──→ jj describe ──→ jj new │
+│       ↑                            │    │
+│       └────────────────────────────┘    │
+│                                         │
+│   (Your edits auto-amend the current    │
+│    commit. No staging. No add.)         │
+└─────────────────────────────────────────┘</div>
+
+<h2>jj new — Start a New Change</h2>
+
+<p>When you run <code>jj new</code>, jj creates a new empty commit on top of your current working-copy commit. Your working copy now points to this new commit. Any edits you make from here go into it.</p>
+
+<pre><code>$ jj new
+Working copy now at: ksrmwuon 4a8b3c2d (empty) (no description set)
+Parent commit      : yostqsxw 9f1e7a3b refactor auth module</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Think of jj new as "I'm done with this change"</div>
+  <p>In git you run <code>git commit</code> to seal a change. In jj the change is already committed — <code>jj new</code> just says "that one's finished, give me a fresh canvas." The previous commit stays exactly as you left it.</p>
+</div>
+
+<p>You can also create a new commit on top of a specific revision:</p>
+
+<pre><code>$ jj new @--          # new commit on top of grandparent
+$ jj new ksrmwuon     # new commit on top of a specific change ID</code></pre>
+
+<h2>jj describe — Set the Commit Message</h2>
+
+<p>In git, you write your commit message at commit time — you'd better know what the change is about before you make it. In jj, the commit already exists. You can describe it at any point: before you start editing, while you're in the middle, or three commits later when you realize you forgot.</p>
+
+<pre><code>$ jj describe -m "refactor auth module to use JWT tokens"</code></pre>
+
+<p>Without <code>-m</code>, it opens your editor (just like <code>git commit</code> without <code>-m</code>):</p>
+
+<pre><code>$ jj describe        # opens $EDITOR</code></pre>
+
+<p>You can also describe any other commit by specifying a revision:</p>
+
+<pre><code>$ jj describe -r @-  -m "fix typo in README"    # describe the parent
+$ jj describe -r abc123 -m "better message"      # describe by change ID</code></pre>
+
+<div class="callout">
+  <div class="callout-title">Messages are always mutable</div>
+  <p>There is no <code>--amend</code> flag because description is always a rewrite. Every <code>jj describe</code> replaces the commit message. Want to add to it? Edit the full text in your editor. This works the same whether the commit is your working copy or ten commits back.</p>
+</div>
+
+<h2>jj diff — See What Changed</h2>
+
+<p><code>jj diff</code> shows what changed in the working-copy commit relative to its parent — roughly equivalent to <code>git diff HEAD</code> (but remember, there's no staging area to confuse things).</p>
+
+<pre><code>$ jj diff
+Modified regular file src/auth.rs:
+   1    1: use std::collections::HashMap;
+   ...
+  42     : -    let token = create_token(user);
+       42: +    let token = create_jwt(user, &amp;config.secret);</code></pre>
+
+<p>To see the diff of a different commit, use <code>-r</code>:</p>
+
+<pre><code>$ jj diff -r @-      # what did the parent commit change?
+$ jj diff -r @--     # what did the grandparent change?
+$ jj diff -r abc123  # diff of a specific change ID</code></pre>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>Git</h4>
+    <pre><code># Unstaged changes
+$ git diff
+
+# Staged changes
+$ git diff --cached
+
+# All changes vs last commit
+$ git diff HEAD
+
+# What a past commit changed
+$ git show abc123
+$ git diff abc123~1..abc123</code></pre>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj</h4>
+    <pre><code># Working copy changes (the only kind)
+$ jj diff
+
+# What a specific commit changed
+$ jj diff -r @-
+$ jj diff -r abc123
+
+
+# That's it. No staged/unstaged split.</code></pre>
+  </div>
+</div>
+
+<h2>jj log — The Commit Graph</h2>
+
+<p><code>jj log</code> shows your commit history as a graph. It's opinionated about what to show — by default you see only your own commits and their relationship to trunk, not the entire repository history.</p>
+
+<pre><code>$ jj log
+@  ksrmwuon you@example.com 2026-07-01 15:32
+│  (empty) (no description set)
+○  yostqsxw you@example.com 2026-07-01 15:30
+│  refactor auth module to use JWT tokens
+○  vputmzrl you@example.com 2026-07-01 14:15
+│  add rate limiting middleware
+│ ○  nwlqzpkx you@example.com 2026-06-30 09:00
+├─╯  fix typo in README
+◆  zzzzzzzz root()</code></pre>
+
+<h3>Reading the Symbols</h3>
+
+<table>
+  <thead>
+    <tr><th>Symbol</th><th>Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>@</code></td><td>The working-copy commit (where your edits go)</td></tr>
+    <tr><td><code>○</code></td><td>A regular mutable commit</td></tr>
+    <tr><td><code>◆</code></td><td>An immutable commit (already pushed, or the root)</td></tr>
+    <tr><td><code>│</code></td><td>Parent-child relationship (line connecting commits)</td></tr>
+    <tr><td><code>├─╯</code></td><td>A branch merging back into the main line</td></tr>
+    <tr><td><code>trunk()</code></td><td>Marks the main branch tip (usually <code>main@origin</code>)</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">Customizing jj log</div>
+  <p>To see more history: <code>jj log -r 'all()'</code>. To see just a linear stack: <code>jj log -r '::@'</code>. The <code>-r</code> flag accepts revset expressions, which we cover next.</p>
+</div>
+
+<h2>Introduction to Revsets</h2>
+
+<p>Revsets are jj's query language for selecting commits. Think of them like CSS selectors for your history. You've already seen the most common ones:</p>
+
+<table>
+  <thead>
+    <tr><th>Revset</th><th>Meaning</th><th>Git equivalent</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>@</code></td><td>The working-copy commit</td><td><code>HEAD</code> (sort of)</td></tr>
+    <tr><td><code>@-</code></td><td>Parent of working copy</td><td><code>HEAD~1</code></td></tr>
+    <tr><td><code>@--</code></td><td>Grandparent of working copy</td><td><code>HEAD~2</code></td></tr>
+    <tr><td><code>trunk()</code></td><td>Main branch tip</td><td><code>origin/main</code></td></tr>
+  </tbody>
+</table>
+
+<p>You can use revsets anywhere a revision is expected:</p>
+
+<pre><code>$ jj diff -r @-          # diff of parent
+$ jj new @--             # new commit on top of grandparent
+$ jj log -r '@-::'       # parent and all its descendants
+$ jj log -r 'trunk()..@' # commits between trunk and working copy</code></pre>
+
+<div class="callout">
+  <div class="callout-title">Revsets vs. git's rev syntax</div>
+  <p>Git uses <code>HEAD~3</code>, <code>HEAD^2</code>, <code>branch-name</code>, commit hashes, and reflog entries — all different syntax for different things. jj unifies all of this into one composable expression language. We'll cover more advanced revsets in later lessons.</p>
+</div>
+
+<h2>jj commit — The Shortcut</h2>
+
+<p><code>jj commit</code> is syntactic sugar for <code>jj describe</code> + <code>jj new</code> in one step. If you know the message and you're ready to move on:</p>
+
+<pre><code>$ jj commit -m "add rate limiting middleware"
+# Equivalent to:
+#   jj describe -m "add rate limiting middleware"
+#   jj new</code></pre>
+
+<p>This is the closest analog to <code>git commit -am "message"</code>. Many jj users prefer the two-step approach (describe separately, then new) because it lets you refine the message independently, but <code>jj commit</code> is there when you want speed.</p>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>Git</h4>
+    <pre><code># The full ceremony
+$ vim src/auth.rs
+$ git add src/auth.rs
+$ git commit -m "refactor auth"
+
+# Or with -a to skip staging
+$ vim src/auth.rs
+$ git commit -am "refactor auth"</code></pre>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj</h4>
+    <pre><code># Two-step (more common)
+$ vim src/auth.rs
+$ jj describe -m "refactor auth"
+$ jj new
+
+# One-step shortcut
+$ vim src/auth.rs
+$ jj commit -m "refactor auth"</code></pre>
+  </div>
+</div>
+
+<h2>The Full Git vs. jj Contrast</h2>
+
+<p>Here's a typical development session side by side:</p>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>Git</h4>
+    <pre><code># Start work
+$ git checkout -b feat/auth
+
+# Make first change
+$ vim src/auth.rs
+$ git add src/auth.rs
+$ git commit -m "refactor auth"
+
+# Make second change
+$ vim src/config.rs
+$ git add src/config.rs
+$ git commit -m "add JWT config"
+
+# Oh wait, first commit needs a fix
+$ git stash
+$ git rebase -i HEAD~2
+# mark "edit", fix, add, continue
+$ git stash pop</code></pre>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj</h4>
+    <pre><code># Start work (no branch needed)
+$ jj new
+
+# Make first change
+$ vim src/auth.rs
+$ jj describe -m "refactor auth"
+$ jj new
+
+# Make second change
+$ vim src/config.rs
+$ jj describe -m "add JWT config"
+
+# Oh wait, first commit needs a fix
+$ jj edit @-        # go back to it
+$ vim src/auth.rs   # fix auto-amends
+$ jj new            # back to top</code></pre>
+  </div>
+</div>
+
+<p>Notice what's absent from the jj side: no <code>add</code>, no <code>stash</code>, no interactive rebase, no branch creation for local work. The commands directly express your intent.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Don't forget: jj describe can happen any time</div>
+  <p>A common mistake for git converts is trying to compose the perfect message before starting work. In jj, start editing immediately. Describe when you understand what you've built. Redescribe if you change your mind. The message is just metadata on an existing commit.</p>
+</div>
+
+<h2>Putting It Into Practice</h2>
+
+<p>Open the repo you cloned in Lesson 2 and try this sequence:</p>
+
+<pre><code># 1. Check where you are
+$ jj log
+
+# 2. Make any edit (add a comment, create a file, anything)
+$ echo "# Notes" > NOTES.md
+
+# 3. See it's already committed
+$ jj diff
+$ jj log            # @ now shows your change
+
+# 4. Describe what you did
+$ jj describe -m "add notes file"
+$ jj log            # message appears on @
+
+# 5. Start next change
+$ jj new
+$ jj log            # new empty @ on top
+
+# 6. Check the diff of your previous commit
+$ jj diff -r @-     # shows the notes file you added</code></pre>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">You edit a file in a jj repo without running any jj command. What happens?</div>
+  <ul class="quiz-options">
+    <li>The change is tracked as unstaged, waiting for jj add</li>
+    <li>Nothing happens until you explicitly run jj commit</li>
+    <li data-correct="true">The working-copy commit is automatically updated to include the change</li>
+    <li>A new commit is created for each individual file change</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct — in jj there is no staging area or add command. Every file change automatically amends the working-copy commit. The next time you run any jj command, it snapshots the working directory into the current commit.</div>
+  <div class="quiz-feedback incorrect">Not quite. In jj there is no staging area or add command. Every file change automatically amends the working-copy commit immediately. No explicit action is needed.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">What does <code>jj new</code> do?</div>
+  <ul class="quiz-options">
+    <li>It commits staged changes and creates a checkpoint</li>
+    <li data-correct="true">It creates a new empty commit on top of the current one</li>
+    <li>It creates a new branch and switches the working copy</li>
+    <li>It discards current changes and starts a fresh slate</li>
+  </ul>
+  <div class="quiz-feedback correct">Right — <code>jj new</code> creates a fresh empty commit on top of your current one. It doesn't discard anything or create a branch — your previous commit stays exactly as it was, and you get a clean canvas for the next change.</div>
+  <div class="quiz-feedback incorrect">Not quite. <code>jj new</code> creates a fresh empty commit on top of your current one. It doesn't discard anything or create a branch — your previous commit stays exactly as it was.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">How do you see the diff of a specific past commit?</div>
+  <ul class="quiz-options">
+    <li>Run <code>jj log --diff</code> and scroll to find the commit</li>
+    <li>Run <code>jj show @--</code> to display commit details and diff</li>
+    <li data-correct="true">Run <code>jj diff -r &lt;revision&gt;</code> to show what that commit changed</li>
+    <li>Run <code>jj diff --from @--- --to @--</code> for an explicit range</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly — the <code>-r</code> flag on <code>jj diff</code> lets you specify any revision. For example, <code>jj diff -r @--</code> shows what the grandparent commit changed, and <code>jj diff -r abc123</code> works with change IDs.</div>
+  <div class="quiz-feedback incorrect">Not quite. The <code>jj diff -r &lt;revision&gt;</code> command shows what a specific commit changed. For example, <code>jj diff -r @--</code> for the grandparent, or <code>jj diff -r abc123</code> for a specific change ID.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://steveklabnik.github.io/jujutsu-tutorial/real-world-workflows/intro.html">Steve Klabnik's Jujutsu Tutorial — Real World Workflows</a> — walks through a realistic development session showing how the core commands compose.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Want to explore revsets further? Confused about when to use <code>jj commit</code> vs. the two-step flow? Wondering how this works with multiple parallel changes? Ask me anything.
+</div>
+
+<div class="lesson-nav">
+  <a href="0002-install-and-clone.html">← Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0004-rewriting-history.html" class="lesson-nav-next" title="Rewriting History">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => { if (o.dataset.correct === 'true') o.classList.add('correct'); });
+      }
+    });
+  });
+});
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

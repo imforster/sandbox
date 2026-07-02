@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jujutsu (jj) — Lesson Index</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    .course-header {
+      margin-bottom: 3rem;
+    }
+    .course-header h1 {
+      font-size: 2.8rem;
+      letter-spacing: -0.035em;
+      margin-bottom: 0.75rem;
+    }
+    .course-header p {
+      color: var(--color-muted);
+      font-size: 1.05rem;
+      line-height: 1.5;
+      max-width: 600px;
+    }
+    .lesson-list {
+      list-style: none;
+      padding: 0;
+    }
+    .lesson-list li {
+      margin-bottom: 0;
+      padding: 0;
+    }
+    .lesson-card {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr auto;
+      gap: 1rem;
+      align-items: baseline;
+      padding: 1.1rem 1rem;
+      text-decoration: none;
+      color: var(--color-text);
+      border-radius: 10px;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .lesson-card:hover {
+      background: var(--color-card-bg);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-card);
+      text-decoration: none;
+    }
+    .lesson-num {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--color-muted);
+      font-weight: 600;
+    }
+    .lesson-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .lesson-title {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--color-accent);
+    }
+    .lesson-desc {
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      line-height: 1.4;
+    }
+    .lesson-time {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--color-muted);
+      white-space: nowrap;
+      background: var(--color-code-bg);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+    .section-label {
+      font-family: var(--font-heading);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-muted);
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      padding-left: 1rem;
+    }
+    .resources-link {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--color-border);
+      font-size: 0.9rem;
+    }
+    .resources-link a {
+      font-weight: 500;
+    }
+    @media (max-width: 600px) {
+      .lesson-card {
+        grid-template-columns: 2rem 1fr;
+      }
+      .lesson-time { display: none; }
+      .course-header h1 { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="../../" class="lesson-back-top" title="All Courses"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> All Courses</a><span></span><span></span></nav>
+
+<div class="course-header">
+  <h1>Jujutsu (jj)</h1>
+  <p>A hands-on course for experienced git users evaluating jj as a more effective tool for managing repositories and history.</p>
+</div>
+
+<div class="section-label">Foundations</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0001-the-jj-mental-model.html">
+      <span class="lesson-num">01</span>
+      <span class="lesson-info">
+        <span class="lesson-title">The jj Mental Model</span>
+        <span class="lesson-desc">The three key shifts: working-copy-as-commit, auto-rebase, conflicts-as-data.</span>
+      </span>
+      <span class="lesson-time">~8 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0002-install-and-clone.html">
+      <span class="lesson-num">02</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Install and Clone</span>
+        <span class="lesson-desc">Get jj running, clone a GitHub repo, explore colocated mode.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Daily Workflow</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0003-the-core-workflow.html">
+      <span class="lesson-num">03</span>
+      <span class="lesson-info">
+        <span class="lesson-title">The Core Workflow</span>
+        <span class="lesson-desc">new, describe, diff, log, and your first revsets.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0004-rewriting-history.html">
+      <span class="lesson-num">04</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Rewriting History</span>
+        <span class="lesson-desc">edit, split, squash, absorb — where jj outshines git.</span>
+      </span>
+      <span class="lesson-time">~12 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Integration & Safety</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0005-working-with-github.html">
+      <span class="lesson-num">05</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Working with GitHub</span>
+        <span class="lesson-desc">Bookmarks, push, PRs, and addressing review comments.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0006-the-operation-log.html">
+      <span class="lesson-num">06</span>
+      <span class="lesson-info">
+        <span class="lesson-title">The Operation Log</span>
+        <span class="lesson-desc">op log, undo, restore — the safety net for everything.</span>
+      </span>
+      <span class="lesson-time">~8 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="resources-link">
+  <p><strong>Course:</strong> Jujutsu (jj) — 6 lessons on adopting jj for daily version control work.</p>
+  <p style="color: var(--color-muted); font-size: 0.85rem; margin-top: 0.5rem;">Total course time: ~58 minutes · 6 lessons · Interactive quizzes in each</p>
+  <p style="margin-top: 1rem;"><a href="../../">← All Courses</a></p>
+</div>
+
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

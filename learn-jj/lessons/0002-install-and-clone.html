@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 2: Install jj and Clone Your First Repo</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0001-the-jj-mental-model.html" class="lesson-back-top" title="The jj Mental Model"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0003-core-workflow.html" class="lesson-next-top" title="The Core Workflow">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Install jj and Clone Your First Repo</h1>
+
+<div class="lesson-meta">
+  Lesson 2 · jj for Git Users · ~8 minutes
+</div>
+
+<p>From zero to a working jj-managed repo in five minutes. You'll install jj, configure your identity, and clone a repository — learning how jj presents its commit graph along the way.</p>
+
+<h2>1. Install jj</h2>
+
+<p>On macOS with Homebrew, it's one command:</p>
+
+<pre><code>brew install jj</code></pre>
+
+<p>Verify it worked:</p>
+
+<pre><code>$ jj --version
+jj 0.28.2</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Version note</div>
+  <p>Your version number will vary. jj releases frequently. Anything 0.20+ will work for this course.</p>
+</div>
+
+<h2>2. Configure Your Identity</h2>
+
+<p>jj needs your name and email for commit authorship, just like git:</p>
+
+<pre><code>jj config set --user user.name "Your Name"
+jj config set --user user.email "you@example.com"</code></pre>
+
+<p>The <code>--user</code> flag stores these in your global config (<code>~/.jjconfig.toml</code>), so you only do this once. Verify with:</p>
+
+<pre><code>$ jj config list user
+user.email = "you@example.com"
+user.name = "Your Name"</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Different emails per project?</div>
+  <p>Drop <code>--user</code> and run from within a repo to set per-repo config, stored in <code>.jj/repo/config.toml</code>.</p>
+</div>
+
+<h2>3. Two Ways to Start: Clone vs. Colocate</h2>
+
+<p>jj gives you two entry points depending on your situation:</p>
+
+<div class="comparison">
+  <div class="comparison-side jj">
+    <h4>Fresh Clone</h4>
+    <pre><code># Clone from a remote
+jj git clone &lt;url&gt; [dest]</code></pre>
+    <p>Creates a <strong>jj-native</strong> repo. The <code>.git</code> directory exists inside <code>.jj/</code> as a storage backend. You interact exclusively through jj.</p>
+  </div>
+  <div class="comparison-side git">
+    <h4>Colocated (existing repo)</h4>
+    <pre><code># Inside an existing git repo
+cd my-git-repo
+jj git init --colocate</code></pre>
+    <p>Creates a <code>.jj/</code> directory <strong>alongside</strong> your existing <code>.git/</code>. Both jj and git commands continue to work on the same repo.</p>
+  </div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">Which should you pick?</div>
+  <p>For evaluating jj, <strong>colocated mode is the safe choice</strong>. Your existing git workflow still works — you can fall back to git any time. Use <code>jj git clone</code> when you're ready to go all-in on a project.</p>
+</div>
+
+<h2>4. Clone a Repo</h2>
+
+<p>Let's clone one of your GitHub repos. Pick something small you're comfortable experimenting with:</p>
+
+<pre><code>$ jj git clone git@github.com:yourname/your-repo.git
+Fetching into new repo in "/Users/you/your-repo"
+Working copy now at: kpqvuntx 4a8b3f2d (empty) (no description set)
+Parent commit      : zmmrxslq 9f1c7e3a main | latest commit message here
+Added 42 files, modified 0 files, removed 0 files</code></pre>
+
+<p>That output tells you several things at once:</p>
+
+<ul>
+  <li><strong>Working copy now at: kpqvuntx</strong> — jj created a fresh empty commit on top of the latest. This is your working-copy commit (remember from Lesson 1: the working copy <em>is</em> a commit).</li>
+  <li><strong>Parent commit: zmmrxslq ... main</strong> — the tip of main is the parent of your new working-copy commit.</li>
+  <li><strong>(empty) (no description set)</strong> — your new commit has no changes and no message yet. That's normal — you haven't done anything yet.</li>
+</ul>
+
+<h2>5. Explore: jj status and jj log</h2>
+
+<h3>jj status</h3>
+
+<pre><code>$ jj status
+The working copy is clean
+Working copy : kpqvuntx 4a8b3f2d (empty) (no description set)
+Parent commit: zmmrxslq 9f1c7e3a main | latest commit message here</code></pre>
+
+<p>Unlike <code>git status</code>, this always shows you <em>which commit you're editing</em> and its parent. There's no ambiguity about "where you are."</p>
+
+<h3>jj log</h3>
+
+<pre><code>$ jj log
+@  kpqvuntx you@example.com 2025-07-01 08:30:00 4a8b3f2d
+│  (empty) (no description set)
+◆  zmmrxslq you@example.com 2025-06-30 14:22:00 main 9f1c7e3a
+│  latest commit message here
+◆  tpstlust you@example.com 2025-06-28 09:15:00 7b2e4c1f
+│  previous commit message
+~</code></pre>
+
+<p>Key things to notice:</p>
+
+<ul>
+  <li><strong><code>@</code></strong> — marks the working-copy commit. This is jj's equivalent of <code>HEAD</code>, but simpler: it always points at exactly one commit, and that commit is what you're currently editing.</li>
+  <li><strong><code>◆</code></strong> — immutable commits (already pushed or otherwise protected). You can't accidentally edit these.</li>
+  <li><strong>Change IDs</strong> (like <code>kpqvuntx</code>) — these short prefixes are stable across rewrites. You'll use them constantly.</li>
+  <li><strong>Commit IDs</strong> (like <code>4a8b3f2d</code>) — these are the familiar SHA hashes. They change when a commit is rewritten; change IDs don't.</li>
+  <li><strong>The root commit</strong> — at the very bottom of your history is an empty root commit (ancestor of everything). It's jj's way of anchoring the DAG.</li>
+</ul>
+
+<div class="comparison">
+  <div class="comparison-side git">
+    <h4>git log</h4>
+    <pre><code>$ git log --oneline -3
+9f1c7e3 latest commit message
+7b2e4c1 previous commit
+a3d8f12 third commit back</code></pre>
+    <p>Shows committed history. Working directory state is invisible.</p>
+  </div>
+  <div class="comparison-side jj">
+    <h4>jj log</h4>
+    <pre><code>$ jj log
+@  kpqvuntx ... (empty)
+◆  zmmrxslq ... main
+◆  tpstlust ...</code></pre>
+    <p>Shows commits <strong>including</strong> your in-progress working copy at the top.</p>
+  </div>
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">The @ symbol</div>
+  <p><code>@</code> is the revset symbol for "the current working-copy commit." You can use it in any command: <code>jj show @</code>, <code>jj diff @</code>, <code>jj rebase -r @ -d main</code>. It always means "the commit I'm editing right now."</p>
+</div>
+
+<h2>6. Colocated Mode In Depth</h2>
+
+<p>If you have an existing git repo you'd rather not re-clone, colocated mode lets you layer jj on top:</p>
+
+<pre><code>$ cd ~/my-existing-project
+$ jj git init --colocate
+Done importing changes from the underlying Git repo.
+Working copy now at: rlvkpntz 8c4f2a1b (empty) (no description set)
+Parent commit      : qpvuntsw e7a3d5c9 main | some commit message
+Added 0 files, modified 0 files, removed 0 files</code></pre>
+
+<p>After this, your directory has both:</p>
+
+<div class="diagram">my-existing-project/
+├── .git/           ← git's data (unchanged)
+├── .jj/            ← jj's data (new)
+├── src/
+├── README.md
+└── ...</div>
+
+<p>What this means in practice:</p>
+
+<ul>
+  <li><strong>Git still works</strong> — <code>git status</code>, <code>git push</code>, <code>git log</code> all function normally.</li>
+  <li><strong>jj reads from git</strong> — jj sees all your branches, tags, and history from git's storage.</li>
+  <li><strong>Changes sync automatically</strong> — when you use jj commands, the underlying git state is updated. When you use git commands, run <code>jj status</code> afterward to let jj pick up the changes.</li>
+  <li><strong>You can remove jj any time</strong> — just <code>rm -rf .jj</code> and you're back to plain git. Nothing is lost.</li>
+</ul>
+
+<div class="callout warning">
+  <div class="callout-title">One thing to watch in colocated mode</div>
+  <p>If you make changes with git (e.g., <code>git commit</code>), jj will notice them next time you run a jj command. But if both tools are mid-operation simultaneously, you can get confused. Stick to one tool at a time for any given editing session.</p>
+</div>
+
+<h3>The Escape Hatch</h3>
+
+<p>Colocated mode is perfect for evaluation because:</p>
+
+<ol>
+  <li>You keep your existing git remote setup, hooks, and CI integration.</li>
+  <li>Teammates who don't use jj never know you're using it — you push via git.</li>
+  <li>If jj doesn't click, delete <code>.jj/</code> and nothing has changed.</li>
+</ol>
+
+<h2>Quick Reference</h2>
+
+<table>
+  <thead>
+    <tr><th>Step</th><th>Command</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Install</td><td><code>brew install jj</code></td></tr>
+    <tr><td>Configure identity</td><td><code>jj config set --user user.name "..."</code><br><code>jj config set --user user.email "..."</code></td></tr>
+    <tr><td>Clone fresh</td><td><code>jj git clone &lt;url&gt;</code></td></tr>
+    <tr><td>Colocate existing</td><td><code>jj git init --colocate</code> (inside a git repo)</td></tr>
+    <tr><td>Check state</td><td><code>jj status</code></td></tr>
+    <tr><td>See history</td><td><code>jj log</code></td></tr>
+  </tbody>
+</table>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">What does "colocated mode" mean in jj?</div>
+  <ul class="quiz-options">
+    <li>jj replaces the .git directory with its own .jj storage backend</li>
+    <li>jj creates a separate clone of the repo in a different directory</li>
+    <li data-correct="true">jj's .jj directory exists alongside .git, and both tools work on the same repo</li>
+    <li>jj uses git as a remote, syncing changes over the network periodically</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct — colocated mode means <code>.jj</code> lives alongside <code>.git</code> in the same directory. Both jj and git commands work on the same repo, and you can remove <code>.jj</code> at any time to go back to pure git.</div>
+  <div class="quiz-feedback incorrect">Not quite. Colocated mode means .jj lives alongside .git in the same directory — both tools work on the same repo, and you can remove .jj at any time to go back to pure git.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">In jj log output, what does the <code>@</code> symbol refer to?</div>
+  <ul class="quiz-options">
+    <li>The most recently pushed commit on the current branch</li>
+    <li data-correct="true">The current working-copy commit that you are actively editing</li>
+    <li>The root commit that is the ancestor of all other commits</li>
+    <li>The latest commit authored by the current user's email</li>
+  </ul>
+  <div class="quiz-feedback correct">Right — the <code>@</code> symbol always refers to the working-copy commit. It's the single commit you're currently editing — jj's equivalent of "where you are right now."</div>
+  <div class="quiz-feedback incorrect">Not quite. The @ symbol always refers to the working-copy commit — the single commit you are currently editing. It's jj's equivalent of "where you are right now."</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">What happens if you remove the <code>.jj</code> directory from a colocated repo?</div>
+  <ul class="quiz-options">
+    <li>The repository is permanently corrupted and must be re-cloned</li>
+    <li>All commits made through jj are lost</li>
+    <li data-correct="true">It reverts to a normal git repo — all history is preserved in .git</li>
+    <li>Git refuses to work until you reinitialize with git init</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly — since colocated mode keeps .git intact, removing .jj simply takes jj out of the picture. Your git repo continues working as if jj was never there. All commits are preserved in git's storage.</div>
+  <div class="quiz-feedback incorrect">Not quite. Since colocated mode keeps .git intact, removing .jj simply takes jj out of the picture. Your git repo continues working as if jj was never there — all history is preserved in git's storage.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://docs.jj-vcs.dev/latest/install-and-setup">Installation &amp; Setup — Official jj Docs</a> — the canonical guide for installing jj, configuring identity, and initializing repos.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Stuck on installation? Unsure whether to use colocated mode or a fresh clone for your situation? Want to understand what's inside the .jj directory? Ask me anything.
+</div>
+
+<div class="lesson-nav">
+  <a href="0001-the-jj-mental-model.html">← Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0003-core-workflow.html" class="lesson-nav-next" title="The Core Workflow">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => { if (o.dataset.correct === 'true') o.classList.add('correct'); });
+      }
+    });
+  });
+});
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
