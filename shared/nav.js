@@ -163,6 +163,8 @@
       { text: 'Habit Tracker', href: '/sandbox/habit-tracker/index.html' },
       { text: 'Safe Agentic Workflows', href: '/sandbox/safe-agentic-workflows/' },
       { text: 'Learn Graphify', href: '/sandbox/learn-graphify/' },
+      { text: 'Learn Jujutsu (jj)', href: '/sandbox/learn-jj/' },
+      { text: 'IDEO Design Sprint', href: 'https://blog.imfsoftware.com/ideo-design-sprint-game/' },
     ]},
     { label: 'Navigate', items: [
       { text: 'Blog', href: 'https://blog.imfsoftware.com' },
