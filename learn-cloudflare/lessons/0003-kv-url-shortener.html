@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3: Adding Storage with KV — Build a URL Shortener</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0002-your-first-worker.html" class="lesson-prev-top" title="Your First Worker"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1l-5 5 5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-d1-crud-api.html" class="lesson-next-top" title="SQL with D1">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Adding Storage with KV</h1>
+
+<div class="lesson-meta">
+  Lesson 3 · Cloudflare Workers · ~12 minutes
+</div>
+
+<p>In the last lesson you deployed a Worker that returned dynamic responses — but it had no memory. Every request started from scratch. Now we'll give your Worker persistent storage by building a URL shortener with Workers KV.</p>
+
+<h2>What Is KV?</h2>
+
+<p>KV (Key-Value) is Cloudflare's globally distributed key-value store. Think of it as a giant dictionary that lives at the edge — you store a key (like <code>"gh"</code>) and a value (like <code>"https://github.com"</code>), and any Worker in the world can read it back in milliseconds.</p>
+
+<p>Three things to know about KV:</p>
+
+<ol>
+  <li><strong>Eventually consistent.</strong> When you write a value, it propagates to all 300+ edge locations within about 60 seconds. Reads from the same location are instant, but other locations may serve stale data briefly.</li>
+  <li><strong>Optimized for reads.</strong> Reads are fast and cheap. Writes are slower and limited. This makes KV perfect for data that's written rarely but read constantly.</li>
+  <li><strong>Simple API.</strong> Two main operations: <code>get(key)</code> and <code>put(key, value)</code>. No queries, no indexes, no schema.</li>
+</ol>
+
+<div class="callout tip">
+  <div class="callout-title">Free Tier Limits</div>
+  <p>KV gives you 100,000 reads/day, 1,000 writes/day, and 1 GB of storage on the free tier. A URL shortener is the textbook use case: you write a link once and read it thousands of times.</p>
+</div>
+
+<h2>Project Setup</h2>
+
+<p>Create a new Worker project for the URL shortener:</p>
+
+<pre><code>npm create cloudflare@latest -- url-shortener
+cd url-shortener</code></pre>
+
+<p>Choose "Hello World" Worker when prompted. Now create a KV namespace — this is the actual storage bucket your Worker will use:</p>
+
+<pre><code>npx wrangler kv namespace create LINKS</code></pre>
+
+<p>Wrangler will output something like this:</p>
+
+<pre><code>🌀 Creating namespace with title "url-shortener-LINKS"
+✨ Success!
+Add the following to your wrangler.jsonc:
+"kv_namespaces": [{ "binding": "LINKS", "id": "abc123def456" }]</code></pre>
+
+<p>Copy that configuration into your <code>wrangler.jsonc</code>:</p>
+
+<pre><code>{
+  "name": "url-shortener",
+  "main": "src/index.js",
+  "compatibility_date": "2024-01-01",
+  "kv_namespaces": [
+    {
+      "binding": "LINKS",
+      "id": "your-namespace-id-here"
+    }
+  ]
+}</code></pre>
+
+<div class="callout">
+  <div class="callout-title">What's a Binding?</div>
+  <p>The <code>"binding": "LINKS"</code> tells Cloudflare to make this KV namespace available to your Worker as <code>env.LINKS</code>. The binding name is how your code references the namespace — the <code>id</code> is the actual namespace identifier on Cloudflare's side.</p>
+</div>
+
+<h2>Building the URL Shortener</h2>
+
+<p>Our shortener will handle three routes:</p>
+
+<ul>
+  <li><strong>GET /</strong> — serve a simple HTML form for creating short links</li>
+  <li><strong>POST /api/shorten</strong> — accept a URL (and optional custom slug), store it in KV, return the short URL</li>
+  <li><strong>GET /:slug</strong> — look up the slug in KV and redirect to the stored URL</li>
+</ul>
+
+<h3>Step 1: The HTML Form</h3>
+
+<p>First, let's create the form that users will see at the root path:</p>
+
+<pre><code>function getHomePage(host) {
+  return `&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;title&gt;URL Shortener&lt;/title&gt;
+  &lt;style&gt;
+    body { font-family: system-ui, sans-serif; max-width: 500px; margin: 4rem auto; padding: 0 1rem; }
+    input, button { padding: 0.5rem; font-size: 1rem; }
+    input[type="url"] { width: 100%; margin-bottom: 0.5rem; }
+    #result { margin-top: 1rem; padding: 1rem; background: #f0f9ff; border-radius: 4px; display: none; }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;🔗 URL Shortener&lt;/h1&gt;
+  &lt;form id="form"&gt;
+    &lt;input type="url" id="url" placeholder="https://example.com/very/long/url" required&gt;
+    &lt;input type="text" id="slug" placeholder="Custom slug (optional)"&gt;
+    &lt;button type="submit"&gt;Shorten&lt;/button&gt;
+  &lt;/form&gt;
+  &lt;div id="result"&gt;&lt;/div&gt;
+  &lt;script&gt;
+    document.getElementById('form').addEventListener('submit', async (e) =&gt; {
+      e.preventDefault();
+      const resp = await fetch('/api/shorten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: document.getElementById('url').value,
+          slug: document.getElementById('slug').value || undefined
+        })
+      });
+      const data = await resp.json();
+      const result = document.getElementById('result');
+      if (resp.ok) {
+        result.innerHTML = 'Short URL: &lt;a href="' + data.shortUrl + '"&gt;' + data.shortUrl + '&lt;/a&gt;';
+      } else {
+        result.textContent = 'Error: ' + data.error;
+      }
+      result.style.display = 'block';
+    });
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;`;
+}</code></pre>
+
+<h3>Step 2: The Shorten Endpoint</h3>
+
+<p>This handles POST requests — it takes a URL, generates or uses a slug, stores it in KV, and returns the short URL:</p>
+
+<pre><code>async function handleShorten(request, env) {
+  const { url, slug } = await request.json();
+
+  // Validate the URL
+  try {
+    new URL(url);
+  } catch {
+    return Response.json({ error: "Invalid URL" }, { status: 400 });
+  }
+
+  // Use provided slug or generate a random one
+  const key = slug || crypto.randomUUID().slice(0, 6);
+
+  // Check if slug already exists
+  const existing = await env.LINKS.get(key);
+  if (existing) {
+    return Response.json({ error: "Slug already taken" }, { status: 409 });
+  }
+
+  // Store in KV
+  await env.LINKS.put(key, url);
+
+  const host = new URL(request.url).origin;
+  return Response.json({ shortUrl: `${host}/${key}`, slug: key });
+}</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Slug Generation</div>
+  <p><code>crypto.randomUUID().slice(0, 6)</code> gives you a 6-character random string like <code>"a1b2c3"</code>. That's 36^6 ≈ 2 billion possible slugs — more than enough for a personal URL shortener.</p>
+</div>
+
+<h3>Step 3: The Redirect Handler</h3>
+
+<p>This looks up a slug in KV and redirects the user:</p>
+
+<pre><code>async function handleRedirect(slug, env) {
+  const url = await env.LINKS.get(slug);
+
+  if (!url) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  return Response.redirect(url, 302);
+}</code></pre>
+
+<h3>Step 4: The Router</h3>
+
+<p>Wire everything together with a simple router based on the request path and method:</p>
+
+<pre><code>export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    // Home page
+    if (path === "/" &amp;&amp; request.method === "GET") {
+      return new Response(getHomePage(url.origin), {
+        headers: { "Content-Type": "text/html" },
+      });
+    }
+
+    // Shorten API
+    if (path === "/api/shorten" &amp;&amp; request.method === "POST") {
+      return handleShorten(request, env);
+    }
+
+    // Redirect: any other GET path is treated as a slug
+    if (request.method === "GET") {
+      const slug = path.slice(1); // Remove leading "/"
+      return handleRedirect(slug, env);
+    }
+
+    return new Response("Method not allowed", { status: 405 });
+  },
+};</code></pre>
+
+<h2>The Complete Worker</h2>
+
+<p>Here's the entire <code>src/index.js</code> in one file:</p>
+
+<pre><code>function getHomePage(origin) {
+  return `&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;title&gt;URL Shortener&lt;/title&gt;
+  &lt;style&gt;
+    body { font-family: system-ui, sans-serif; max-width: 500px; margin: 4rem auto; padding: 0 1rem; }
+    input, button { padding: 0.5rem; font-size: 1rem; }
+    input[type="url"] { width: 100%; margin-bottom: 0.5rem; }
+    #result { margin-top: 1rem; padding: 1rem; background: #f0f9ff; border-radius: 4px; display: none; }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;🔗 URL Shortener&lt;/h1&gt;
+  &lt;form id="form"&gt;
+    &lt;input type="url" id="url" placeholder="https://example.com/very/long/url" required&gt;
+    &lt;input type="text" id="slug" placeholder="Custom slug (optional)"&gt;
+    &lt;button type="submit"&gt;Shorten&lt;/button&gt;
+  &lt;/form&gt;
+  &lt;div id="result"&gt;&lt;/div&gt;
+  &lt;script&gt;
+    document.getElementById('form').addEventListener('submit', async (e) =&gt; {
+      e.preventDefault();
+      const resp = await fetch('/api/shorten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: document.getElementById('url').value,
+          slug: document.getElementById('slug').value || undefined
+        })
+      });
+      const data = await resp.json();
+      const result = document.getElementById('result');
+      if (resp.ok) {
+        result.innerHTML = 'Short URL: &lt;a href="' + data.shortUrl + '"&gt;' + data.shortUrl + '&lt;/a&gt;';
+      } else {
+        result.textContent = 'Error: ' + data.error;
+      }
+      result.style.display = 'block';
+    });
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;`;
+}
+
+async function handleShorten(request, env) {
+  const { url, slug } = await request.json();
+
+  // Validate the URL
+  try {
+    new URL(url);
+  } catch {
+    return Response.json({ error: "Invalid URL" }, { status: 400 });
+  }
+
+  // Use provided slug or generate a random one
+  const key = slug || crypto.randomUUID().slice(0, 6);
+
+  // Check if slug already exists
+  const existing = await env.LINKS.get(key);
+  if (existing) {
+    return Response.json({ error: "Slug already taken" }, { status: 409 });
+  }
+
+  // Store in KV
+  await env.LINKS.put(key, url);
+
+  const host = new URL(request.url).origin;
+  return Response.json({ shortUrl: `${host}/${key}`, slug: key });
+}
+
+async function handleRedirect(slug, env) {
+  const url = await env.LINKS.get(slug);
+
+  if (!url) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  return Response.redirect(url, 302);
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    // Home page
+    if (path === "/" &amp;&amp; request.method === "GET") {
+      return new Response(getHomePage(url.origin), {
+        headers: { "Content-Type": "text/html" },
+      });
+    }
+
+    // Shorten API
+    if (path === "/api/shorten" &amp;&amp; request.method === "POST") {
+      return handleShorten(request, env);
+    }
+
+    // Redirect: any other GET path is treated as a slug
+    if (request.method === "GET") {
+      const slug = path.slice(1); // Remove leading "/"
+      return handleRedirect(slug, env);
+    }
+
+    return new Response("Method not allowed", { status: 405 });
+  },
+};</code></pre>
+
+<h2>Test Locally</h2>
+
+<p>Start the local dev server:</p>
+
+<pre><code>npx wrangler dev</code></pre>
+
+<p>Wrangler simulates KV locally, so everything works without deploying. Test the API with curl:</p>
+
+<pre><code># Create a short link
+curl -X POST http://localhost:8787/api/shorten \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://developers.cloudflare.com/kv/get-started/", "slug": "kv"}'
+
+# Response: {"shortUrl":"http://localhost:8787/kv","slug":"kv"}
+
+# Test the redirect
+curl -I http://localhost:8787/kv
+
+# Response: HTTP/1.1 302 Found
+#           Location: https://developers.cloudflare.com/kv/get-started/</code></pre>
+
+<p>Or open <code>http://localhost:8787</code> in your browser and use the HTML form.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Local KV Persistence</div>
+  <p>Wrangler stores local KV data in a <code>.wrangler/</code> directory in your project. Data persists between restarts of <code>wrangler dev</code> — so your test links won't disappear when you stop the server.</p>
+</div>
+
+<h2>Deploy It</h2>
+
+<p>Push to Cloudflare's edge network:</p>
+
+<pre><code>npx wrangler deploy</code></pre>
+
+<p>Your URL shortener is now live at <code>https://url-shortener.&lt;your-subdomain&gt;.workers.dev</code>. Test it the same way you tested locally — create a link and verify the redirect works:</p>
+
+<pre><code># Create a link on your live Worker
+curl -X POST https://url-shortener.YOUR-SUBDOMAIN.workers.dev/api/shorten \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://github.com", "slug": "gh"}'
+
+# Visit https://url-shortener.YOUR-SUBDOMAIN.workers.dev/gh → redirects to GitHub</code></pre>
+
+<div class="callout">
+  <div class="callout-title">Eventual Consistency in Practice</div>
+  <p>After you create a short link, it's immediately readable from the same edge location. But if someone in another continent hits your shortener within ~60 seconds of creation, they might get a 404. For a personal URL shortener this is fine — links are created once and used repeatedly.</p>
+</div>
+
+<h2>What You Learned</h2>
+
+<ul>
+  <li><strong>KV is a read-optimized key-value store</strong> — globally distributed, eventually consistent, perfect for data written once and read many times.</li>
+  <li><strong>Bindings connect Workers to storage</strong> — declare in <code>wrangler.jsonc</code>, access via <code>env.BINDING_NAME</code>.</li>
+  <li><strong>The KV API is minimal</strong> — <code>get(key)</code> and <code>put(key, value)</code> cover most use cases.</li>
+  <li><strong>Wrangler simulates KV locally</strong> — full dev experience without deploying.</li>
+  <li><strong>Free tier fits perfectly</strong> — 100K reads and 1K writes per day handles a personal URL shortener easily.</li>
+</ul>
+
+<h2>Quiz</h2>
+
+<div class="quiz" id="quiz-1">
+  <p class="quiz-question"><strong>KV has 1,000 writes per day on the free tier. Why is a URL shortener a good fit for KV?</strong></p>
+  <div class="quiz-options">
+    <label class="quiz-option"><input type="radio" name="q1" value="a"> URLs are always short strings</label>
+    <label class="quiz-option"><input type="radio" name="q1" value="b"> Most operations are reads not writes</label>
+    <label class="quiz-option"><input type="radio" name="q1" value="c"> KV automatically validates URLs</label>
+    <label class="quiz-option"><input type="radio" name="q1" value="d"> KV compresses data efficiently</label>
+  </div>
+  <button class="quiz-submit" onclick="checkAnswer('quiz-1', 'b')">Check Answer</button>
+  <div class="quiz-feedback"></div>
+</div>
+
+<script>
+function checkAnswer(quizId, correct) {
+  const quiz = document.getElementById(quizId);
+  const selected = quiz.querySelector('input[name]:checked');
+  const feedback = quiz.querySelector('.quiz-feedback');
+
+  if (!selected) {
+    feedback.textContent = 'Please select an answer.';
+    feedback.className = 'quiz-feedback';
+    feedback.style.display = 'block';
+    return;
+  }
+
+  if (selected.value === correct) {
+    feedback.textContent = '✅ Correct! A URL shortener writes each link once but reads it on every visit — exactly the pattern KV is optimized for.';
+    feedback.className = 'quiz-feedback correct';
+  } else {
+    feedback.textContent = '❌ Not quite. Think about the read/write ratio — a short URL is created once but clicked many times.';
+    feedback.className = 'quiz-feedback incorrect';
+  }
+  feedback.style.display = 'block';
+}
+</script>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://developers.cloudflare.com/kv/get-started/">Workers KV Getting Started</a> — official documentation covering the full KV API, limits, and configuration.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me anything that's unclear. For example: "When should I use KV vs D1?" or "How do I delete a stored link?" — I'm your teacher, use me.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0002-your-first-worker.html">← Your First Worker</a>
+  <a href="0004-d1-crud-api.html">Next: SQL with D1 →</a>
+</nav>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

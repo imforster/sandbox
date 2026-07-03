@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 8: Worker Languages — Beyond JavaScript</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0007-custom-domain-dns.html" class="lesson-back-top" title="Custom Domain Setup"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span></span></nav>
+
+<h1>Worker Languages</h1>
+
+<div class="lesson-meta">
+  Lesson 8 · Cloudflare Workers · ~8 minutes
+</div>
+
+<p>Workers aren't JavaScript-only. The runtime is polyglot — you can write Workers in several languages, each with different trade-offs. Here's what's available and when you'd pick each one.</p>
+
+<h2>First-Class Languages</h2>
+
+<p>These have official Cloudflare support with dedicated tooling and documentation:</p>
+
+<table>
+  <tr><th>Language</th><th>Maturity</th><th>Tooling</th><th>Best For</th></tr>
+  <tr>
+    <td><strong>JavaScript</strong></td>
+    <td>Stable ✅</td>
+    <td>Wrangler CLI</td>
+    <td>Most use cases. Largest ecosystem, most examples, fastest iteration.</td>
+  </tr>
+  <tr>
+    <td><strong>TypeScript</strong></td>
+    <td>Stable ✅</td>
+    <td>Wrangler CLI</td>
+    <td>Same as JS but with type safety. Recommended for anything non-trivial.</td>
+  </tr>
+  <tr>
+    <td><strong>Python</strong></td>
+    <td>Beta 🧪</td>
+    <td><code>pywrangler</code> CLI</td>
+    <td>Data processing, AI/ML pipelines, teams that know Python better than JS.</td>
+  </tr>
+  <tr>
+    <td><strong>Rust</strong></td>
+    <td>Beta 🧪</td>
+    <td>Wrangler + <code>workers-rs</code> crate</td>
+    <td>Performance-critical code, existing Rust codebases, CPU-bound work within the 10ms limit.</td>
+  </tr>
+</table>
+
+<h2>JavaScript / TypeScript</h2>
+
+<p>The default and most mature option. All Cloudflare examples and tutorials use JS/TS. The runtime supports modern ES modules, Web APIs (fetch, crypto, streams), and partial Node.js compatibility.</p>
+
+<pre><code>// JavaScript — the simplest possible Worker
+export default {
+  async fetch(request, env, ctx) {
+    return new Response("Hello from JavaScript!");
+  },
+};</code></pre>
+
+<pre><code>// TypeScript — same thing, with types
+export interface Env {
+  MY_KV: KVNamespace;
+}
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise&lt;Response&gt; {
+    const value = await env.MY_KV.get("key");
+    return new Response(value ?? "not found");
+  },
+};</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">TypeScript is Zero-Config</div>
+  <p>When you scaffold a project with <code>npm create cloudflare</code> and choose TypeScript, Wrangler handles transpilation automatically. No <code>tsconfig.json</code> tweaking required — it just works.</p>
+</div>
+
+<h2>Python</h2>
+
+<p>Python Workers let you write 100% Python — no JavaScript glue code. They support popular packages like FastAPI, Langchain, and Pydantic, and can access all Workers bindings (KV, D1, R2, etc.) via a foreign function interface.</p>
+
+<pre><code># Python — a simple Worker
+from workers import WorkerEntrypoint, Response
+
+class Default(WorkerEntrypoint):
+    async def fetch(self, request):
+        return Response("Hello from Python!")</code></pre>
+
+<pre><code># Python with FastAPI
+from workers import WorkerEntrypoint
+from workers.fastapi import create_app
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Hello from FastAPI on Workers!"}
+
+class Default(WorkerEntrypoint):
+    fetch = create_app(app)</code></pre>
+
+<h3>Python Setup</h3>
+
+<pre><code># Install uv (Python package manager) if you don't have it
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Scaffold a Python Worker project
+uvx --from workers-py pywrangler init
+
+# Run locally
+uv run pywrangler dev
+
+# Deploy
+uv run pywrangler deploy</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">Python Workers Are in Beta</div>
+  <p>Python support works and is actively developed, but you may hit edge cases. The standard library is partially available — check the <a href="https://developers.cloudflare.com/workers/languages/python/stdlib/">supported modules list</a>. For production stability, JavaScript/TypeScript is still the safer choice.</p>
+</div>
+
+<h2>Rust</h2>
+
+<p>Rust compiles to WebAssembly (Wasm) and runs in the Workers runtime. It gives you maximum performance per CPU millisecond — useful when you're bumping against the 10ms limit and need to squeeze more work in.</p>
+
+<pre><code>// Rust — a simple Worker
+use worker::*;
+
+#[event(fetch)]
+async fn main(req: Request, env: Env, ctx: Context) -&gt; Result&lt;Response&gt; {
+    Response::ok("Hello from Rust!")
+}</code></pre>
+
+<pre><code>// Rust with routing
+use worker::*;
+
+#[event(fetch)]
+async fn main(req: Request, env: Env, ctx: Context) -&gt; Result&lt;Response&gt; {
+    let router = Router::new();
+
+    router
+        .get("/", |_, _| Response::ok("Home"))
+        .get_async("/api/data", |_, ctx| async move {
+            let kv = ctx.kv("MY_KV")?;
+            let value = kv.get("key").text().await?;
+            Response::ok(value.unwrap_or_default())
+        })
+        .run(req, env)
+        .await
+}</code></pre>
+
+<h3>Rust Setup</h3>
+
+<pre><code># Prerequisites
+rustup target add wasm32-unknown-unknown
+cargo install cargo-generate
+
+# Scaffold a Rust Worker project
+cargo generate cloudflare/workers-rs
+
+# Run locally
+npx wrangler dev
+
+# Deploy
+npx wrangler deploy</code></pre>
+
+<div class="callout">
+  <div class="callout-title">When Rust Makes Sense</div>
+  <p>Rust Workers are faster per CPU cycle than JavaScript, but slower to develop. Use Rust when: you need maximum computation in 10ms, you're processing binary data (images, protobuf), or you already have Rust logic to reuse. For APIs and CRUD, JavaScript/TypeScript is more productive.</p>
+</div>
+
+<h2>WebAssembly (Other Languages)</h2>
+
+<p>Because Workers run Wasm, any language that compiles to WebAssembly can theoretically work. The experience varies:</p>
+
+<table>
+  <tr><th>Language</th><th>Compiles to Wasm?</th><th>Practical?</th><th>Notes</th></tr>
+  <tr><td><strong>Go</strong></td><td>Yes (TinyGo)</td><td>⚠️ Experimental</td><td>Use TinyGo (not standard Go). Large binary sizes, limited stdlib.</td></tr>
+  <tr><td><strong>C / C++</strong></td><td>Yes (Emscripten)</td><td>⚠️ Experimental</td><td>Works for compute-heavy tasks. No official Cloudflare SDK.</td></tr>
+  <tr><td><strong>Kotlin</strong></td><td>Yes (Kotlin/Wasm)</td><td>⚠️ Experimental</td><td>Kotlin/Wasm is still maturing. Large output size.</td></tr>
+  <tr><td><strong>C# / .NET</strong></td><td>Yes (Blazor WASI)</td><td>⚠️ Experimental</td><td>Possible but heavy. Not recommended for Workers.</td></tr>
+  <tr><td><strong>Zig</strong></td><td>Yes</td><td>⚠️ Experimental</td><td>Small binaries. No official SDK but people have made it work.</td></tr>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">The Practical Answer</div>
+  <p>For most people: <strong>use TypeScript</strong>. It has the best tooling, the most examples, full access to all bindings, and is the default path Cloudflare optimizes for. Switch to Python if your team is Python-native, or Rust if you need raw performance.</p>
+</div>
+
+<h2>Decision Matrix</h2>
+
+<table>
+  <tr><th>If you want...</th><th>Use</th></tr>
+  <tr><td>Fastest development, most examples</td><td>TypeScript</td></tr>
+  <tr><td>Quick prototypes, minimal ceremony</td><td>JavaScript</td></tr>
+  <tr><td>Data science / ML / FastAPI patterns</td><td>Python</td></tr>
+  <tr><td>Maximum CPU performance per ms</td><td>Rust</td></tr>
+  <tr><td>Existing codebase in another language</td><td>Wasm (via that language's compiler)</td></tr>
+</table>
+
+<h2>Same Free Tier, Any Language</h2>
+
+<p>The free tier limits are identical regardless of language:</p>
+
+<ul>
+  <li>100,000 requests/day</li>
+  <li>10ms CPU time per invocation</li>
+  <li>All bindings (KV, D1, R2, etc.) work with all languages</li>
+  <li>Same security layer (DDoS, SSL, WAF)</li>
+</ul>
+
+<p>The only practical difference: Rust/Wasm Workers tend to use <em>less</em> CPU time per request (faster execution), which means you get more done within the 10ms budget.</p>
+
+<div class="quiz">
+  <div class="quiz-question">You have a team of Python developers who want to build an API on Workers. What's the best approach?</div>
+  <ul class="quiz-options">
+    <li onclick="checkAnswer(this, false)">Rewrite everything in JavaScript since it's more mature</li>
+    <li onclick="checkAnswer(this, true)">Use Python Workers with pywrangler — they support FastAPI</li>
+    <li onclick="checkAnswer(this, false)">Compile Python to WebAssembly using Emscripten</li>
+    <li onclick="checkAnswer(this, false)">Use Rust because it's the fastest language available</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! Python Workers have first-class support, including FastAPI, Pydantic, and access to all bindings. While still in beta, it's the right choice for a Python-native team building an API.</div>
+  <div class="quiz-feedback incorrect">Not quite. While JavaScript is more mature, Python Workers now have official support with FastAPI and full binding access — making them the natural choice for Python teams.</div>
+</div>
+<script>
+function checkAnswer(el, correct) {
+  const quiz = el.closest('.quiz');
+  quiz.querySelectorAll('li').forEach(li => li.style.pointerEvents = 'none');
+  el.classList.add(correct ? 'correct' : 'incorrect');
+  quiz.querySelector('.quiz-feedback.' + (correct ? 'correct' : 'incorrect')).classList.add('show');
+}
+</script>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://developers.cloudflare.com/workers/languages/">Workers Languages — Cloudflare Docs</a> — official documentation for all supported languages, including setup guides and API references for each.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me about setting up a specific language, performance comparisons, or migrating existing code to Workers. For example: "Can I use numpy in Python Workers?" or "How big can a Rust Wasm binary be?"
+</div>
+
+<nav class="lesson-nav">
+  <a href="0007-custom-domain-dns.html">← Custom Domains</a>
+  <a href="index.html">All Lessons</a>
+</nav>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

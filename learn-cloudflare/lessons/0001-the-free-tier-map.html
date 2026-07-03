@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1: The Free-Tier Map — What Can You Actually Run?</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .arch-diagram {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+    .arch-label {
+      font-family: var(--font-heading);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-muted);
+      text-align: center;
+      margin-bottom: 1.25rem;
+    }
+    .arch-row {
+      display: grid;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .arch-row.three { grid-template-columns: 1fr 1fr 1fr; }
+    .arch-row.two { grid-template-columns: 1fr 1fr; }
+    .arch-box {
+      border: 2px solid var(--color-border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      text-align: center;
+    }
+    .arch-box-title {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.88rem;
+      margin-bottom: 0.25rem;
+    }
+    .arch-box-desc {
+      font-size: 0.75rem;
+      color: var(--color-muted);
+      line-height: 1.3;
+    }
+    .arch-box.compute { border-color: var(--color-accent); background: var(--color-accent-light); }
+    .arch-box.compute .arch-box-title { color: var(--color-accent); }
+    .arch-box.security { border-color: var(--color-success); background: #f0fdf4; }
+    .arch-box.security .arch-box-title { color: #16a34a; }
+    .arch-box.storage { border-color: #6366f1; background: #eef2ff; }
+    .arch-box.storage .arch-box-title { color: #4f46e5; }
+    .arch-connector {
+      text-align: center;
+      color: var(--color-muted);
+      font-size: 1.2rem;
+      margin: 0.25rem 0;
+    }
+    @media (max-width: 600px) {
+      .arch-row.three { grid-template-columns: 1fr; }
+      .arch-row.two { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0002-your-first-worker.html" class="lesson-next-top" title="Your First Worker">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>The Free-Tier Map</h1>
+
+<div class="lesson-meta">
+  Lesson 1 · Cloudflare Workers · ~5 minutes
+</div>
+
+<p>What can you actually run on Cloudflare without paying a cent — beyond a static website?</p>
+
+<h2>The Mental Model</h2>
+
+<p>You already know Cloudflare as a CDN that serves static files. Here's the key insight: Cloudflare's edge network doesn't just <em>cache</em> files — it can <em>run code</em>. That code executes in 300+ data centers worldwide, milliseconds from your users. And it comes with Cloudflare's security stack for free.</p>
+
+<div class="arch-diagram">
+  <div class="arch-label">Cloudflare Free Tier Architecture</div>
+
+  <div class="arch-row three">
+    <div class="arch-box">
+      <div class="arch-box-title">Static Assets</div>
+      <div class="arch-box-desc">HTML, CSS, JS files<br>(you know this one)</div>
+    </div>
+    <div class="arch-box compute">
+      <div class="arch-box-title">⚡ Workers</div>
+      <div class="arch-box-desc">Serverless compute<br>100K req/day</div>
+    </div>
+    <div class="arch-box security">
+      <div class="arch-box-title">🛡️ Security</div>
+      <div class="arch-box-desc">DDoS, SSL, WAF<br>Always on, unmetered</div>
+    </div>
+  </div>
+
+  <div class="arch-connector">▼ Workers connect to ▼</div>
+
+  <div class="arch-row three">
+    <div class="arch-box storage">
+      <div class="arch-box-title">KV</div>
+      <div class="arch-box-desc">Key-value store<br>100K reads/day · 1GB</div>
+    </div>
+    <div class="arch-box storage">
+      <div class="arch-box-title">D1</div>
+      <div class="arch-box-desc">SQL database<br>5M reads/day · 5GB</div>
+    </div>
+    <div class="arch-box storage">
+      <div class="arch-box-title">R2</div>
+      <div class="arch-box-desc">Object storage<br>10GB · zero egress</div>
+    </div>
+  </div>
+
+  <div class="arch-row three">
+    <div class="arch-box storage">
+      <div class="arch-box-title">Durable Objects</div>
+      <div class="arch-box-desc">Stateful coordination<br>WebSockets, real-time</div>
+    </div>
+    <div class="arch-box storage">
+      <div class="arch-box-title">Queues</div>
+      <div class="arch-box-desc">Message passing<br>10K ops/day</div>
+    </div>
+    <div class="arch-box storage">
+      <div class="arch-box-title">Vectorize</div>
+      <div class="arch-box-desc">Vector search<br>AI/semantic queries</div>
+    </div>
+  </div>
+</div>
+
+<p>All of these have a free tier. Let's look at what each one gives you and what you could build with it.</p>
+
+<h2>The Compute Layer: Workers</h2>
+
+<p>A Worker is a small JavaScript/TypeScript program that runs on Cloudflare's edge. It intercepts HTTP requests and can do anything: return dynamic HTML, act as an API, rewrite responses, authenticate users, proxy to other services.</p>
+
+<table>
+  <tr><th>Free Limit</th><th>What It Means</th></tr>
+  <tr><td>100,000 requests/day</td><td>~3,300 requests/hour — enough for a personal API, a small SaaS tool, or a portfolio with dynamic features</td></tr>
+  <tr><td>10ms CPU time per request</td><td>Enough for most operations (API calls, template rendering, auth checks). Not enough for heavy computation.</td></tr>
+  <tr><td>No duration charge</td><td>If your Worker waits on a network call (fetch to a DB, external API), that wait time is free. Only CPU cycles count.</td></tr>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">Key Insight</div>
+  <p>The 10ms CPU limit sounds tiny, but it only counts actual processing — not waiting. A Worker that fetches data from an API (200ms network wait) and formats the response (2ms CPU) only uses 2ms of your budget.</p>
+</div>
+
+<h2>The Storage Layer</h2>
+
+<h3>KV (Key-Value Store)</h3>
+<p>A globally distributed key-value store. Data is eventually consistent — reads are fast (served from edge), writes propagate globally within ~60 seconds.</p>
+
+<table>
+  <tr><th>Free Limit</th><th>Good For</th></tr>
+  <tr><td>100,000 reads/day</td><td>Configuration, feature flags, cached API responses</td></tr>
+  <tr><td>1,000 writes/day</td><td>Infrequently-updated data</td></tr>
+  <tr><td>1 GB storage</td><td>Plenty for config, user sessions, small datasets</td></tr>
+</table>
+
+<h3>D1 (SQL Database)</h3>
+<p>A serverless SQLite database. Full SQL support, runs at the edge. This is your relational data store.</p>
+
+<table>
+  <tr><th>Free Limit</th><th>Good For</th></tr>
+  <tr><td>5 million rows read/day</td><td>Most personal apps will never hit this</td></tr>
+  <tr><td>100,000 rows written/day</td><td>Blog comments, user accounts, form submissions</td></tr>
+  <tr><td>5 GB storage</td><td>Substantial — thousands of records easily</td></tr>
+</table>
+
+<h3>R2 (Object Storage)</h3>
+<p>S3-compatible object storage with <strong>zero egress fees</strong>. Store files, images, backups — and serve them without paying for bandwidth.</p>
+
+<table>
+  <tr><th>Free Limit</th><th>Good For</th></tr>
+  <tr><td>10 GB storage</td><td>Images, PDFs, file uploads</td></tr>
+  <tr><td>1M Class A ops/month</td><td>Uploads, writes</td></tr>
+  <tr><td>10M Class B ops/month</td><td>Downloads, reads</td></tr>
+  <tr><td>Zero egress</td><td>Serve files to users without bandwidth charges — ever</td></tr>
+</table>
+
+<h3>Durable Objects</h3>
+<p>Stateful, single-threaded objects with their own SQLite storage. Think of them as tiny servers that handle real-time coordination: chat rooms, game state, collaborative editing.</p>
+
+<table>
+  <tr><th>Free Limit</th><th>Good For</th></tr>
+  <tr><td>100,000 requests/day</td><td>WebSocket connections, real-time collaboration</td></tr>
+  <tr><td>13,000 GB-seconds/day</td><td>~3.6 hours of a 1GB-memory object running continuously</td></tr>
+  <tr><td>5 GB SQLite storage</td><td>Per-object state that survives restarts</td></tr>
+</table>
+
+<h3>Queues (Message Queue)</h3>
+<p>Reliable message delivery between Workers. Producer → Queue → Consumer pattern.</p>
+
+<table>
+  <tr><th>Free Limit</th><th>Good For</th></tr>
+  <tr><td>10,000 operations/day</td><td>Background jobs, event processing</td></tr>
+</table>
+
+<h3>Vectorize (Vector Database)</h3>
+<p>Store and query vector embeddings for semantic search and AI applications.</p>
+
+<table>
+  <tr><th>Free Limit</th><th>Good For</th></tr>
+  <tr><td>30M queried dimensions/month</td><td>~39,000 queries against 768-dimension vectors</td></tr>
+  <tr><td>5M stored dimensions</td><td>~6,500 vectors at 768 dimensions</td></tr>
+</table>
+
+<h2>The Security Layer (Always Free)</h2>
+
+<p>Everything proxied through Cloudflare automatically gets:</p>
+
+<ul>
+  <li><strong>Unmetered DDoS protection</strong> — no cap, no extra charge, even on the free plan</li>
+  <li><strong>Universal SSL/TLS</strong> — automatic HTTPS for your domain</li>
+  <li><strong>WAF managed rules</strong> — basic protection against common exploits (OWASP top 10)</li>
+  <li><strong>Bot detection</strong> — basic bot fight mode</li>
+  <li><strong>Rate limiting</strong> — basic rate limiting rules (1 rule on free plan)</li>
+</ul>
+
+<div class="callout">
+  <div class="callout-title">Security by Default</div>
+  <p>Unlike AWS Lambda or Vercel Functions, where you need to separately configure DDoS protection and SSL, Cloudflare Workers get these for free by virtue of running on Cloudflare's network. Your API is protected the moment you deploy it.</p>
+</div>
+
+<h2>What Can You Actually Build?</h2>
+
+<p>Here's what fits comfortably in the free tier:</p>
+
+<table>
+  <tr><th>Project Type</th><th>Services Used</th><th>Why It Works</th></tr>
+  <tr><td>Dynamic API (REST or GraphQL)</td><td>Workers + D1</td><td>100K requests/day is plenty for personal/small projects</td></tr>
+  <tr><td>Full-stack web app</td><td>Workers + Static Assets + D1</td><td>SSR or SPA with a real database</td></tr>
+  <tr><td>URL shortener</td><td>Workers + KV</td><td>Perfect KV use case — read-heavy, write-light</td></tr>
+  <tr><td>Image hosting</td><td>Workers + R2</td><td>Zero egress means free image serving forever</td></tr>
+  <tr><td>Webhook processor</td><td>Workers + Queues + D1</td><td>Receive webhooks, queue them, process async</td></tr>
+  <tr><td>Real-time chat app</td><td>Workers + Durable Objects</td><td>WebSocket coordination with persistent state</td></tr>
+  <tr><td>Cron jobs / scheduled tasks</td><td>Workers (Cron Triggers)</td><td>Run code on a schedule — no server needed</td></tr>
+  <tr><td>AI-powered search</td><td>Workers + Vectorize + Workers AI</td><td>Semantic search over your own content</td></tr>
+  <tr><td>Email handler</td><td>Workers (Email routing)</td><td>Programmatically handle incoming emails</td></tr>
+  <tr><td>Auth gateway / proxy</td><td>Workers</td><td>Add auth to any backend with a Worker in front</td></tr>
+</table>
+
+<h2>What Doesn't Fit</h2>
+
+<p>Be honest about the limits:</p>
+
+<ul>
+  <li><strong>Heavy computation</strong> — 10ms CPU cap means no video transcoding, no ML training</li>
+  <li><strong>High-write workloads</strong> — KV's 1,000 writes/day is genuinely limiting for write-heavy apps</li>
+  <li><strong>Large file processing</strong> — Workers have a 128MB memory limit</li>
+  <li><strong>Long-running processes</strong> — Workers must respond quickly (no 5-minute jobs on free tier)</li>
+  <li><strong>Production traffic at scale</strong> — 100K requests/day is ~1.2 requests/second average. A popular site will exceed this.</li>
+</ul>
+
+<h2>How It Compares</h2>
+
+<div class="comparison">
+  <div class="comparison-side traditional">
+    <h4>Traditional Free Tiers</h4>
+    <p><strong>AWS Lambda:</strong> 1M requests/month free, but you pay for API Gateway, need to configure VPC, no built-in DDoS protection.</p>
+    <p><strong>Vercel:</strong> Generous compute, but 100GB bandwidth cap, and serverless functions run in a single region.</p>
+  </div>
+  <div class="comparison-side workers">
+    <h4>Cloudflare Free Tier</h4>
+    <p><strong>Workers:</strong> 100K/day (~3M/month), runs globally at 300+ locations, DDoS + SSL + WAF included, zero egress on R2, real SQL database with D1.</p>
+    <p>Trade-off: tighter CPU limits, smaller ecosystem.</p>
+  </div>
+</div>
+
+<h2>Your Next Step</h2>
+
+<p>You now have the map. The next lesson will get your hands dirty: we'll deploy your first Worker — a simple dynamic API — and see it running at the edge with full security protection, in under 5 minutes.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://developers.cloudflare.com/workers/platform/pricing/">Cloudflare Workers Pricing</a> — the official source for all free-tier limits. Bookmark this; limits change occasionally and this is always current.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me anything that's unclear. For example: "Which storage option should I use for X?" or "Can Workers handle WebSockets?" — I'm your teacher, use me.
+</div>
+
+<nav class="lesson-nav">
+  <a href="index.html">← All Lessons</a>
+  <a href="0002-your-first-worker.html">Next: Your First Worker →</a>
+</nav>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

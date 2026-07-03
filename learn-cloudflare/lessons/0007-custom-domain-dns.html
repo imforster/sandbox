@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 7: Custom Domain & DNS Setup</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0006-google-oauth-login.html" class="lesson-back-top" title="Google OAuth"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0008-worker-languages.html" class="lesson-next-top" title="Worker Languages">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Custom Domain & DNS Setup</h1>
+
+<div class="lesson-meta">
+  Lesson 7 · Cloudflare Workers · ~12 minutes
+</div>
+
+<p>Your Worker is running on <code>*.workers.dev</code> — but you want it on your own domain. This lesson covers two things: pointing a subdomain from your Google Workspace domain to Cloudflare, and attaching it to your Worker with automatic SSL.</p>
+
+<h2>The Two Approaches</h2>
+
+<p>There are two ways to use your domain with Cloudflare Workers:</p>
+
+<table>
+  <tr><th>Approach</th><th>How</th><th>When to Use</th></tr>
+  <tr><td><strong>Full setup</strong> (recommended)</td><td>Move your domain's nameservers to Cloudflare</td><td>You want all Cloudflare features (DDoS, WAF, caching, Workers) on the whole domain</td></tr>
+  <tr><td><strong>CNAME setup</strong> (partial)</td><td>Keep existing DNS, add a CNAME for your subdomain</td><td>You can't or don't want to move nameservers (enterprise DNS locked, etc.)</td></tr>
+</table>
+
+<p>For most people with a Google Workspace domain, the <strong>full setup</strong> is better — you get the complete security and speed layer for free. Google Workspace (Gmail, Calendar, Drive) will keep working because you'll add the required MX and CNAME records in Cloudflare's DNS.</p>
+
+<h2>Option A: Full Setup (Move Nameservers to Cloudflare)</h2>
+
+<p>This gives you the most value — your entire domain gets Cloudflare's DDoS protection, caching, and DNS performance.</p>
+
+<h3>Step 1: Add Your Domain to Cloudflare</h3>
+
+<ol>
+  <li>Sign in to the <a href="https://dash.cloudflare.com">Cloudflare dashboard</a></li>
+  <li>Click <strong>Add a site</strong></li>
+  <li>Enter your domain (e.g., <code>yourdomain.com</code>)</li>
+  <li>Select the <strong>Free</strong> plan</li>
+  <li>Cloudflare will scan your existing DNS records and import them</li>
+</ol>
+
+<div class="callout warning">
+  <div class="callout-title">Review Imported Records</div>
+  <p>Cloudflare auto-imports your DNS records, but verify that your Google Workspace records are all present before changing nameservers. Check for: MX records (mail), CNAME records (mail, calendar, drive), TXT records (SPF, DKIM, domain verification).</p>
+</div>
+
+<h3>Step 2: Verify Google Workspace Records</h3>
+
+<p>Make sure these records exist in Cloudflare's DNS after import:</p>
+
+<table>
+  <tr><th>Type</th><th>Name</th><th>Value</th><th>Purpose</th></tr>
+  <tr><td>MX</td><td>@</td><td><code>aspmx.l.google.com</code> (priority 1)</td><td>Gmail</td></tr>
+  <tr><td>MX</td><td>@</td><td><code>alt1.aspmx.l.google.com</code> (priority 5)</td><td>Gmail backup</td></tr>
+  <tr><td>MX</td><td>@</td><td><code>alt2.aspmx.l.google.com</code> (priority 5)</td><td>Gmail backup</td></tr>
+  <tr><td>MX</td><td>@</td><td><code>alt3.aspmx.l.google.com</code> (priority 10)</td><td>Gmail backup</td></tr>
+  <tr><td>MX</td><td>@</td><td><code>alt4.aspmx.l.google.com</code> (priority 10)</td><td>Gmail backup</td></tr>
+  <tr><td>TXT</td><td>@</td><td><code>v=spf1 include:_spf.google.com ~all</code></td><td>SPF (email auth)</td></tr>
+  <tr><td>CNAME</td><td>mail</td><td><code>ghs.googlehosted.com</code></td><td>Gmail web (if custom URL)</td></tr>
+  <tr><td>TXT</td><td>@</td><td>Google site verification string</td><td>Domain ownership</td></tr>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">MX Records Must Be DNS-Only</div>
+  <p>MX records cannot be proxied through Cloudflare. They must be set to <strong>DNS only</strong> (grey cloud). This happens automatically for MX records — Cloudflare won't proxy mail traffic.</p>
+</div>
+
+<h3>Step 3: Change Nameservers at Your Registrar</h3>
+
+<p>Cloudflare will give you two nameservers (e.g., <code>ada.ns.cloudflare.com</code> and <code>bob.ns.cloudflare.com</code>). Update these at your domain registrar:</p>
+
+<ul>
+  <li><strong>Google Domains / Squarespace:</strong> My domains → DNS → Custom name servers</li>
+  <li><strong>Namecheap:</strong> Domain List → Manage → Nameservers → Custom DNS</li>
+  <li><strong>GoDaddy:</strong> Domain Settings → Nameservers → Change</li>
+</ul>
+
+<p>Propagation takes anywhere from a few minutes to 48 hours (usually under 1 hour).</p>
+
+<h3>Step 4: Add a Subdomain for Your Worker</h3>
+
+<p>Once your domain is active in Cloudflare, you don't need to manually create DNS records for Worker subdomains. Custom Domains handle this automatically.</p>
+
+<h2>Option B: CNAME Setup (Keep Existing DNS)</h2>
+
+<p>If you don't want to move your nameservers (or can't), you can add a CNAME record for just your subdomain at your current DNS provider:</p>
+
+<pre><code># At your current DNS provider (e.g., Google Domains):
+Type:  CNAME
+Name:  app              (this creates app.yourdomain.com)
+Value: your-worker.your-account.workers.dev</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">Limitations of CNAME Setup</div>
+  <p>With CNAME-only, you don't get Cloudflare's DDoS protection, WAF, or caching on that subdomain. You only get the Worker execution. For the full security layer, use the full nameserver setup (Option A).</p>
+</div>
+
+<h2>Attaching Your Custom Domain to the Worker</h2>
+
+<p>Once your domain is in Cloudflare (Option A), connecting a subdomain to your Worker is one step:</p>
+
+<h3>Via Wrangler (recommended)</h3>
+
+<p>In your <code>wrangler.jsonc</code>:</p>
+
+<pre><code>{
+  "name": "my-app",
+  "main": "src/index.js",
+  "routes": [
+    {
+      "pattern": "app.yourdomain.com",
+      "custom_domain": true
+    }
+  ]
+}</code></pre>
+
+<p>Then deploy:</p>
+
+<pre><code>npx wrangler deploy</code></pre>
+
+<p>That's it. Cloudflare will:</p>
+<ul>
+  <li>Create the DNS record pointing <code>app.yourdomain.com</code> to your Worker</li>
+  <li>Issue an SSL certificate automatically</li>
+  <li>Enable DDoS protection on the subdomain</li>
+  <li>Route all traffic on that subdomain to your Worker</li>
+</ul>
+
+<h3>Via Dashboard</h3>
+
+<ol>
+  <li>Go to <strong>Workers & Pages</strong> → select your Worker</li>
+  <li><strong>Settings</strong> → <strong>Domains & Routes</strong> → <strong>Add</strong> → <strong>Custom Domain</strong></li>
+  <li>Enter <code>app.yourdomain.com</code></li>
+  <li>Click <strong>Add Custom Domain</strong></li>
+</ol>
+
+<h2>Updating Your OAuth Redirect URI</h2>
+
+<p>Now that your Worker has a custom domain, update your Google OAuth credentials:</p>
+
+<ol>
+  <li>Go to <a href="https://console.cloud.google.com/apis/credentials">Google Cloud Console → Credentials</a></li>
+  <li>Edit your OAuth client</li>
+  <li>Add <code>https://app.yourdomain.com/auth/callback</code> to Authorized redirect URIs</li>
+  <li>Your OAuth Worker automatically picks up the new domain because it uses <code>url.origin</code> to construct the redirect URI</li>
+</ol>
+
+<div class="callout tip">
+  <div class="callout-title">Multiple Domains</div>
+  <p>You can attach multiple custom domains to the same Worker. This is useful for staging vs. production: <code>staging.yourdomain.com</code> and <code>app.yourdomain.com</code> can both point to the same Worker (or different ones).</p>
+</div>
+
+<h2>Restricting OAuth to Your Workspace Domain</h2>
+
+<p>If you only want users from your Google Workspace (e.g., <code>@yourcompany.com</code>) to sign in, add a check after fetching user info in your OAuth callback:</p>
+
+<pre><code>// In the /auth/callback handler, after fetching user info:
+const user = await userRes.json();
+
+// Restrict to your Google Workspace domain
+if (!user.email.endsWith("@yourcompany.com")) {
+  return new Response("Access denied. Must use @yourcompany.com account.", {
+    status: 403,
+  });
+}</code></pre>
+
+<p>Alternatively, you can use Google's <code>hd</code> (hosted domain) parameter when constructing the auth URL to pre-filter the account picker:</p>
+
+<pre><code>const params = new URLSearchParams({
+  client_id: env.GOOGLE_CLIENT_ID,
+  redirect_uri: REDIRECT_URI,
+  response_type: "code",
+  scope: "openid email profile",
+  hd: "yourcompany.com",  // Only show Workspace accounts
+});</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">Always Verify Server-Side</div>
+  <p>The <code>hd</code> parameter only affects the UI (which accounts Google shows). You <strong>must</strong> still verify the email domain server-side in the callback, because a determined user could modify the auth URL.</p>
+</div>
+
+<h2>The Complete Picture</h2>
+
+<div class="diagram">
+User → app.yourdomain.com → Cloudflare Edge (DDoS + WAF + SSL)
+                                    │
+                              ┌─────┴─────┐
+                              │   Worker   │
+                              └─────┬─────┘
+                                    │
+            ┌───────────────────────┼───────────────────────┐
+            │                       │                       │
+    /auth/login              /auth/callback              / (app)
+    → redirect to            → exchange code             → check session
+      Google OAuth             → create session            → render page
+                               → set cookie
+</div>
+
+<h2>What You Get for Free</h2>
+
+<ul>
+  <li>✅ Custom domain (<code>app.yourdomain.com</code>) — via Custom Domains</li>
+  <li>✅ Automatic SSL certificate — issued by Cloudflare</li>
+  <li>✅ DDoS protection — unmetered, on the custom domain</li>
+  <li>✅ Google OAuth login — runs entirely at the edge</li>
+  <li>✅ Session management — stored in KV with auto-expiry</li>
+  <li>✅ Google Workspace email/calendar — unaffected (MX records preserved)</li>
+</ul>
+
+<div class="quiz">
+  <div class="quiz-question">After moving your domain's nameservers to Cloudflare, what happens to your Google Workspace email?</div>
+  <ul class="quiz-options">
+    <li onclick="checkAnswer(this, false)">Email stops working immediately</li>
+    <li onclick="checkAnswer(this, false)">Email routes through Cloudflare Workers</li>
+    <li onclick="checkAnswer(this, true)">Email keeps working via MX records in Cloudflare DNS</li>
+    <li onclick="checkAnswer(this, false)">You must switch to Cloudflare email routing</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! MX records tell mail servers where to deliver email. As long as you keep Google's MX records in Cloudflare's DNS (which the auto-import does), Gmail keeps working exactly as before.</div>
+  <div class="quiz-feedback incorrect">Not quite. Changing nameservers only changes who manages DNS — it doesn't affect email as long as the MX records pointing to Google's mail servers are preserved.</div>
+</div>
+<script>
+function checkAnswer(el, correct) {
+  const quiz = el.closest('.quiz');
+  quiz.querySelectorAll('li').forEach(li => li.style.pointerEvents = 'none');
+  el.classList.add(correct ? 'correct' : 'incorrect');
+  quiz.querySelector('.quiz-feedback.' + (correct ? 'correct' : 'incorrect')).classList.add('show');
+}
+</script>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://developers.cloudflare.com/workers/configuration/routing/custom-domains/">Custom Domains — Cloudflare Workers Docs</a> — official guide for connecting domains to Workers, including certificate management and route behavior.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me about wildcard subdomains, redirecting www to root, or setting up multiple Workers on different subdomains of the same domain.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0006-google-oauth-login.html">← Google OAuth</a>
+  <a href="0008-worker-languages.html">Next: Worker Languages →</a>
+</nav>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

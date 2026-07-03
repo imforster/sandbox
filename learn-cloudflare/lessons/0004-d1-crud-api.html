@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4: SQL at the Edge with D1 — Build a CRUD API</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0003-kv-url-shortener.html" class="lesson-prev-top" title="Storage with KV"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-cron-scheduled-workers.html" class="lesson-next-top" title="Scheduled Workers">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>SQL at the Edge with D1</h1>
+
+<div class="lesson-meta">
+  Lesson 4 · Cloudflare Workers · ~15 minutes
+</div>
+
+<p>You're about to build a CRUD API backed by a <strong>real SQL database</strong> — running for free, at the edge, in 300+ data centers. No credit card, no provisioned instances, no cold starts to worry about. This is D1.</p>
+
+<h2>What Is D1?</h2>
+
+<p>D1 is Cloudflare's serverless SQLite database. It runs at the edge alongside your Workers, which means your data lives close to your users — not in a single distant data center.</p>
+
+<p>Key facts about D1:</p>
+
+<ul>
+  <li><strong>Full SQL</strong> — it's SQLite under the hood, so you get real SQL: JOINs, subqueries, indexes, triggers</li>
+  <li><strong>ACID transactions</strong> — your writes are atomic and consistent</li>
+  <li><strong>Zero configuration</strong> — no connection strings, no pooling, no VPCs. Your Worker talks to D1 via a binding.</li>
+  <li><strong>Schema migrations</strong> — built-in migration system to manage schema changes</li>
+</ul>
+
+<div class="callout tip">
+  <div class="callout-title">Free Tier Limits</div>
+  <p>D1's free tier gives you 5 million rows read per day, 100,000 rows written per day, and 5 GB of storage. For a personal notes app, blog, or small SaaS — you'll likely never hit these.</p>
+</div>
+
+<h2>What We're Building</h2>
+
+<p>A notes API with four endpoints:</p>
+
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Action</th></tr>
+  <tr><td>GET</td><td>/api/notes</td><td>List all notes</td></tr>
+  <tr><td>GET</td><td>/api/notes/:id</td><td>Get one note</td></tr>
+  <tr><td>POST</td><td>/api/notes</td><td>Create a note</td></tr>
+  <tr><td>DELETE</td><td>/api/notes/:id</td><td>Delete a note</td></tr>
+</table>
+
+<p>Let's build it step by step.</p>
+
+<h2>Step 1: Create the D1 Database</h2>
+
+<p>From your project directory, create a new D1 database:</p>
+
+<pre><code>npx wrangler d1 create my-notes-db</code></pre>
+
+<p>Wrangler will output something like this:</p>
+
+<pre><code>✅ Successfully created DB 'my-notes-db'
+
+[[d1_databases]]
+binding = "DB"
+database_name = "my-notes-db"
+database_id = "xxxx-xxxx-xxxx-xxxx"</code></pre>
+
+<p>Copy that <code>database_id</code> — you'll need it next.</p>
+
+<h2>Step 2: Add the D1 Binding</h2>
+
+<p>Open your <code>wrangler.jsonc</code> and add the D1 binding so your Worker can access the database:</p>
+
+<pre><code>{
+  "name": "notes-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-01-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-notes-db",
+      "database_id": "&lt;your-database-id&gt;"
+    }
+  ]
+}</code></pre>
+
+<p>The <code>binding</code> name (<code>DB</code>) is how you'll access the database in your Worker code via <code>env.DB</code>.</p>
+
+<h2>Step 3: Create a Migration</h2>
+
+<p>D1 uses a migration system to manage schema changes. Create your first migration:</p>
+
+<pre><code>npx wrangler d1 migrations create my-notes-db init</code></pre>
+
+<p>This creates a file at <code>migrations/0001_init.sql</code>. Open it and write your schema:</p>
+
+<pre><code>-- migrations/0001_init.sql
+CREATE TABLE notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);</code></pre>
+
+<div class="callout">
+  <div class="callout-title">Why TEXT for created_at?</div>
+  <p>SQLite doesn't have a native datetime type. The convention is to store ISO 8601 strings in TEXT columns. The <code>datetime('now')</code> function generates UTC timestamps in that format.</p>
+</div>
+
+<h2>Step 4: Apply the Migration Locally</h2>
+
+<p>Apply the migration to your local D1 instance for development:</p>
+
+<pre><code>npx wrangler d1 migrations apply my-notes-db --local</code></pre>
+
+<p>This creates the <code>notes</code> table in your local SQLite file. You can now develop against it without touching production.</p>
+
+<h2>Step 5: Build the CRUD API</h2>
+
+<p>Here's the complete Worker. It routes requests to the appropriate handler and uses parameterized queries for safety.</p>
+
+<pre><code>// src/index.ts
+
+export interface Env {
+  DB: D1Database;
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise&lt;Response&gt; {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const method = request.method;
+
+    // Route: GET /api/notes
+    if (method === "GET" && path === "/api/notes") {
+      const { results } = await env.DB.prepare(
+        "SELECT * FROM notes ORDER BY created_at DESC"
+      ).all();
+      return Response.json(results);
+    }
+
+    // Route: GET /api/notes/:id
+    if (method === "GET" && path.startsWith("/api/notes/")) {
+      const id = path.split("/").pop();
+      const note = await env.DB.prepare(
+        "SELECT * FROM notes WHERE id = ?"
+      ).bind(id).first();
+
+      if (!note) {
+        return Response.json({ error: "Note not found" }, { status: 404 });
+      }
+      return Response.json(note);
+    }
+
+    // Route: POST /api/notes
+    if (method === "POST" && path === "/api/notes") {
+      const body = await request.json() as { title: string; content: string };
+
+      if (!body.title || !body.content) {
+        return Response.json(
+          { error: "title and content are required" },
+          { status: 400 }
+        );
+      }
+
+      const result = await env.DB.prepare(
+        "INSERT INTO notes (title, content) VALUES (?, ?)"
+      ).bind(body.title, body.content).run();
+
+      return Response.json(
+        { id: result.meta.last_row_id, title: body.title, content: body.content },
+        { status: 201 }
+      );
+    }
+
+    // Route: DELETE /api/notes/:id
+    if (method === "DELETE" && path.startsWith("/api/notes/")) {
+      const id = path.split("/").pop();
+      await env.DB.prepare(
+        "DELETE FROM notes WHERE id = ?"
+      ).bind(id).run();
+
+      return Response.json({ deleted: true });
+    }
+
+    return Response.json({ error: "Not found" }, { status: 404 });
+  },
+};</code></pre>
+
+<h2>How D1 Queries Work</h2>
+
+<p>Every D1 query follows the same pattern: <strong>prepare → bind → execute</strong>.</p>
+
+<pre><code>// Prepare a statement with ? placeholders
+const stmt = env.DB.prepare("SELECT * FROM notes WHERE id = ?");
+
+// Bind values to the placeholders (in order)
+const bound = stmt.bind(noteId);
+
+// Execute and get results
+const result = await bound.first();   // One row
+const { results } = await bound.all(); // Many rows
+const info = await bound.run();        // Write operation (INSERT/UPDATE/DELETE)</code></pre>
+
+<p>The three execution methods:</p>
+
+<table>
+  <tr><th>Method</th><th>Use When</th><th>Returns</th></tr>
+  <tr><td><code>.first()</code></td><td>You expect one row (or null)</td><td>Single object or null</td></tr>
+  <tr><td><code>.all()</code></td><td>You expect multiple rows</td><td><code>{ results: [...], success, meta }</code></td></tr>
+  <tr><td><code>.run()</code></td><td>INSERT, UPDATE, DELETE</td><td><code>{ success, meta: { changes, last_row_id } }</code></td></tr>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">Why .bind() instead of string interpolation?</div>
+  <p>Never build SQL strings with template literals like <code>`SELECT * FROM notes WHERE id = ${id}`</code>. The <code>.bind()</code> method sends parameters separately from the SQL, making SQL injection impossible. This is the same principle as prepared statements in every other database — D1 just makes it the only way to pass parameters.</p>
+</div>
+
+<h2>Step 6: Test Locally</h2>
+
+<p>Start the dev server:</p>
+
+<pre><code>npx wrangler dev</code></pre>
+
+<p>Test your endpoints with curl:</p>
+
+<pre><code># Create a note
+curl -X POST http://localhost:8787/api/notes \
+  -H "Content-Type: application/json" \
+  -d '{"title": "First note", "content": "Hello from D1!"}'
+
+# List all notes
+curl http://localhost:8787/api/notes
+
+# Get one note
+curl http://localhost:8787/api/notes/1
+
+# Delete a note
+curl -X DELETE http://localhost:8787/api/notes/1</code></pre>
+
+<h2>Step 7: Deploy to Production</h2>
+
+<p>Two steps: first apply the migration to your remote D1 database, then deploy the Worker.</p>
+
+<pre><code># Apply migration to production D1
+npx wrangler d1 migrations apply my-notes-db --remote
+
+# Deploy the Worker
+npx wrangler deploy</code></pre>
+
+<p>That's it. Your API is live at <code>https://notes-api.&lt;your-subdomain&gt;.workers.dev</code> — backed by a real SQL database, running globally, protected by Cloudflare's DDoS and SSL.</p>
+
+<div class="callout">
+  <div class="callout-title">What you just got — for free</div>
+  <p>A globally-distributed SQL database with ACID transactions, automatic backups, a migration system, and an API running in 300+ data centers. No server to maintain, no connection pooling to configure, no infrastructure to manage. This is what "serverless" was supposed to mean.</p>
+</div>
+
+<h2>Quick Check</h2>
+
+<div class="quiz" id="quiz-bind">
+  <p class="quiz-question">Why does D1 use <code>.bind()</code> for query parameters instead of string interpolation?</p>
+  <ul class="quiz-options">
+    <li data-correct="false">It makes queries run faster</li>
+    <li data-correct="true">It prevents SQL injection attacks</li>
+    <li data-correct="false">D1 requires it for type checking</li>
+    <li data-correct="false">It reduces database storage usage</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Key Takeaways</h2>
+
+<ul>
+  <li><strong>D1 is real SQL</strong> — SQLite at the edge with JOINs, indexes, transactions, and migrations</li>
+  <li><strong>Bindings, not connection strings</strong> — your Worker accesses D1 via <code>env.DB</code>, no credentials to manage</li>
+  <li><strong>Always use <code>.bind()</code></strong> — parameterized queries prevent SQL injection by design</li>
+  <li><strong>Migrations manage schema</strong> — apply locally for dev, remotely for production</li>
+  <li><strong>Free tier is generous</strong> — 5M reads/day, 100K writes/day, 5GB storage</li>
+</ul>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://developers.cloudflare.com/d1/get-started/">D1 Getting Started</a> — the official guide to creating and querying D1 databases. Has the full API reference for <code>prepare</code>, <code>bind</code>, <code>batch</code>, and more.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me anything. For example: "How do I add an UPDATE endpoint?" or "Can D1 handle relations between tables?" — I'm your teacher, use me.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0003-kv-url-shortener.html">← Storage with KV</a>
+  <a href="0005-cron-scheduled-workers.html">Next: Scheduled Workers →</a>
+</nav>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+<script>
+  document.querySelectorAll('.quiz').forEach(quiz => {
+    const options = quiz.querySelectorAll('.quiz-options li');
+    const feedback = quiz.querySelector('.quiz-feedback');
+    let answered = false;
+
+    options.forEach(option => {
+      option.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+
+        const isCorrect = option.dataset.correct === 'true';
+        option.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+        if (isCorrect) {
+          feedback.textContent = 'Correct! Parameterized queries (.bind()) send values separately from the SQL statement, making it impossible for user input to alter the query structure. This is the #1 defense against SQL injection.';
+          feedback.className = 'quiz-feedback show correct';
+        } else {
+          feedback.textContent = 'Not quite. The primary purpose of .bind() is security — it prevents SQL injection by separating parameters from the SQL statement. Performance and type checking are not the reason.';
+          feedback.className = 'quiz-feedback show incorrect';
+          // Highlight the correct answer
+          options.forEach(o => {
+            if (o.dataset.correct === 'true') o.classList.add('correct');
+          });
+        }
+      });
+    });
+  });
+</script>
+</body>
+</html>

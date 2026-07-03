@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6: Google OAuth Login</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0005-cron-scheduled-workers.html" class="lesson-back-top" title="Cron Jobs"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0007-custom-domain-dns.html" class="lesson-next-top" title="Custom Domain Setup">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Google OAuth Login</h1>
+
+<div class="lesson-meta">
+  Lesson 6 · Cloudflare Workers · ~15 minutes
+</div>
+
+<p>Add "Sign in with Google" to your Worker app. No auth libraries, no frameworks — just the raw OAuth 2.0 flow running at the edge. By the end you'll have a Worker that authenticates users via their Google account and stores sessions in KV.</p>
+
+<h2>How OAuth 2.0 Works</h2>
+
+<p>The flow has 4 steps:</p>
+
+<ol>
+  <li><strong>User clicks "Sign in with Google"</strong> → your Worker redirects them to Google's auth page</li>
+  <li><strong>User authorizes</strong> → Google redirects back to your Worker with an authorization <code>code</code></li>
+  <li><strong>Worker exchanges code for tokens</strong> → calls Google's token endpoint server-side</li>
+  <li><strong>Worker reads user info from the token</strong> → creates a session, sets a cookie</li>
+</ol>
+
+<div class="callout tip">
+  <div class="callout-title">Why This Is Secure</div>
+  <p>The <code>code</code> → token exchange happens server-side (in your Worker), so your client secret never reaches the browser. The Worker runs over HTTPS automatically — Cloudflare handles the certificate.</p>
+</div>
+
+<h2>Step 1: Create Google OAuth Credentials</h2>
+
+<ol>
+  <li>Go to <a href="https://console.cloud.google.com/apis/credentials">Google Cloud Console → Credentials</a></li>
+  <li>Create a new project (or select existing)</li>
+  <li>Click <strong>Create Credentials → OAuth client ID</strong></li>
+  <li>Application type: <strong>Web application</strong></li>
+  <li>Add an <strong>Authorized redirect URI</strong>:
+    <ul>
+      <li>For local dev: <code>http://localhost:8787/auth/callback</code></li>
+      <li>For production: <code>https://your-worker.your-subdomain.workers.dev/auth/callback</code></li>
+      <li>(Or your custom domain: <code>https://app.yourdomain.com/auth/callback</code>)</li>
+    </ul>
+  </li>
+  <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+</ol>
+
+<div class="callout warning">
+  <div class="callout-title">Configure OAuth Consent Screen</div>
+  <p>You also need to configure the <strong>OAuth consent screen</strong> (APIs & Services → OAuth consent screen). For testing, set it to "External" with your email as a test user. You can publish it later when ready.</p>
+</div>
+
+<h2>Step 2: Set Up the Worker Project</h2>
+
+<pre><code>npm create cloudflare@latest -- google-auth-worker
+cd google-auth-worker</code></pre>
+
+<p>Store your secrets securely (never in code):</p>
+
+<pre><code>npx wrangler secret put GOOGLE_CLIENT_ID
+npx wrangler secret put GOOGLE_CLIENT_SECRET</code></pre>
+
+<p>Add a KV namespace for sessions:</p>
+
+<pre><code>npx wrangler kv namespace create SESSIONS</code></pre>
+
+<p>Update <code>wrangler.jsonc</code>:</p>
+
+<pre><code>{
+  "name": "google-auth-worker",
+  "main": "src/index.js",
+  "compatibility_date": "2024-01-01",
+  "kv_namespaces": [
+    {
+      "binding": "SESSIONS",
+      "id": "&lt;your-namespace-id&gt;"
+    }
+  ]
+}</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Local Dev Secrets</div>
+  <p>For local development, create a <code>.dev.vars</code> file (git-ignored) with your secrets:</p>
+</div>
+
+<pre><code># .dev.vars (add to .gitignore!)
+GOOGLE_CLIENT_ID=your-client-id-here
+GOOGLE_CLIENT_SECRET=your-client-secret-here</code></pre>
+
+<h2>Step 3: The Complete OAuth Worker</h2>
+
+<p>Here's the full implementation — 4 routes handling the entire flow:</p>
+
+<pre><code>export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const REDIRECT_URI = `${url.origin}/auth/callback`;
+
+    // Route: Start OAuth flow
+    if (url.pathname === "/auth/login") {
+      const params = new URLSearchParams({
+        client_id: env.GOOGLE_CLIENT_ID,
+        redirect_uri: REDIRECT_URI,
+        response_type: "code",
+        scope: "openid email profile",
+        access_type: "offline",
+        prompt: "consent",
+      });
+      return Response.redirect(
+        `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+      );
+    }
+
+    // Route: OAuth callback — exchange code for tokens
+    if (url.pathname === "/auth/callback") {
+      const code = url.searchParams.get("code");
+      if (!code) {
+        return new Response("Missing authorization code", { status: 400 });
+      }
+
+      // Exchange code for tokens
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: env.GOOGLE_CLIENT_ID,
+          client_secret: env.GOOGLE_CLIENT_SECRET,
+          redirect_uri: REDIRECT_URI,
+          grant_type: "authorization_code",
+        }),
+      });
+
+      const tokens = await tokenRes.json();
+      if (!tokens.access_token) {
+        return new Response("Token exchange failed", { status: 400 });
+      }
+
+      // Fetch user info from Google
+      const userRes = await fetch(
+        "https://www.googleapis.com/oauth2/v2/userinfo",
+        { headers: { Authorization: `Bearer ${tokens.access_token}` } }
+      );
+      const user = await userRes.json();
+
+      // Create a session
+      const sessionId = crypto.randomUUID();
+      await env.SESSIONS.put(sessionId, JSON.stringify({
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+        created: Date.now(),
+      }), { expirationTtl: 86400 }); // 24 hours
+
+      // Set session cookie and redirect to app
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: "/",
+          "Set-Cookie": `session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`,
+        },
+      });
+    }
+
+    // Route: Logout
+    if (url.pathname === "/auth/logout") {
+      const session = getSession(request);
+      if (session) await env.SESSIONS.delete(session);
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: "/",
+          "Set-Cookie": "session=; Path=/; Max-Age=0",
+        },
+      });
+    }
+
+    // Route: Home page — show login state
+    const session = getSession(request);
+    const user = session
+      ? JSON.parse(await env.SESSIONS.get(session) || "null")
+      : null;
+
+    if (user) {
+      return new Response(`
+        &lt;!DOCTYPE html&gt;
+        &lt;html&gt;
+        &lt;body style="font-family: system-ui; max-width: 600px; margin: 2rem auto; padding: 0 1rem;"&gt;
+          &lt;h1&gt;Welcome, ${user.name}!&lt;/h1&gt;
+          &lt;p&gt;Email: ${user.email}&lt;/p&gt;
+          &lt;img src="${user.picture}" width="80" style="border-radius: 50%;"&gt;
+          &lt;p&gt;&lt;a href="/auth/logout"&gt;Sign out&lt;/a&gt;&lt;/p&gt;
+        &lt;/body&gt;
+        &lt;/html&gt;
+      `, { headers: { "Content-Type": "text/html" } });
+    }
+
+    return new Response(`
+      &lt;!DOCTYPE html&gt;
+      &lt;html&gt;
+      &lt;body style="font-family: system-ui; max-width: 600px; margin: 2rem auto; padding: 0 1rem;"&gt;
+        &lt;h1&gt;My App&lt;/h1&gt;
+        &lt;p&gt;&lt;a href="/auth/login"&gt;Sign in with Google&lt;/a&gt;&lt;/p&gt;
+      &lt;/body&gt;
+      &lt;/html&gt;
+    `, { headers: { "Content-Type": "text/html" } });
+  },
+};
+
+// Helper: extract session ID from cookie
+function getSession(request) {
+  const cookie = request.headers.get("Cookie") || "";
+  const match = cookie.match(/session=([^;]+)/);
+  return match ? match[1] : null;
+}</code></pre>
+
+<h2>Understanding the Flow</h2>
+
+<table>
+  <tr><th>Route</th><th>What It Does</th></tr>
+  <tr><td><code>/auth/login</code></td><td>Redirects user to Google's consent screen</td></tr>
+  <tr><td><code>/auth/callback</code></td><td>Receives the code from Google, exchanges it for tokens, fetches user info, creates session in KV, sets cookie</td></tr>
+  <tr><td><code>/auth/logout</code></td><td>Deletes session from KV, clears cookie</td></tr>
+  <tr><td><code>/</code></td><td>Shows logged-in user info or login link</td></tr>
+</table>
+
+<h2>Step 4: Test Locally</h2>
+
+<pre><code>npx wrangler dev</code></pre>
+
+<p>Visit <code>http://localhost:8787</code> and click "Sign in with Google". You'll be redirected to Google, then back to your local Worker with your profile info displayed.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Localhost Redirect URI</div>
+  <p>Make sure <code>http://localhost:8787/auth/callback</code> is in your Google OAuth authorized redirect URIs. Google allows localhost for development without HTTPS.</p>
+</div>
+
+<h2>Step 5: Deploy</h2>
+
+<pre><code>npx wrangler deploy</code></pre>
+
+<p>After deploying, add your production URL (<code>https://google-auth-worker.&lt;your-account&gt;.workers.dev/auth/callback</code>) to Google's authorized redirect URIs.</p>
+
+<h2>Security Notes</h2>
+
+<ul>
+  <li><strong>HttpOnly cookie</strong> — JavaScript can't read the session cookie (prevents XSS theft)</li>
+  <li><strong>Secure flag</strong> — cookie only sent over HTTPS (automatic with Cloudflare)</li>
+  <li><strong>SameSite=Lax</strong> — prevents CSRF for most cases</li>
+  <li><strong>Session expiry</strong> — KV's <code>expirationTtl</code> auto-deletes sessions after 24 hours</li>
+  <li><strong>Secrets in env</strong> — client secret never in source code</li>
+</ul>
+
+<div class="callout tip">
+  <div class="callout-title">Production Hardening</div>
+  <p>For a real app, also add: a CSRF <code>state</code> parameter (store in KV, verify on callback), scope restriction to only what you need, and rate limiting on <code>/auth/login</code> to prevent abuse.</p>
+</div>
+
+<h2>Free Tier Impact</h2>
+
+<table>
+  <tr><th>Resource</th><th>Usage per Login</th><th>Daily Budget (Free)</th></tr>
+  <tr><td>Worker requests</td><td>3 (login redirect + callback + home)</td><td>100,000</td></tr>
+  <tr><td>KV writes</td><td>1 (create session)</td><td>1,000</td></tr>
+  <tr><td>KV reads</td><td>1 per page load (verify session)</td><td>100,000</td></tr>
+</table>
+
+<p>That's ~1,000 new logins per day and 100,000 authenticated page views — more than enough for personal projects.</p>
+
+<div class="quiz">
+  <div class="quiz-question">Why does the code→token exchange happen in the Worker (server-side) rather than in the browser?</div>
+  <ul class="quiz-options">
+    <li onclick="checkAnswer(this, false)">Because browsers can't make POST requests</li>
+    <li onclick="checkAnswer(this, true)">To keep the client secret hidden from users</li>
+    <li onclick="checkAnswer(this, false)">Because Google blocks browser-based requests</li>
+    <li onclick="checkAnswer(this, false)">To reduce the number of network round trips</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! The client secret must never be exposed to the browser. By exchanging the code on the server (Worker), the secret stays in your environment variables and is never sent to the client.</div>
+  <div class="quiz-feedback incorrect">Not quite. The real reason is security — the client secret must stay server-side. If it were in the browser, anyone could use it to impersonate your app.</div>
+</div>
+<script>
+function checkAnswer(el, correct) {
+  const quiz = el.closest('.quiz');
+  quiz.querySelectorAll('li').forEach(li => li.style.pointerEvents = 'none');
+  el.classList.add(correct ? 'correct' : 'incorrect');
+  quiz.querySelector('.quiz-feedback.' + (correct ? 'correct' : 'incorrect')).classList.add('show');
+}
+</script>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://developers.google.com/identity/protocols/oauth2/web-server">Google OAuth 2.0 for Web Server Applications</a> — the official spec. Covers all parameters, scopes, and error handling in detail.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me about adding a CSRF state parameter, restricting to your Google Workspace domain only, or storing user data in D1 instead of just sessions in KV.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0005-cron-scheduled-workers.html">← Scheduled Workers</a>
+  <a href="0007-custom-domain-dns.html">Next: Custom Domain Setup →</a>
+</nav>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

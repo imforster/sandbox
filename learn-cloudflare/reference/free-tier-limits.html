@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reference: Cloudflare Free-Tier Limits</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    .limit-card { margin-bottom: 1.5rem; }
+    .limit-card h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    .limit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .limit-item { background: var(--color-code-bg); border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.88rem; }
+    .limit-label { color: var(--color-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    .limit-value { font-weight: 600; font-size: 1rem; }
+    @media (max-width: 600px) { .limit-grid { grid-template-columns: 1fr; } }
+    @media print { body { font-size: 9pt; padding: 0.5rem; } .limit-grid { gap: 0.3rem; } }
+  </style>
+</head>
+<body>
+
+<div class="lesson-meta">Reference · Last Updated: July 2026</div>
+
+<h1>Cloudflare Free-Tier Limits</h1>
+<p>Quick reference for all free-tier quotas. Limits reset daily at 00:00 UTC unless noted.</p>
+
+<div class="limit-card">
+  <h3>⚡ Workers (Compute)</h3>
+  <div class="limit-grid">
+    <div class="limit-item"><div class="limit-label">Requests</div><div class="limit-value">100,000 / day</div></div>
+    <div class="limit-item"><div class="limit-label">CPU Time</div><div class="limit-value">10 ms / invocation</div></div>
+    <div class="limit-item"><div class="limit-label">Memory</div><div class="limit-value">128 MB</div></div>
+    <div class="limit-item"><div class="limit-label">Script Size</div><div class="limit-value">1 MB (after gzip)</div></div>
+    <div class="limit-item"><div class="limit-label">Static Assets</div><div class="limit-value">Free &amp; unlimited</div></div>
+    <div class="limit-item"><div class="limit-label">Subrequests</div><div class="limit-value">50 / invocation</div></div>
+  </div>
+</div>
+
+<div class="limit-card">
+  <h3>🗄️ KV (Key-Value)</h3>
+  <div class="limit-grid">
+    <div class="limit-item"><div class="limit-label">Reads</div><div class="limit-value">100,000 / day</div></div>
+    <div class="limit-item"><div class="limit-label">Writes</div><div class="limit-value">1,000 / day</div></div>
+    <div class="limit-item"><div class="limit-label">Deletes</div><div class="limit-value">1,000 / day</div></div>
+    <div class="limit-item"><div class="limit-label">List Ops</div><div class="limit-value">1,000 / day</div></div>
+    <div class="limit-item"><div class="limit-label">Storage</div><div class="limit-value">1 GB</div></div>
+    <div class="limit-item"><div class="limit-label">Max Value Size</div><div class="limit-value">25 MB</div></div>
+  </div>
+</div>
+
+<div class="limit-card">
+  <h3>🛢️ D1 (SQL Database)</h3>
+  <div class="limit-grid">
+    <div class="limit-item"><div class="limit-label">Rows Read</div><div class="limit-value">5,000,000 / day</div></div>
+    <div class="limit-item"><div class="limit-label">Rows Written</div><div class="limit-value">100,000 / day</div></div>
+    <div class="limit-item"><div class="limit-label">Storage</div><div class="limit-value">5 GB total</div></div>
+    <div class="limit-item"><div class="limit-label">Databases</div><div class="limit-value">50 max</div></div>
+  </div>
+</div>
+
+<div class="limit-card">
+  <h3>📦 R2 (Object Storage)</h3>
+  <div class="limit-grid">
+    <div class="limit-item"><div class="limit-label">Storage</div><div class="limit-value">10 GB / month</div></div>
+    <div class="limit-item"><div class="limit-label">Class A Ops</div><div class="limit-value">1,000,000 / month</div></div>
+    <div class="limit-item"><div class="limit-label">Class B Ops</div><div class="limit-value">10,000,000 / month</div></div>
+    <div class="limit-item"><div class="limit-label">Egress</div><div class="limit-value">Free (always)</div></div>
+  </div>
+</div>
+
+<div class="limit-card">
+  <h3>🔒 Durable Objects</h3>
+  <div class="limit-grid">
+    <div class="limit-item"><div class="limit-label">Requests</div><div class="limit-value">100,000 / day</div></div>
+    <div class="limit-item"><div class="limit-label">Duration</div><div class="limit-value">13,000 GB-s / day</div></div>
+    <div class="limit-item"><div class="limit-label">SQLite Reads</div><div class="limit-value">5,000,000 / day</div></div>
+    <div class="limit-item"><div class="limit-label">SQLite Writes</div><div class="limit-value">100,000 / day</div></div>
+    <div class="limit-item"><div class="limit-label">Storage</div><div class="limit-value">5 GB</div></div>
+    <div class="limit-item"><div class="limit-label">Backend</div><div class="limit-value">SQLite only (free)</div></div>
+  </div>
+</div>
+
+<div class="limit-card">
+  <h3>📬 Queues</h3>
+  <div class="limit-grid">
+    <div class="limit-item"><div class="limit-label">Operations</div><div class="limit-value">10,000 / day</div></div>
+    <div class="limit-item"><div class="limit-label">Retention</div><div class="limit-value">24 hours</div></div>
+  </div>
+</div>
+
+<div class="limit-card">
+  <h3>🧭 Vectorize</h3>
+  <div class="limit-grid">
+    <div class="limit-item"><div class="limit-label">Queried Dims</div><div class="limit-value">30M / month</div></div>
+    <div class="limit-item"><div class="limit-label">Stored Dims</div><div class="limit-value">5M total</div></div>
+  </div>
+</div>
+
+<div class="limit-card">
+  <h3>🔗 Hyperdrive (DB Proxy)</h3>
+  <div class="limit-grid">
+    <div class="limit-item"><div class="limit-label">Queries</div><div class="limit-value">100,000 / day</div></div>
+  </div>
+</div>
+
+<div class="limit-card">
+  <h3>🛡️ Security (Always Included)</h3>
+  <div class="limit-grid">
+    <div class="limit-item"><div class="limit-label">DDoS Protection</div><div class="limit-value">Unmetered</div></div>
+    <div class="limit-item"><div class="limit-label">SSL/TLS</div><div class="limit-value">Universal (auto)</div></div>
+    <div class="limit-item"><div class="limit-label">WAF Rules</div><div class="limit-value">Managed ruleset</div></div>
+    <div class="limit-item"><div class="limit-label">Bot Fight Mode</div><div class="limit-value">Basic (included)</div></div>
+  </div>
+</div>
+
+<div class="callout">
+  <div class="callout-title">Source</div>
+  <p><a href="https://developers.cloudflare.com/workers/platform/pricing/">developers.cloudflare.com/workers/platform/pricing</a> — always check the official page for current limits.</p>
+</div>
+
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

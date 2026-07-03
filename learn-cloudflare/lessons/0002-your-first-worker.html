@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your First Worker — Learn Cloudflare</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0001-the-free-tier-map.html" class="lesson-back-top" title="The Free-Tier Map"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0003-kv-url-shortener.html" class="lesson-next-top" title="Adding Storage with KV">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Your First Worker</h1>
+<div class="lesson-meta">Lesson 2 · Cloudflare Workers · ~10 minutes</div>
+
+<p>Static sites are great, but sometimes you need server-side logic — an API endpoint, a redirect rule, or a dynamic response. Cloudflare Workers let you run JavaScript at the edge, close to your users, with zero server management. In this lesson you'll build and deploy a simple JSON API.</p>
+
+<div class="primary-source"><div class="primary-source-label">📖 Primary Source</div><p><a href="https://developers.cloudflare.com/workers/get-started/guide/">Get Started with Wrangler CLI</a> — the official step-by-step guide.</p></div>
+
+<h2>Prerequisites</h2>
+
+<p>You need two things before starting:</p>
+
+<table>
+  <thead>
+    <tr><th>Requirement</th><th>How to get it</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Node.js (v16.13+)</td><td><a href="https://nodejs.org/">nodejs.org</a> — LTS version recommended</td></tr>
+    <tr><td>Cloudflare account</td><td><a href="https://dash.cloudflare.com/sign-up">Sign up free</a> — no credit card required</td></tr>
+  </tbody>
+</table>
+
+<p>Verify Node is installed:</p>
+
+<pre><code>node --version
+# v20.x or higher is ideal</code></pre>
+
+<h2>Scaffold the project</h2>
+
+<p>Cloudflare provides a CLI scaffolding tool. Run this in your terminal:</p>
+
+<pre><code>npm create cloudflare@latest -- my-first-worker</code></pre>
+
+<p>When prompted, choose:</p>
+
+<ol>
+  <li><strong>What would you like to start with?</strong> → Hello World example</li>
+  <li><strong>Which template?</strong> → Worker only</li>
+  <li><strong>Which language?</strong> → JavaScript</li>
+</ol>
+
+<p>Then enter the project directory:</p>
+
+<pre><code>cd my-first-worker</code></pre>
+
+<h2>Understand the code structure</h2>
+
+<p>Open <code>src/index.js</code>. You'll see something like this:</p>
+
+<pre><code>export default {
+  async fetch(request, env, ctx) {
+    return new Response("Hello World!");
+  },
+};</code></pre>
+
+<p>That's the entire Worker. Here's what each piece does:</p>
+
+<table>
+  <thead>
+    <tr><th>Part</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>export default</code></td><td>ES module syntax — Workers use standard modules, not CommonJS</td></tr>
+    <tr><td><code>fetch(request, env, ctx)</code></td><td>Runs on every incoming HTTP request</td></tr>
+    <tr><td><code>request</code></td><td>The incoming Request object (URL, headers, method, body)</td></tr>
+    <tr><td><code>env</code></td><td>Bindings — KV namespaces, secrets, other services</td></tr>
+    <tr><td><code>ctx</code></td><td>Execution context — mainly <code>ctx.waitUntil()</code> for background tasks</td></tr>
+    <tr><td><code>new Response()</code></td><td>What gets sent back to the client</td></tr>
+  </tbody>
+</table>
+
+<h2>Run locally</h2>
+
+<p>Start the local development server:</p>
+
+<pre><code>npx wrangler dev</code></pre>
+
+<p>Open <a href="http://localhost:8787">http://localhost:8787</a> in your browser. You should see "Hello World!" — your Worker is running locally.</p>
+
+<div class="callout tip"><div class="callout-title">Hot reload included</div><p>Wrangler watches your files. Edit <code>src/index.js</code>, save, and refresh the browser — changes appear instantly.</p></div>
+
+<h2>Build a multi-route API</h2>
+
+<p>A static "Hello World" isn't useful. Let's build a simple JSON API with multiple routes. Replace the contents of <code>src/index.js</code> with:</p>
+
+<pre><code>export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    // Route: JSON greeting
+    if (path === "/api/hello") {
+      const name = url.searchParams.get("name") || "world";
+      return new Response(
+        JSON.stringify({ greeting: `Hello, ${name}!` }),
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Route: Current time
+    if (path === "/api/time") {
+      return new Response(
+        JSON.stringify({ utc: new Date().toISOString() }),
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Route: Welcome page
+    if (path === "/") {
+      return new Response(
+        "Welcome to my first Worker! Try /api/hello or /api/time",
+        {
+          headers: { "Content-Type": "text/plain" },
+        }
+      );
+    }
+
+    // Fallback: 404
+    return new Response(
+      JSON.stringify({ error: "Not found" }),
+      {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  },
+};</code></pre>
+
+<p>Save the file and test each route in your browser (Wrangler should still be running):</p>
+
+<table>
+  <thead>
+    <tr><th>URL</th><th>Response</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>http://localhost:8787/</code></td><td>Plain text welcome message</td></tr>
+    <tr><td><code>http://localhost:8787/api/hello</code></td><td><code>{"greeting":"Hello, world!"}</code></td></tr>
+    <tr><td><code>http://localhost:8787/api/hello?name=Kiro</code></td><td><code>{"greeting":"Hello, Kiro!"}</code></td></tr>
+    <tr><td><code>http://localhost:8787/api/time</code></td><td><code>{"utc":"2026-07-02T..."}</code></td></tr>
+    <tr><td><code>http://localhost:8787/anything-else</code></td><td>404 JSON error</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip"><div class="callout-title">Pattern: URL routing</div><p>The pattern <code>new URL(request.url).pathname</code> is the foundation of all Worker routing. For larger projects you can use libraries like <a href="https://github.com/tsndr/cloudflare-worker-router">itty-router</a>, but simple <code>if</code> checks work great for small APIs.</p></div>
+
+<h2>Deploy to production</h2>
+
+<p>When you're happy with it locally, deploy to Cloudflare's network:</p>
+
+<pre><code>npx wrangler deploy</code></pre>
+
+<p>The first time, Wrangler will open a browser tab to authenticate your Cloudflare account. After that, you'll see output like:</p>
+
+<pre><code>Published my-first-worker (0.5 sec)
+  https://my-first-worker.YOUR-SUBDOMAIN.workers.dev</code></pre>
+
+<p>That URL is live. Your API is now running on Cloudflare's global network — over 300 locations worldwide.</p>
+
+<div class="callout tip"><div class="callout-title">Instant security</div><p>Your deployed Worker automatically gets SSL/TLS encryption and Cloudflare's DDoS protection. No configuration needed — it's on by default for every Worker.</p></div>
+
+<h2>Free tier limits</h2>
+
+<p>Workers on the free plan are generous for learning and small projects:</p>
+
+<table>
+  <thead>
+    <tr><th>Limit</th><th>Value</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Requests per day</td><td>100,000</td></tr>
+    <tr><td>CPU time per invocation</td><td>10 ms</td></tr>
+    <tr><td>Worker size (compressed)</td><td>1 MB</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warning"><div class="callout-title">CPU time ≠ wall clock time</div><p>The 10ms limit is <em>CPU time</em>, not total duration. If your Worker makes a <code>fetch()</code> call to an external API that takes 200ms to respond, that waiting time doesn't count. Only the milliseconds your code actively runs on the CPU matter.</p></div>
+
+<h2>What you built</h2>
+
+<p>In under 10 minutes you created a dynamic API endpoint that:</p>
+
+<ul>
+  <li>Runs on Cloudflare's global edge network (low latency everywhere)</li>
+  <li>Has automatic SSL and DDoS protection</li>
+  <li>Costs nothing within the free tier</li>
+  <li>Scales automatically — no servers to manage</li>
+</ul>
+
+<p>Next lesson, we'll add persistent storage with KV so your Worker can remember things between requests.</p>
+
+<div class="quiz">
+  <div class="quiz-question">When a Worker makes a fetch() call to an external API that takes 200ms, how much of that counts toward your 10ms CPU limit?</div>
+  <ul class="quiz-options">
+    <li onclick="checkAnswer(this, false)">All 200ms counts toward CPU</li>
+    <li onclick="checkAnswer(this, true)">None of it — only processing</li>
+    <li onclick="checkAnswer(this, false)">Half of it counts toward CPU</li>
+    <li onclick="checkAnswer(this, false)">It depends on response size</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! The CPU limit only measures time your code spends actively executing on the processor. Network I/O — waiting for fetch() responses, DNS lookups, TLS handshakes — is "wall clock time" and doesn't count against the 10ms CPU budget.</div>
+  <div class="quiz-feedback incorrect">Not quite. Cloudflare only counts actual CPU execution time — the milliseconds your JavaScript is actively running. Time spent waiting for network responses (fetch calls, DNS, etc.) is excluded from the CPU limit.</div>
+</div>
+<script>
+function checkAnswer(el, correct) {
+  const quiz = el.closest('.quiz');
+  quiz.querySelectorAll('li').forEach(li => li.style.pointerEvents = 'none');
+  el.classList.add(correct ? 'correct' : 'incorrect');
+  quiz.querySelector('.quiz-feedback.' + (correct ? 'correct' : 'incorrect')).classList.add('show');
+}
+</script>
+
+<div class="ask-teacher"><strong>💬 Questions?</strong> Ask me anything. "What's the difference between CPU time and duration?" or "Can I use TypeScript instead?" — I'm here to help.</div>
+
+<nav class="lesson-nav"><a href="0001-the-free-tier-map.html">← The Free-Tier Map</a><a href="0003-kv-url-shortener.html">Next: Storage with KV →</a></nav>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

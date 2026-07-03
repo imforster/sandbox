@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloudflare Workers — Lesson Index</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    .course-header {
+      margin-bottom: 3rem;
+    }
+    .course-header h1 {
+      font-size: 2.8rem;
+      letter-spacing: -0.035em;
+      margin-bottom: 0.75rem;
+    }
+    .course-header p {
+      color: var(--color-muted);
+      font-size: 1.05rem;
+      line-height: 1.5;
+      max-width: 600px;
+    }
+    .lesson-list {
+      list-style: none;
+      padding: 0;
+    }
+    .lesson-list li {
+      margin-bottom: 0;
+      padding: 0;
+    }
+    .lesson-card {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr auto;
+      gap: 1rem;
+      align-items: baseline;
+      padding: 1.1rem 1rem;
+      text-decoration: none;
+      color: var(--color-text);
+      border-radius: 10px;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .lesson-card:hover {
+      background: var(--color-card-bg);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-card);
+      text-decoration: none;
+    }
+    .lesson-num {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--color-muted);
+      font-weight: 600;
+    }
+    .lesson-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .lesson-title {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--color-accent);
+    }
+    .lesson-desc {
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      line-height: 1.4;
+    }
+    .lesson-time {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--color-muted);
+      white-space: nowrap;
+      background: var(--color-code-bg);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+    .section-label {
+      font-family: var(--font-heading);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-muted);
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      padding-left: 1rem;
+    }
+    .resources-link {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--color-border);
+      font-size: 0.9rem;
+    }
+    .resources-link a {
+      font-weight: 500;
+    }
+    @media (max-width: 600px) {
+      .lesson-card {
+        grid-template-columns: 2rem 1fr;
+      }
+      .lesson-time { display: none; }
+      .course-header h1 { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="../../" class="lesson-back-top" title="All Courses"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> All Courses</a><span></span><span></span></nav>
+
+<div class="course-header">
+  <h1>Cloudflare Workers</h1>
+  <p>Exploring everything you can build and run on Cloudflare's free tier — beyond static websites. Security and speed included.</p>
+</div>
+
+<div class="section-label">Foundations</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0001-the-free-tier-map.html">
+      <span class="lesson-num">01</span>
+      <span class="lesson-info">
+        <span class="lesson-title">The Free-Tier Map</span>
+        <span class="lesson-desc">What you can run on Cloudflare for free: Workers, D1, KV, R2, Durable Objects, and the security layer.</span>
+      </span>
+      <span class="lesson-time">~5 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0002-your-first-worker.html">
+      <span class="lesson-num">02</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Your First Worker</span>
+        <span class="lesson-desc">Deploy a dynamic JSON API to Cloudflare's edge using the Wrangler CLI. Hello world to live in 5 minutes.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Storage & Data</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0003-kv-url-shortener.html">
+      <span class="lesson-num">03</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Adding Storage with KV</span>
+        <span class="lesson-desc">Build a URL shortener with Workers KV — your first persistent, globally-distributed data store.</span>
+      </span>
+      <span class="lesson-time">~12 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0004-d1-crud-api.html">
+      <span class="lesson-num">04</span>
+      <span class="lesson-info">
+        <span class="lesson-title">SQL at the Edge with D1</span>
+        <span class="lesson-desc">Build a CRUD API backed by a real SQLite database. Full SQL, migrations, parameterized queries — all free.</span>
+      </span>
+      <span class="lesson-time">~15 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Automation</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0005-cron-scheduled-workers.html">
+      <span class="lesson-num">05</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Cron Jobs & Scheduled Workers</span>
+        <span class="lesson-desc">Automate tasks on a schedule — fetch data, clean up, aggregate — no server required.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Auth & Domains</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0006-google-oauth-login.html">
+      <span class="lesson-num">06</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Google OAuth Login</span>
+        <span class="lesson-desc">Add "Sign in with Google" to your Worker. Full OAuth 2.0 flow with session management in KV.</span>
+      </span>
+      <span class="lesson-time">~15 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0007-custom-domain-dns.html">
+      <span class="lesson-num">07</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Custom Domain & DNS Setup</span>
+        <span class="lesson-desc">Point your Google Workspace subdomain to Cloudflare. Automatic SSL, DDoS protection, and preserved email.</span>
+      </span>
+      <span class="lesson-time">~12 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Going Deeper</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0008-worker-languages.html">
+      <span class="lesson-num">08</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Worker Languages</span>
+        <span class="lesson-desc">JavaScript, TypeScript, Python, Rust, or Wasm — which to choose and hello-world in each.</span>
+      </span>
+      <span class="lesson-time">~8 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Reference</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="../reference/free-tier-limits.html">
+      <span class="lesson-num">—</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Free-Tier Limits Cheat Sheet</span>
+        <span class="lesson-desc">All quotas at a glance. Print-friendly.</span>
+      </span>
+      <span class="lesson-time">ref</span>
+    </a>
+  </li>
+</ul>
+
+<div class="resources-link">
+  <p>📚 <a href="https://developers.cloudflare.com/workers/">Cloudflare Workers Docs</a> — the canonical source for everything.</p>
+  <p>💬 Questions between lessons? Ask your teacher — I can explain, suggest projects, or dive deeper into any topic.</p>
+</div>
+
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

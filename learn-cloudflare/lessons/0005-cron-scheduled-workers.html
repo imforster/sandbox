@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5: Cron Jobs &amp; Scheduled Workers — Automate Without a Server</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0004-d1-crud-api.html" class="lesson-back-top" title="SQL with D1"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span></span></nav>
+
+<h1>Cron Jobs &amp; Scheduled Workers</h1>
+
+<div class="lesson-meta">
+  Lesson 5 · Cloudflare Workers · ~10 minutes
+</div>
+
+<p>Every Worker you've written so far responds to an incoming HTTP request. But what if you want code to run on a <em>schedule</em> — no request needed? That's what Cron Triggers do. They turn your Worker into a serverless cron job: fetch data every hour, clean up stale records nightly, warm a cache at 6 AM.</p>
+
+<h2>What Are Cron Triggers?</h2>
+
+<p>A Cron Trigger is a scheduled invocation of your Worker. Cloudflare calls your Worker at the times you specify — no incoming HTTP request required. Your Worker wakes up, does its work, and goes back to sleep.</p>
+
+<p>Common use cases:</p>
+
+<ul>
+  <li><strong>Data aggregation</strong> — Fetch from an external API every hour and cache the result</li>
+  <li><strong>Health checks</strong> — Ping your services every 5 minutes and alert on failure</li>
+  <li><strong>Cache warming</strong> — Pre-compute expensive responses before users request them</li>
+  <li><strong>Cleanup jobs</strong> — Delete expired records or rotate logs nightly</li>
+</ul>
+
+<div class="callout tip">
+  <div class="callout-title">Free Tier</div>
+  <p>Cron Triggers are included on the free tier. Each invocation counts as one request against your 100K daily limit — the same as any HTTP request to your Worker.</p>
+</div>
+
+<h2>The Cron Syntax</h2>
+
+<p>Cloudflare uses standard 5-field cron syntax:</p>
+
+<pre><code>┌───────────── minute (0–59)
+│ ┌─────────── hour (0–23)
+│ │ ┌───────── day of month (1–31)
+│ │ │ ┌─────── month (1–12)
+│ │ │ │ ┌───── day of week (0–6, Sunday = 0)
+│ │ │ │ │
+* * * * *</code></pre>
+
+<p>Examples:</p>
+
+<table>
+  <tr><th>Expression</th><th>Meaning</th></tr>
+  <tr><td><code>0 * * * *</code></td><td>Every hour, on the hour</td></tr>
+  <tr><td><code>*/5 * * * *</code></td><td>Every 5 minutes</td></tr>
+  <tr><td><code>0 6 * * *</code></td><td>Every day at 6:00 AM UTC</td></tr>
+  <tr><td><code>0 0 * * 1</code></td><td>Every Monday at midnight UTC</td></tr>
+  <tr><td><code>0 */2 * * *</code></td><td>Every 2 hours</td></tr>
+</table>
+
+<h2>Adding a Cron Trigger</h2>
+
+<p>In your <code>wrangler.jsonc</code>, add a <code>triggers</code> block with one or more cron expressions:</p>
+
+<pre><code>{
+  "name": "quote-collector",
+  "main": "src/index.js",
+  "compatibility_date": "2024-01-01",
+
+  // KV namespace for storing fetched quotes
+  "kv_namespaces": [
+    { "binding": "QUOTES", "id": "your-kv-namespace-id" }
+  ],
+
+  // Schedule: run every hour on the hour
+  "triggers": {
+    "crons": ["0 * * * *"]
+  }
+}</code></pre>
+
+<p>You can specify multiple schedules if needed:</p>
+
+<pre><code>"triggers": {
+  "crons": ["0 * * * *", "0 6 * * *", "0 0 * * 1"]
+}</code></pre>
+
+<h2>The <code>scheduled</code> Event Handler</h2>
+
+<p>HTTP requests hit your <code>fetch</code> handler. Cron invocations hit a different handler: <code>scheduled</code>.</p>
+
+<pre><code>export default {
+  // Called by HTTP requests (GET, POST, etc.)
+  async fetch(request, env, ctx) {
+    // ...
+  },
+
+  // Called by Cron Triggers on schedule
+  async scheduled(event, env, ctx) {
+    // event.cron — the cron pattern that triggered this (e.g., "0 * * * *")
+    // event.scheduledTime — the time this was scheduled to run (ms timestamp)
+    // env — your bindings (KV, D1, secrets, etc.)
+    // ctx.waitUntil() — keep the Worker alive for async work
+  }
+};</code></pre>
+
+<div class="callout">
+  <div class="callout-title">ctx.waitUntil()</div>
+  <p>The <code>scheduled</code> handler doesn't return a Response (there's no one to send it to). Use <code>ctx.waitUntil(promise)</code> to tell the runtime "don't shut down until this async work finishes." Without it, your Worker might terminate before your fetch or KV write completes.</p>
+</div>
+
+<h2>Practical Example: Hourly Quote Collector</h2>
+
+<p>Let's build a Worker that runs every hour, fetches a random quote from a public API, and stores it in KV. It also exposes a <code>fetch</code> handler so you (or your frontend) can retrieve the latest quote via HTTP.</p>
+
+<h3>Step 1: Create the Project</h3>
+
+<pre><code>npx wrangler init quote-collector
+cd quote-collector</code></pre>
+
+<h3>Step 2: Create the KV Namespace</h3>
+
+<pre><code>npx wrangler kv namespace create QUOTES</code></pre>
+
+<p>Copy the output ID into your <code>wrangler.jsonc</code>.</p>
+
+<h3>Step 3: Configure wrangler.jsonc</h3>
+
+<pre><code>{
+  "name": "quote-collector",
+  "main": "src/index.js",
+  "compatibility_date": "2024-01-01",
+  "kv_namespaces": [
+    { "binding": "QUOTES", "id": "paste-your-id-here" }
+  ],
+  "triggers": {
+    "crons": ["0 * * * *"]
+  }
+}</code></pre>
+
+<h3>Step 4: Write the Worker</h3>
+
+<pre><code>// src/index.js
+
+export default {
+  // HTTP handler — returns the latest stored quote
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/quote") {
+      const data = await env.QUOTES.get("latest", { type: "json" });
+
+      if (!data) {
+        return new Response(
+          JSON.stringify({ error: "No quote stored yet. Wait for the next cron run." }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify(data), {
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    return new Response("Quote Collector API\n\nGET /quote — latest stored quote", {
+      headers: { "Content-Type": "text/plain" }
+    });
+  },
+
+  // Cron handler — fetches a new quote and stores it in KV
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(fetchAndStoreQuote(env));
+  }
+};
+
+async function fetchAndStoreQuote(env) {
+  // Using ZenQuotes API (free, no auth required)
+  const response = await fetch("https://zenquotes.io/api/random");
+
+  if (!response.ok) {
+    console.error(`Quote API returned ${response.status}`);
+    return;
+  }
+
+  const [quote] = await response.json();
+
+  const data = {
+    text: quote.q,
+    author: quote.a,
+    fetchedAt: new Date().toISOString()
+  };
+
+  await env.QUOTES.put("latest", JSON.stringify(data));
+  console.log(`Stored quote: "${data.text}" — ${data.author}`);
+}</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Both Handlers in One Worker</div>
+  <p>A single Worker can export both <code>fetch</code> and <code>scheduled</code>. The cron writes data into KV; HTTP requests read it out. One Worker, two entry points.</p>
+</div>
+
+<h2>Testing Locally</h2>
+
+<p>Start the dev server with the <code>--test-scheduled</code> flag to enable local cron testing:</p>
+
+<pre><code>npx wrangler dev --test-scheduled</code></pre>
+
+<p>Now you can trigger the scheduled handler manually by hitting a special endpoint:</p>
+
+<pre><code># Trigger the cron handler
+curl "http://localhost:8787/__scheduled?cron=0+*+*+*+*"
+
+# Then fetch the stored quote via your HTTP handler
+curl "http://localhost:8787/quote"</code></pre>
+
+<p>The <code>/__scheduled</code> endpoint simulates a cron invocation locally. Your <code>scheduled</code> handler runs, fetches the quote, and stores it in the local KV emulator. Then your <code>fetch</code> handler can read it back.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Local KV</div>
+  <p>In local dev, Wrangler uses a local KV emulator. Data persists between runs in your project's <code>.wrangler/</code> directory, but it's separate from your deployed KV namespace.</p>
+</div>
+
+<h2>Deploying</h2>
+
+<p>Deploy like any other Worker:</p>
+
+<pre><code>npx wrangler deploy</code></pre>
+
+<p>That's it. Once deployed, Cloudflare reads the <code>triggers.crons</code> config and immediately starts scheduling your Worker. No additional setup, no separate cron service, no server to maintain.</p>
+
+<p>You'll see your Worker listed in the Cloudflare dashboard with a "Triggers" tab showing the active cron schedules.</p>
+
+<h2>Viewing Logs</h2>
+
+<p>After your cron fires in production, you can see what happened:</p>
+
+<ol>
+  <li>Go to <strong>Workers &amp; Pages</strong> in the Cloudflare dashboard</li>
+  <li>Click your Worker (<code>quote-collector</code>)</li>
+  <li>Click the <strong>Logs</strong> tab</li>
+  <li>Select <strong>"Begin log stream"</strong> for real-time logs, or check <strong>"Past logs"</strong></li>
+</ol>
+
+<p>Your <code>console.log()</code> statements from the scheduled handler show up here, along with any errors. You can also tail logs from the CLI:</p>
+
+<pre><code>npx wrangler tail</code></pre>
+
+<p>This streams live logs from your deployed Worker — both HTTP requests and cron invocations.</p>
+
+<h2>Complete Final Code</h2>
+
+<p>Here's the full Worker in one block for easy reference:</p>
+
+<pre><code>// src/index.js — Quote Collector Worker
+// Cron: fetches a random quote every hour and stores in KV
+// HTTP: serves the latest quote at GET /quote
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/quote") {
+      const data = await env.QUOTES.get("latest", { type: "json" });
+
+      if (!data) {
+        return new Response(
+          JSON.stringify({ error: "No quote stored yet. Wait for the next cron run." }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify(data), {
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=300"
+        }
+      });
+    }
+
+    if (url.pathname === "/") {
+      return new Response(
+        "Quote Collector API\n\nGET /quote — returns the latest stored quote\n",
+        { headers: { "Content-Type": "text/plain" } }
+      );
+    }
+
+    return new Response("Not found", { status: 404 });
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(fetchAndStoreQuote(env));
+  }
+};
+
+async function fetchAndStoreQuote(env) {
+  const response = await fetch("https://zenquotes.io/api/random");
+
+  if (!response.ok) {
+    console.error(`Quote API failed: ${response.status} ${response.statusText}`);
+    return;
+  }
+
+  const [quote] = await response.json();
+
+  const data = {
+    text: quote.q,
+    author: quote.a,
+    fetchedAt: new Date().toISOString()
+  };
+
+  await env.QUOTES.put("latest", JSON.stringify(data));
+  console.log(`Stored quote: "${data.text}" — ${data.author}`);
+}</code></pre>
+
+<p>And the configuration:</p>
+
+<pre><code>// wrangler.jsonc
+{
+  "name": "quote-collector",
+  "main": "src/index.js",
+  "compatibility_date": "2024-01-01",
+  "kv_namespaces": [
+    { "binding": "QUOTES", "id": "your-kv-namespace-id" }
+  ],
+  "triggers": {
+    "crons": ["0 * * * *"]
+  }
+}</code></pre>
+
+<h2>Knowledge Check</h2>
+
+<div class="quiz" data-correct="2">
+  <p class="quiz-question">What happens to your Cron Trigger Worker on the free tier if you've already used all 100K daily requests?</p>
+  <ul class="quiz-options">
+    <li data-index="0">The cron still fires normally</li>
+    <li data-index="1">The cron invocation is skipped</li>
+    <li data-index="2">The cron counts against the limit</li>
+    <li data-index="3">Cloudflare sends you a warning email</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct! Cron invocations count against the same 100K daily request limit as HTTP requests. If you've exhausted your quota, the cron invocation will fail. Plan your schedules accordingly — an hourly cron uses only 24 requests per day.</div>
+  <div class="quiz-feedback incorrect">Not quite. Cron invocations count against the same 100K daily request limit. They're treated identically to HTTP requests for billing purposes. If you've exceeded your limit, cron invocations will be affected too.</div>
+</div>
+
+<h2>What's Next</h2>
+
+<p>You now have the full picture of what Cloudflare Workers can do on the free tier: HTTP APIs, SQL databases, key-value storage, object storage, and now scheduled background jobs — all without a server.</p>
+
+<p>Time to build something real. Go back to <a href="0001-the-free-tier-map.html">Lesson 1's project table</a> and pick one:</p>
+
+<ul>
+  <li><strong>URL shortener</strong> — Workers + KV (great starter project)</li>
+  <li><strong>Webhook processor</strong> — Workers + Queues + D1 (uses cron for retry/cleanup)</li>
+  <li><strong>Image hosting</strong> — Workers + R2 (zero egress serving)</li>
+  <li><strong>Full-stack web app</strong> — Workers + D1 + Static Assets (put it all together)</li>
+</ul>
+
+<p>Each project uses concepts from these five lessons. Pick one that interests you and build it end to end.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://developers.cloudflare.com/workers/configuration/cron-triggers/">Cron Triggers Documentation</a> — official reference for scheduling, syntax, limits, and debugging cron Workers.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me about other scheduling patterns (e.g., "run every 30 seconds" using Durable Objects alarms), combining cron Workers with Queues for reliable job processing, or how to handle failures and retries in scheduled tasks.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0004-d1-crud-api.html">← SQL with D1</a>
+  <a href="index.html">All Lessons</a>
+</nav>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+<script>
+// Quiz interaction
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const correct = parseInt(quiz.dataset.correct);
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      // Prevent re-answering
+      if (quiz.classList.contains('answered')) return;
+      quiz.classList.add('answered');
+
+      const selected = parseInt(option.dataset.index);
+
+      if (selected === correct) {
+        option.classList.add('correct');
+        feedbackCorrect.classList.add('show');
+      } else {
+        option.classList.add('incorrect');
+        options[correct].classList.add('correct');
+        feedbackIncorrect.classList.add('show');
+      }
+    });
+  });
+});
+</script>
+</body>
+</html>
