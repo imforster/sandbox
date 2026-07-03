@@ -6,6 +6,59 @@
   <title>Lesson 7: Custom Domain & DNS Setup</title>
   <link rel="stylesheet" href="../assets/style.css">
   <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .arch-diagram {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+    .arch-label {
+      font-family: var(--font-heading);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-muted);
+      text-align: center;
+      margin-bottom: 1.25rem;
+    }
+    .arch-row {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 0;
+    }
+    .arch-box {
+      border: 2px solid var(--color-border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      text-align: center;
+      min-width: 140px;
+    }
+    .arch-box-title {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.88rem;
+      margin-bottom: 0.25rem;
+    }
+    .arch-box-desc {
+      font-size: 0.75rem;
+      color: var(--color-muted);
+      line-height: 1.4;
+    }
+    .arch-connector {
+      text-align: center;
+      color: var(--color-muted);
+      font-size: 1rem;
+      margin: 0.5rem 0;
+    }
+    @media (max-width: 600px) {
+      .arch-row { flex-direction: column; align-items: center; }
+      .arch-row[style*="grid"] { display: flex !important; flex-direction: column; align-items: center; }
+    }
+  </style>
 </head>
 <body>
 
@@ -188,19 +241,50 @@ if (!user.email.endsWith("@yourcompany.com")) {
 
 <h2>The Complete Picture</h2>
 
-<div class="diagram">
-User → app.yourdomain.com → Cloudflare Edge (DDoS + WAF + SSL)
-                                    │
-                              ┌─────┴─────┐
-                              │   Worker   │
-                              └─────┬─────┘
-                                    │
-            ┌───────────────────────┼───────────────────────┐
-            │                       │                       │
-    /auth/login              /auth/callback              / (app)
-    → redirect to            → exchange code             → check session
-      Google OAuth             → create session            → render page
-                               → set cookie
+<div class="arch-diagram">
+  <div class="arch-label">The Complete Picture</div>
+
+  <div class="arch-row">
+    <div class="arch-box" style="border-color: var(--color-muted);">
+      <div class="arch-box-title">👤 User</div>
+      <div class="arch-box-desc">app.yourdomain.com</div>
+    </div>
+  </div>
+
+  <div class="arch-connector">▼</div>
+
+  <div class="arch-row">
+    <div class="arch-box" style="border-color: var(--color-success); background: #f0fdf4;">
+      <div class="arch-box-title" style="color: #16a34a;">🛡️ Cloudflare Edge</div>
+      <div class="arch-box-desc">DDoS + WAF + SSL (automatic, free)</div>
+    </div>
+  </div>
+
+  <div class="arch-connector">▼</div>
+
+  <div class="arch-row">
+    <div class="arch-box" style="border-color: var(--color-accent); background: var(--color-accent-light);">
+      <div class="arch-box-title" style="color: var(--color-accent);">⚡ Worker</div>
+      <div class="arch-box-desc">Your code running at the edge</div>
+    </div>
+  </div>
+
+  <div class="arch-connector">▼ routes to ▼</div>
+
+  <div class="arch-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+    <div class="arch-box" style="border-color: #6366f1; background: #eef2ff;">
+      <div class="arch-box-title" style="color: #4f46e5; font-size: 0.82rem;">/auth/login</div>
+      <div class="arch-box-desc">Redirect to<br>Google OAuth</div>
+    </div>
+    <div class="arch-box" style="border-color: #6366f1; background: #eef2ff;">
+      <div class="arch-box-title" style="color: #4f46e5; font-size: 0.82rem;">/auth/callback</div>
+      <div class="arch-box-desc">Exchange code<br>Create session<br>Set cookie</div>
+    </div>
+    <div class="arch-box" style="border-color: #6366f1; background: #eef2ff;">
+      <div class="arch-box-title" style="color: #4f46e5; font-size: 0.82rem;">/ (app)</div>
+      <div class="arch-box-desc">Check session<br>Render page</div>
+    </div>
+  </div>
 </div>
 
 <h2>What You Get for Free</h2>
