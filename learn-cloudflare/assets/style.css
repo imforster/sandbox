@@ -355,6 +355,26 @@ tr:last-child td { border-bottom: none; }
   font-weight: 500;
 }
 
+.lesson-nav-home {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--color-muted);
+  opacity: 0.6;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.lesson-nav-home:hover {
+  opacity: 1;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.lesson-nav-disabled {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
 /* Source recommendation */
 .primary-source {
   background: var(--color-card-bg);
