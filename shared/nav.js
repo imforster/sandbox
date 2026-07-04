@@ -167,6 +167,7 @@
       { text: 'Learn Codex', href: '/sandbox/learn-codex/' },
       { text: 'Learn Cloudflare Workers', href: '/sandbox/learn-cloudflare/' },
       { text: 'IDEO Design Sprint', href: 'https://blog.imfsoftware.com/ideo-design-sprint-game/' },
+      { text: 'LLM Wiki', href: 'https://blog.imfsoftware.com/llm-wiki/docs/' },
     ]},
     { label: 'Navigate', items: [
       { text: 'Blog', href: 'https://blog.imfsoftware.com' },
