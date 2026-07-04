@@ -18,3 +18,4 @@ Demos, prototypes & experiments.
 ## External
 
 - **[IDEO Design Sprint Game](https://blog.imfsoftware.com/ideo-design-sprint-game/)** — Interactive design sprint card game.
+- **[LLM Wiki](https://blog.imfsoftware.com/llm-wiki/docs/)** — Knowledge base for LLM concepts and patterns.
