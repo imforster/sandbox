@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Lesson 6: Isolate Parallel Work</title><link rel="stylesheet" href="../assets/style.css"><link rel="stylesheet" href="../assets/copy-button.css"></head>
+<body><nav class="lesson-top-nav"><a href="0005-plan-steer-and-finish.html" class="lesson-back-top">Previous</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0007-choose-the-right-extension.html" class="lesson-next-top">Next →</a></nav>
+<h1>Isolate Parallel Work</h1><div class="lesson-meta">Lesson 6 · Worktrees · ~8 minutes</div>
+<p>Two agents should not edit the same checkout concurrently. Codex app worktrees give each task a separate filesystem while sharing Git history.</p>
+<pre class="diagram">Local checkout → foreground work you supervise closely
+Worktree       → isolated background task
+Handoff        → move the thread and its changes safely</pre>
+<h2>Use a Worktree When</h2><ul><li>You want Codex working while you continue locally.</li><li>The task may touch many files or install dependencies.</li><li>You want to compare alternatives without branch pollution.</li><li>An automation should not disturb unfinished work.</li></ul>
+<div class="callout warning"><div class="callout-title">Git constraint</div><p>The same branch cannot be checked out in two worktrees. Use Handoff when bringing a task back to Local instead of checking out the same branch twice.</p></div>
+<h2>Ignored Local Files</h2><p>Managed worktrees contain tracked files. If a task needs ignored setup files, explicitly list only those files in <code>.worktreeinclude</code>.</p>
+<pre><code># .worktreeinclude
+.env.local
+config/dev-overrides.json</code></pre>
+<h2>Check Your Understanding</h2><div class="quiz"><div class="quiz-question">Codex should prototype while you continue editing locally. Which execution location fits?</div><ul class="quiz-options"><li data-correct="true">Use an isolated worktree</li><li>Share the local checkout</li><li>Disable Git branch protection</li></ul><div class="quiz-feedback correct">Correct. Separate filesystems prevent concurrent-edit collisions.</div><div class="quiz-feedback incorrect">Use an isolated worktree, then hand off the thread when it belongs in the foreground.</div></div>
+<h2>Do This Now</h2><p>Start a harmless documentation task in a worktree. Inspect the diff, then practice Handoff to Local without manually moving files.</p>
+<div class="primary-source"><div class="primary-source-label">Primary Source</div><p><a href="https://developers.openai.com/codex/app/worktrees">Codex worktrees</a> documents managed worktrees, Handoff, ignored files, and cleanup.</p></div>
+<div class="ask-teacher"><strong>Questions?</strong> Describe two tasks you want to run together and I will identify whether they are genuinely independent.</div>
+<div class="lesson-nav"><a href="0005-plan-steer-and-finish.html">← Previous</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0007-choose-the-right-extension.html">Next →</a></div>
+<script src="../assets/lesson.js"></script><script src="../assets/copy-button.js"></script><script src="/sandbox/shared/nav.js"></script></body></html>

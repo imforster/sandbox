@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1: Give Codex One Distinct Job</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <span></span>
+  <a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0002-import-without-replacing.html" class="lesson-next-top" title="Import Without Replacing">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a>
+</nav>
+
+<h1>Give Codex One Distinct Job</h1>
+
+<div class="lesson-meta">
+  Lesson 1 · Codex as a Complement · ~5 minutes
+</div>
+
+<p>You already know how to collaborate with a coding agent. The useful first question is not “How do I prompt Codex?” It is: <em>where does a second agent improve the system?</em></p>
+
+<div class="callout tip">
+  <div class="callout-title">Your win</div>
+  <p>Use Codex as an independent reviewer of changes produced by you, Kiro, or Claude. A fresh reviewer is less likely to inherit the implementation thread’s assumptions.</p>
+</div>
+
+<h2>The Surface Map</h2>
+
+<pre class="diagram">Need immediate, local iteration?  → CLI or IDE
+Need visual diffs + worktrees?    → Codex app
+Need hosted GitHub delegation?    → Codex web/cloud
+Need repeatable shell automation? → codex exec
+Need an independent check?        → /review</pre>
+
+<p>The CLI, IDE extension, and app share Codex configuration. The app adds parallel threads and built-in worktree support; the CLI adds a terminal-native interactive flow and non-interactive <code>codex exec</code>. Codex web runs hosted work against connected GitHub repositories.</p>
+
+<p>Keep the expanded <a href="../reference/codex-surface-map.html">Codex surface reference</a> nearby when choosing where a task should run.</p>
+
+<h2>Run the Complementary Workflow</h2>
+
+<ol>
+  <li>Open a repository containing a real uncommitted change.</li>
+  <li>Start Codex in that repository with <code>codex</code>.</li>
+  <li>Enter <code>/review</code>.</li>
+  <li>Select <strong>Review uncommitted changes</strong>.</li>
+  <li>Accept only findings that cite concrete behavior, risk, or missing verification.</li>
+</ol>
+
+<p>This creates separation of duties: one agent implements; Codex reviews the diff without editing the worktree. Later, you can reverse the roles.</p>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">You want Codex to assess Claude’s local uncommitted change without modifying it. Which capability fits?</div>
+  <ul class="quiz-options">
+    <li>Launch a cloud task</li>
+    <li data-correct="true">Run a local review</li>
+    <li>Import the agent setup</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. <code>/review</code> starts a dedicated local reviewer and leaves the worktree untouched.</div>
+  <div class="quiz-feedback incorrect">Not quite. The requirement is independent, read-only assessment of a local diff, so use <code>/review</code>.</div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Choose a current repository with an uncommitted change.</li>
+  <li>Run the local review workflow above.</li>
+  <li>Record one finding you accepted or rejected and the evidence behind that decision.</li>
+</ol>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://developers.openai.com/codex/cli/features">Codex CLI features</a> documents local review, interactive sessions, <code>codex exec</code>, MCP, cloud tasks, and approval modes.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Bring back one review finding you accepted or rejected, and explain why. That evidence will determine the next lesson.
+</div>
+
+<div class="lesson-nav">
+  <span class="lesson-nav-disabled">← Previous</span>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0002-import-without-replacing.html" class="lesson-nav-next" title="Import Without Replacing">Next →</a>
+</div>
+
+<script src="../assets/lesson.js"></script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

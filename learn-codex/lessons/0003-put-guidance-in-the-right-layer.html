@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 3: Put Guidance in the Right Layer</title><link rel="stylesheet" href="../assets/style.css"><link rel="stylesheet" href="../assets/copy-button.css"></head>
+<body>
+<nav class="lesson-top-nav"><a href="0002-import-without-replacing.html" class="lesson-back-top">Previous</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-set-a-real-trust-boundary.html" class="lesson-next-top">Next →</a></nav>
+<h1>Put Guidance in the Right Layer</h1>
+<div class="lesson-meta">Lesson 3 · Customization · ~8 minutes</div>
+<p>Codex behavior comes from several layers. Reliability improves when each instruction lives at the narrowest scope that genuinely needs it.</p>
+<pre class="diagram">One task only               → prompt
+Every task in one repo      → AGENTS.md
+Codex settings for one repo → .codex/config.toml
+Your defaults everywhere   → ~/.codex/config.toml
+Repeatable procedure        → skill</pre>
+<h2>How Precedence Works</h2>
+<p>Codex reads global guidance, then walks from the repository root toward the current directory. Guidance closer to the working directory wins. Configuration follows a similar layering model, with one-off CLI flags taking highest precedence.</p>
+<div class="callout tip"><div class="callout-title">Feedback loop</div><p>Do not pre-populate a huge <code>AGENTS.md</code>. Add build commands, verification criteria, and conventions; then add a rule only after repeated friction demonstrates its value.</p></div>
+<h2>A Useful Starter</h2>
+<pre><code># AGENTS.md
+## Verification
+- Run `make test` after changing application code.
+- Run `make lint` before reporting completion.
+
+## Constraints
+- Ask before adding production dependencies.
+- Keep unrelated refactors out of bug fixes.</code></pre>
+<h2>Check Your Understanding</h2>
+<div class="quiz"><div class="quiz-question">Where should a rule that applies to every task in one repository live?</div><ul class="quiz-options"><li data-correct="true">Repository instructions in AGENTS.md</li><li>Personal defaults in config.toml</li><li>Reusable workflow in skill</li></ul><div class="quiz-feedback correct">Correct. Repository-wide working agreements belong in the root <code>AGENTS.md</code>.</div><div class="quiz-feedback incorrect">Use <code>AGENTS.md</code> for durable repository guidance; settings and workflows have different jobs.</div></div>
+<h2>Do This Now</h2><p>In one active repository, draft five lines covering the real test command, lint command, dependency policy, scope constraint, and definition of done.</p>
+<div class="primary-source"><div class="primary-source-label">Primary Sources</div><p><a href="https://developers.openai.com/codex/guides/agents-md">Custom instructions with AGENTS.md</a> and <a href="https://developers.openai.com/codex/config-basic">Config basics</a>.</p></div>
+<div class="ask-teacher"><strong>Questions?</strong> Paste an existing Kiro or Claude instruction file and ask me to classify each line by Codex layer.</div>
+<div class="lesson-nav"><a href="0002-import-without-replacing.html">← Previous</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-set-a-real-trust-boundary.html">Next →</a></div>
+<script src="../assets/lesson.js"></script><script src="../assets/copy-button.js"></script><script src="/sandbox/shared/nav.js"></script></body></html>

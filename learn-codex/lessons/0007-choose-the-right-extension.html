@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Lesson 7: Choose the Right Extension</title><link rel="stylesheet" href="../assets/style.css"><link rel="stylesheet" href="../assets/copy-button.css"></head>
+<body><nav class="lesson-top-nav"><a href="0006-isolate-parallel-work.html" class="lesson-back-top">Previous</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0008-close-the-visual-feedback-loop.html" class="lesson-next-top">Next →</a></nav>
+<h1>Choose the Right Extension</h1><div class="lesson-meta">Lesson 7 · Skills, plugins, and MCP · ~9 minutes</div>
+<p>Codex has several extension mechanisms. They are complementary, but using the wrong one creates unnecessary configuration.</p>
+<table><thead><tr><th>Need</th><th>Use</th></tr></thead><tbody><tr><td>Durable behavior</td><td><code>AGENTS.md</code></td></tr><tr><td>Reusable procedure</td><td>Skill</td></tr><tr><td>Installable bundle</td><td>Plugin</td></tr><tr><td>External data or actions</td><td>MCP or connector</td></tr><tr><td>Specialized parallel worker</td><td>Subagent</td></tr></tbody></table>
+<h2>Build in This Order</h2><ol><li>Check whether Codex or an installed plugin already provides the capability.</li><li>Write a skill when the workflow itself is the missing piece.</li><li>Add MCP only when the workflow needs a system outside the repository.</li><li>Package the skill as a plugin when installation and distribution matter.</li></ol>
+<div class="callout tip"><div class="callout-title">Progressive disclosure</div><p>Codex initially loads skill metadata, then reads full instructions and references only when the skill is selected. A precise description matters more than a large always-loaded prompt.</p></div>
+<pre><code>---
+name: release-check
+description: Verify a release candidate. Use before tagging a production release.
+---
+
+1. Run the repository release checks.
+2. Summarize failures with file references.
+3. Do not publish or tag anything.</code></pre>
+<h2>Check Your Understanding</h2><div class="quiz"><div class="quiz-question">A repeatable release procedure needs repository instructions and helper scripts. What fits?</div><ul class="quiz-options"><li data-correct="true">Create a focused skill</li><li>Add another MCP server</li><li>Expand every system prompt</li></ul><div class="quiz-feedback correct">Correct. A skill packages the procedure, references, and optional scripts.</div><div class="quiz-feedback incorrect">MCP supplies external capabilities; a skill defines the repeatable workflow.</div></div>
+<h2>Do This Now</h2><p>Classify one existing Kiro or Claude customization as guidance, workflow, distribution, or external capability. Choose the corresponding Codex layer.</p>
+<div class="primary-source"><div class="primary-source-label">Primary Source</div><p><a href="https://developers.openai.com/codex/concepts/customization">Codex customization</a> explains how AGENTS.md, skills, plugins, MCP, and subagents fit together.</p></div>
+<div class="ask-teacher"><strong>Questions?</strong> Describe a customization you rely on and I will challenge whether it needs to exist in Codex.</div>
+<div class="lesson-nav"><a href="0006-isolate-parallel-work.html">← Previous</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0008-close-the-visual-feedback-loop.html">Next →</a></div>
+<script src="../assets/lesson.js"></script><script src="../assets/copy-button.js"></script><script src="/sandbox/shared/nav.js"></script></body></html>

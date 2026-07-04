@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codex Surface Map</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+<main class="reference-page">
+  <p class="lesson-meta"><a href="../lessons/index.html">Course</a> / Reference</p>
+  <h1>Codex surface map</h1>
+  <p>Choose a surface by where the work should run and how you want to supervise it. The same Codex configuration can support several surfaces; you do not need a separate setup for each one.</p>
+
+  <h2>Choose by task</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>If you need…</th><th>Start with</th><th>Why</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Fast terminal collaboration in the current repo</td><td><strong>CLI</strong></td><td>Interactive local edits, commands, approvals, and session resumption.</td></tr>
+        <tr><td>Work beside the code currently open in your editor</td><td><strong>IDE extension</strong></td><td>Editor context and local execution without changing applications.</td></tr>
+        <tr><td>Several isolated tasks visible at once</td><td><strong>Codex app</strong></td><td>Parallel threads, visual diffs, Git controls, and built-in worktrees.</td></tr>
+        <tr><td>A long task that should run away from your machine</td><td><strong>Web / cloud</strong></td><td>Hosted execution against a connected GitHub repository.</td></tr>
+        <tr><td>A repeatable agent step in a script or CI job</td><td><strong><code>codex exec</code></strong></td><td>Non-interactive output, exit status, and structured event options.</td></tr>
+        <tr><td>A second opinion on a local change</td><td><strong><code>/review</code></strong></td><td>A dedicated reviewer inspects a diff without changing the worktree.</td></tr>
+        <tr><td>Visual testing of a local web interface</td><td><strong>In-app browser</strong></td><td>Codex can navigate, inspect, click, type, and capture the rendered result.</td></tr>
+        <tr><td>Work that depends on your signed-in browser state</td><td><strong>Chrome integration</strong></td><td>Uses the user's Chrome profile when existing sessions or extensions matter.</td></tr>
+        <tr><td>Interaction with a native desktop application</td><td><strong>Computer Use</strong></td><td>Controls macOS or Windows UI when no direct tool or API fits.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>The core surfaces</h2>
+  <div class="lesson-grid">
+    <section class="lesson-card">
+      <span class="tag">Local · interactive</span>
+      <h2>CLI</h2>
+      <ul class="compact-list">
+        <li>Reads, edits, and runs code in the selected directory.</li>
+        <li>Supports approval modes, image input, web search, MCP, and slash commands.</li>
+        <li>Resumes previous threads with <code>codex resume</code>.</li>
+        <li>Submits hosted tasks with <code>codex cloud</code>.</li>
+      </ul>
+    </section>
+    <section class="lesson-card">
+      <span class="tag">Local · editor-attached</span>
+      <h2>IDE extension</h2>
+      <ul class="compact-list">
+        <li>Works alongside VS Code-family editors and JetBrains IDEs.</li>
+        <li>Uses open files and selections as immediate task context.</li>
+        <li>Can perform local work or delegate to Codex cloud.</li>
+      </ul>
+    </section>
+    <section class="lesson-card">
+      <span class="tag">Local · parallel</span>
+      <h2>Codex app</h2>
+      <ul class="compact-list">
+        <li>Runs multiple threads and projects in one desktop workspace.</li>
+        <li>Creates isolated Git worktrees for parallel changes.</li>
+        <li>Provides visual diff review and Git operations.</li>
+        <li>Supports scheduled automations and local UI tools.</li>
+      </ul>
+    </section>
+    <section class="lesson-card">
+      <span class="tag">Hosted · asynchronous</span>
+      <h2>Web / cloud</h2>
+      <ul class="compact-list">
+        <li>Runs in a configured cloud environment against GitHub repositories.</li>
+        <li>Continues while your local machine is unavailable.</li>
+        <li>Can produce changes for review or a pull request.</li>
+        <li>Supports multiple attempts when alternative solutions are valuable.</li>
+      </ul>
+    </section>
+    <section class="lesson-card">
+      <span class="tag">Local · non-interactive</span>
+      <h2><code>codex exec</code></h2>
+      <ul class="compact-list">
+        <li>Runs one prompt from a script, shell pipeline, or CI system.</li>
+        <li>Returns a final result to standard output.</li>
+        <li>Can resume an earlier non-interactive run.</li>
+        <li>Best reserved for bounded workflows with explicit checks.</li>
+      </ul>
+    </section>
+  </div>
+
+  <h2>Execution and isolation</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Surface</th><th>Runs where</th><th>Repository state</th><th>Supervision</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>CLI</td><td>Your machine</td><td>Current checkout</td><td>Live terminal transcript</td></tr>
+        <tr><td>IDE</td><td>Your machine</td><td>Current checkout</td><td>Live editor panel</td></tr>
+        <tr><td>App</td><td>Your machine</td><td>Checkout or isolated worktree</td><td>Parallel thread UI</td></tr>
+        <tr><td>Web / cloud</td><td>OpenAI-hosted environment</td><td>Connected repository snapshot</td><td>Asynchronous task UI</td></tr>
+        <tr><td><code>codex exec</code></td><td>Your machine or CI runner</td><td>Process working directory</td><td>Logs and exit status</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Configuration shared across surfaces</h2>
+  <pre class="diagram">One-off task requirement       → prompt / thread
+Repository conventions        → AGENTS.md
+Repository Codex settings     → .codex/config.toml
+Personal Codex defaults       → ~/.codex/config.toml
+Reusable workflow             → skill
+Installable capability bundle → plugin
+External service or live data → MCP server / connector
+Mechanical lifecycle control  → hook
+Scheduled recurring work      → automation</pre>
+
+  <div class="callout">
+    <p class="callout-title">Coming from Kiro or Claude</p>
+    <p>Do not duplicate every existing customization immediately. Importing can translate supported instructions, settings, skills, MCP servers, hooks, slash commands, sessions, and subagents while leaving the original setup unchanged. Review permissions and authentication after import, then keep only the pieces that improve the Codex workflow.</p>
+  </div>
+
+  <h2>High-value complementary roles</h2>
+  <div class="lesson-grid">
+    <section class="lesson-card"><h2>Independent reviewer</h2><p>Let Kiro or Claude implement, then use Codex <code>/review</code> against the local diff.</p></section>
+    <section class="lesson-card"><h2>Parallel investigator</h2><p>Give Codex an isolated worktree to diagnose or prototype without disturbing the primary implementation thread.</p></section>
+    <section class="lesson-card"><h2>UI verifier</h2><p>Use browser or computer-control capabilities to verify rendered behavior instead of trusting source inspection alone.</p></section>
+    <section class="lesson-card"><h2>Workflow runner</h2><p>Move a stable, bounded task into <code>codex exec</code>, a skill, or an automation only after the interactive version is reliable.</p></section>
+  </div>
+
+  <div class="primary-source">
+    <p class="primary-source-label">Official sources</p>
+    <p><a href="https://developers.openai.com/codex/cli">CLI</a> · <a href="https://developers.openai.com/codex/cli/features">CLI features</a> · <a href="https://developers.openai.com/codex/ide">IDE</a> · <a href="https://developers.openai.com/codex/app">App</a> · <a href="https://developers.openai.com/codex/cloud">Web/cloud</a> · <a href="https://developers.openai.com/codex/import">Import</a> · <a href="https://developers.openai.com/codex/learn/best-practices">Best practices</a></p>
+  </div>
+</main>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
