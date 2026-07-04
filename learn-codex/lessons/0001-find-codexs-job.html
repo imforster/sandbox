@@ -18,7 +18,7 @@
 <h1>Give Codex One Distinct Job</h1>
 
 <div class="lesson-meta">
-  Lesson 1 · Codex as a Complement · ~5 minutes
+  Lesson 1 · Codex as a Complement · ~10 minutes
 </div>
 
 <p>You already know how to collaborate with a coding agent. The useful first question is not “How do I prompt Codex?” It is: <em>where does a second agent improve the system?</em></p>
@@ -52,6 +52,32 @@ Need an independent check?        → /review</pre>
 
 <p>This creates separation of duties: one agent implements; Codex reviews the diff without editing the worktree. Later, you can reverse the roles.</p>
 
+<h2>Judge Findings, Not Confidence</h2>
+
+<p>A review is useful only when a finding connects evidence to impact. Codex may sound certain about a weak concern, or cautious about a real defect. Evaluate the chain:</p>
+
+<ol>
+  <li><strong>Location:</strong> does the finding identify the exact changed code?</li>
+  <li><strong>Trigger:</strong> what input, state, or sequence exposes the problem?</li>
+  <li><strong>Impact:</strong> what observable behavior becomes wrong?</li>
+  <li><strong>Verification:</strong> can a focused test or reproduction prove it?</li>
+</ol>
+
+<table>
+  <thead><tr><th>Finding</th><th>Response</th></tr></thead>
+  <tbody>
+    <tr><td>Concrete trigger and user-visible impact</td><td>Reproduce it, then fix or add a regression test.</td></tr>
+    <tr><td>Valid risk but no reachable trigger</td><td>Ask Codex to trace the call path and provide evidence.</td></tr>
+    <tr><td>Style preference already covered by tooling</td><td>Reject it and rely on the formatter or linter.</td></tr>
+    <tr><td>Unrelated redesign suggestion</td><td>Record separately; keep it out of the current change.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="callout-title">Useful follow-up</div>
+  <p>Ask: “Show the smallest input that triggers this issue and the test that would fail before the fix.” This converts review prose into falsifiable evidence.</p>
+</div>
+
 <h2>Check Your Understanding</h2>
 
 <div class="quiz" id="quiz-1">
@@ -70,6 +96,8 @@ Need an independent check?        → /review</pre>
 <ol>
   <li>Choose a current repository with an uncommitted change.</li>
   <li>Run the local review workflow above.</li>
+  <li>Classify each finding as proven, plausible, preference, or out of scope.</li>
+  <li>For one plausible finding, ask Codex for a minimal reproduction or test.</li>
   <li>Record one finding you accepted or rejected and the evidence behind that decision.</li>
 </ol>
 

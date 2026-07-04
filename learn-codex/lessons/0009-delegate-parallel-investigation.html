@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Lesson 9: Delegate Parallel Investigation</title><link rel="stylesheet" href="../assets/style.css"><link rel="stylesheet" href="../assets/copy-button.css"></head>
 <body><nav class="lesson-top-nav"><a href="0008-close-the-visual-feedback-loop.html" class="lesson-back-top">Previous</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0010-automate-only-stable-work.html" class="lesson-next-top">Next →</a></nav>
-<h1>Delegate Parallel Investigation</h1><div class="lesson-meta">Lesson 9 · Cloud and subagents · ~8 minutes</div>
+<h1>Delegate Parallel Investigation</h1><div class="lesson-meta">Lesson 9 · Cloud and subagents · ~11 minutes</div>
 <p>Parallelism helps when tasks are independent and read-heavy. It hurts when several agents write overlapping files or require constant shared decisions.</p>
 <table><thead><tr><th>Mechanism</th><th>Best fit</th></tr></thead><tbody><tr><td>Subagents</td><td>Parallel exploration, testing, triage, or specialist review</td></tr><tr><td>Cloud task</td><td>Hosted asynchronous work against a pushed repository</td></tr><tr><td>Local worktree</td><td>Isolated work using your machine and local tools</td></tr></tbody></table>
 <h2>Delegate Bounded Outputs</h2>
@@ -13,8 +13,20 @@
 Wait for all three. Return one deduplicated report
 with evidence and file references. Do not edit files.</code></pre>
 <div class="callout tip"><div class="callout-title">Keep the main thread clean</div><p>Subagents should return distilled findings, not raw logs. Keep requirements, decisions, and synthesis in the main thread.</p></div>
+<h2>Run the Independence Test</h2>
+<p>Two tasks are safe to parallelize when neither requires the other’s intermediate decisions, they do not edit overlapping state, and their outputs can be merged by a clear rule.</p>
+<table><thead><tr><th>Shape</th><th>Parallel?</th></tr></thead><tbody>
+<tr><td>Security review and test-gap review of the same diff</td><td>Yes; read-only perspectives</td></tr>
+<tr><td>Two agents redesigning the same module</td><td>No; shared decisions and files</td></tr>
+<tr><td>Compare two prototypes in separate worktrees</td><td>Yes; isolate and define comparison criteria</td></tr>
+<tr><td>Schema change followed by dependent API changes</td><td>Usually sequential</td></tr>
+</tbody></table>
+<h2>Budget for Coordination</h2>
+<p>Each subagent performs its own model and tool work. Parallelism costs more tokens and adds synthesis overhead. Use it when elapsed time, independent evidence, or context isolation is worth that cost.</p>
+<ol><li>Give each worker one bounded question.</li><li>State read/write authority explicitly.</li><li>Require evidence and file references.</li><li>Define who resolves contradictions.</li><li>Wait for all required results before synthesis.</li></ol>
+<div class="callout warning"><div class="callout-title">Cloud is a different environment</div><p>A cloud task starts from repository state available to its environment, not every untracked local artifact. Confirm the commit, setup script, dependencies, secrets policy, and internet settings before delegating.</p></div>
 <h2>Check Your Understanding</h2><div class="quiz"><div class="quiz-question">Three independent read-only audits are needed. What is the strongest delegation shape?</div><ul class="quiz-options"><li data-correct="true">Use three focused subagents</li><li>Use three overlapping writers</li><li>Use one shared checkout</li></ul><div class="quiz-feedback correct">Correct. Independent read-heavy scopes parallelize cleanly.</div><div class="quiz-feedback incorrect">Parallel writers increase conflicts; focused read-only subagents fit this decomposition.</div></div>
-<h2>Do This Now</h2><p>Take one review question and split it into two independent evidence-gathering tasks. Define the exact summary each worker must return.</p>
+<h2>Do This Now</h2><p>Take one review question and split it into two independent evidence-gathering tasks. Define authority, output schema, evidence requirements, and the rule the main agent should use to deduplicate or resolve conflicting findings.</p>
 <div class="primary-source"><div class="primary-source-label">Primary Sources</div><p><a href="https://developers.openai.com/codex/concepts/subagents">Subagent concepts</a> and <a href="https://developers.openai.com/codex/cloud">Codex cloud</a>.</p></div>
 <div class="ask-teacher"><strong>Questions?</strong> Show me a proposed decomposition and I will point out hidden coupling before you parallelize it.</div>
 <div class="lesson-nav"><a href="0008-close-the-visual-feedback-loop.html">← Previous</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0010-automate-only-stable-work.html">Next →</a></div>

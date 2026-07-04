@@ -4,7 +4,7 @@
 <body>
 <nav class="lesson-top-nav"><a href="0001-find-codexs-job.html" class="lesson-back-top" title="Give Codex One Distinct Job">Previous</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0003-put-guidance-in-the-right-layer.html" class="lesson-next-top" title="Put Guidance in the Right Layer">Next →</a></nav>
 <h1>Import Without Replacing</h1>
-<div class="lesson-meta">Lesson 2 · Setup · ~7 minutes</div>
+<div class="lesson-meta">Lesson 2 · Setup · ~10 minutes</div>
 <p>Codex can import supported setup from other coding agents without changing or deleting the original. That makes import a low-risk way to test continuity rather than a migration commitment.</p>
 <div class="callout tip"><div class="callout-title">Your win</div><p>Bring selected Kiro or Claude conventions into Codex, then review the translation before relying on it.</p></div>
 <h2>What Maps Where</h2>
@@ -15,9 +15,26 @@
 <h2>Use the Import Flow</h2>
 <ol><li>Open Codex app Settings → General → <strong>Import other agent setup</strong>.</li><li>Choose <strong>Customize</strong> instead of importing everything blindly.</li><li>Start with instructions, one useful skill, and required MCP servers.</li><li>Review permission assumptions, environment variables, authentication, and argument placeholders.</li><li>Open one imported project and run a harmless read-only task.</li></ol>
 <div class="callout warning"><div class="callout-title">Do not assume equivalence</div><p>Hooks, command interpolation, permissions, and connection authentication can behave differently. Imported means translated, not verified.</p></div>
+<h2>Import in Risk Order</h2>
+<p>Import items in an order that makes failures easy to diagnose. Static guidance is easier to inspect than executable hooks or authenticated connections.</p>
+<ol>
+  <li><strong>Instructions:</strong> compare the generated <code>AGENTS.md</code> with the source guidance.</li>
+  <li><strong>Skills:</strong> verify their descriptions trigger only for the intended tasks.</li>
+  <li><strong>Settings:</strong> inspect model, sandbox, approval, and feature choices.</li>
+  <li><strong>MCP and plugins:</strong> reconnect authentication and review tool permissions.</li>
+  <li><strong>Hooks and subagents:</strong> test side effects in a disposable repository last.</li>
+</ol>
+<h2>Run a Post-Import Audit</h2>
+<table><thead><tr><th>Question</th><th>Evidence</th></tr></thead><tbody>
+<tr><td>Did guidance land at the correct scope?</td><td>Global versus repository file location</td></tr>
+<tr><td>Can any imported tool mutate external state?</td><td>Tool list and approval policy</td></tr>
+<tr><td>Are credentials still available safely?</td><td>Environment-variable names, never secret values</td></tr>
+<tr><td>Do command placeholders still expand correctly?</td><td>Harmless dry run with sample arguments</td></tr>
+</tbody></table>
+<div class="callout"><div class="callout-title">Rollback model</div><p>The original agent setup remains untouched. If an imported item behaves badly, disable or remove that Codex copy instead of changing the working Kiro or Claude setup.</p></div>
 <h2>Check Your Understanding</h2>
 <div class="quiz"><div class="quiz-question">What is the safest first move when bringing an existing agent setup into Codex?</div><ul class="quiz-options"><li data-correct="true">Use the Codex importer</li><li>Copy every file manually</li><li>Delete the original setup</li></ul><div class="quiz-feedback correct">Correct. Customize the import and keep the source setup intact.</div><div class="quiz-feedback incorrect">The importer translates supported items while leaving the original setup unchanged.</div></div>
-<h2>Do This Now</h2><p>Open the import preview and record which three items would provide immediate value. Do not complete the import until you can explain each item’s Codex destination.</p>
+<h2>Do This Now</h2><p>Open the import preview and record which three items would provide immediate value. Rank them by execution risk, identify each Codex destination, and write one harmless verification task for each item before completing the import.</p>
 <div class="primary-source"><div class="primary-source-label">Primary Source</div><p><a href="https://developers.openai.com/codex/import">Import to Codex</a> documents supported items, destinations, and post-import checks.</p></div>
 <div class="ask-teacher"><strong>Questions?</strong> Show me the proposed import list and I can help identify risky or redundant items.</div>
 <div class="lesson-nav"><a href="0001-find-codexs-job.html">← Previous</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0003-put-guidance-in-the-right-layer.html">Next →</a></div>

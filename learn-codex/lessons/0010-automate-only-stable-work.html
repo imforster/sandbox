@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Lesson 10: Automate Only Stable Work</title><link rel="stylesheet" href="../assets/style.css"><link rel="stylesheet" href="../assets/copy-button.css"></head>
 <body><nav class="lesson-top-nav"><a href="0009-delegate-parallel-investigation.html" class="lesson-back-top">Previous</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span></span></nav>
-<h1>Automate Only Stable Work</h1><div class="lesson-meta">Lesson 10 · Automation · ~10 minutes</div>
+<h1>Automate Only Stable Work</h1><div class="lesson-meta">Lesson 10 · Automation · ~13 minutes</div>
 <p>Automation should be the final form of a workflow that already succeeds interactively. Codex offers non-interactive CLI runs and scheduled app automations; both require explicit inputs, permissions, and outputs.</p>
 <table><thead><tr><th>Need</th><th>Use</th></tr></thead><tbody><tr><td>One scripted or CI run</td><td><code>codex exec</code></td></tr><tr><td>Machine-readable event stream</td><td><code>codex exec --json</code></td></tr><tr><td>Recurring independent check</td><td>Standalone automation</td></tr><tr><td>Recurring continuation of one thread</td><td>Thread automation</td></tr></tbody></table>
 <h2>Start Read-Only</h2>
@@ -13,6 +13,19 @@
 → package as skill → run with codex exec
 → schedule only when unattended behavior is safe</pre>
 <div class="callout warning"><div class="callout-title">Unattended means no rescue prompt</div><p>An automation must say what to inspect, what counts as a finding, what it may change, where results go, and when it should stop or escalate.</p></div>
+<h2>Design the Output Contract</h2>
+<p>Human-readable prose is enough for an inbox. Downstream programs need stable fields and exit behavior. Choose the contract before writing the prompt.</p>
+<table><thead><tr><th>Consumer</th><th>Output</th></tr></thead><tbody>
+<tr><td>Human in a shell</td><td>Final message on standard output</td></tr>
+<tr><td>Event processor</td><td><code>--json</code> JSONL stream</td></tr>
+<tr><td>Another build step</td><td><code>--output-schema</code> with required fields</td></tr>
+<tr><td>Later Codex stage</td><td>Resume the recorded session</td></tr>
+</tbody></table>
+<h2>Use an Automation Readiness Gate</h2>
+<ol><li>The workflow has succeeded manually at least twice.</li><li>Inputs and repository state are explicit.</li><li>The least required sandbox is known.</li><li>Failure produces a visible, actionable report.</li><li>External writes are separated from analysis when possible.</li><li>The first scheduled runs will be reviewed.</li><li>There is a clear stop or escalation condition.</li></ol>
+<h2>Separate Analysis from Mutation</h2>
+<p>A safer CI pattern lets Codex analyze or generate a patch with read-only repository permissions, stores that patch as an artifact, and uses a separate controlled job to apply it or open a pull request. The code-reading job never receives unnecessary write authority.</p>
+<div class="callout tip"><div class="callout-title">Idempotence test</div><p>Ask what happens if the automation runs twice. A good recurring check produces the same result or recognizes completed work instead of duplicating comments, branches, or files.</p></div>
 <h2>Check Your Understanding</h2><div class="quiz"><div class="quiz-question">A new workflow has not succeeded interactively yet. What should happen before scheduling?</div><ul class="quiz-options"><li data-correct="true">Test the workflow manually</li><li>Grant unattended full access</li><li>Schedule hourly production runs</li></ul><div class="quiz-feedback correct">Correct. Stabilize and review the interactive workflow before scheduling it.</div><div class="quiz-feedback incorrect">Automation multiplies ambiguity. First prove the workflow manually.</div></div>
 <h2>Your Complementary Operating Model</h2><ol><li>Use the best existing agent for implementation.</li><li>Give Codex an independent review or verification role.</li><li>Use worktrees or cloud tasks for genuinely independent work.</li><li>Capture repeated guidance in <code>AGENTS.md</code> and repeated procedures in skills.</li><li>Automate only after the bounded workflow is reliable.</li></ol>
 <div class="primary-source"><div class="primary-source-label">Primary Sources</div><p><a href="https://developers.openai.com/codex/noninteractive">Non-interactive mode</a> and <a href="https://developers.openai.com/codex/app/automations">Codex automations</a>.</p></div>

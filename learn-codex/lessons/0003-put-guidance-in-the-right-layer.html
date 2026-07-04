@@ -4,7 +4,7 @@
 <body>
 <nav class="lesson-top-nav"><a href="0002-import-without-replacing.html" class="lesson-back-top">Previous</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-set-a-real-trust-boundary.html" class="lesson-next-top">Next →</a></nav>
 <h1>Put Guidance in the Right Layer</h1>
-<div class="lesson-meta">Lesson 3 · Customization · ~8 minutes</div>
+<div class="lesson-meta">Lesson 3 · Customization · ~12 minutes</div>
 <p>Codex behavior comes from several layers. Reliability improves when each instruction lives at the narrowest scope that genuinely needs it.</p>
 <pre class="diagram">One task only               → prompt
 Every task in one repo      → AGENTS.md
@@ -23,9 +23,24 @@ Repeatable procedure        → skill</pre>
 ## Constraints
 - Ask before adding production dependencies.
 - Keep unrelated refactors out of bug fixes.</code></pre>
+<h2>Follow the Instruction Chain</h2>
+<p>Suppose you launch Codex from <code>services/payments/</code>. Codex reads global guidance first, then the repository root, then each directory down to the current one. The closest applicable instruction wins.</p>
+<pre class="diagram">~/.codex/AGENTS.md                 personal defaults
+repo/AGENTS.md                    team-wide rules
+repo/services/AGENTS.md           service conventions
+repo/services/payments/AGENTS.md  payment-specific rules</pre>
+<p>This lets broad rules stay broad while specialized commands remain close to the code they govern. An override file is useful for a genuine replacement, but ordinary nested guidance is easier to reason about.</p>
+<h2>Separate Instructions from Enforcement</h2>
+<table><thead><tr><th>Statement</th><th>Best home</th></tr></thead><tbody>
+<tr><td>“Run <code>make test-payments</code> here.”</td><td>Nested <code>AGENTS.md</code></td></tr>
+<tr><td>“Formatting must pass.”</td><td>Formatter or CI, referenced by guidance</td></tr>
+<tr><td>“Use workspace-write by default.”</td><td><code>config.toml</code></td></tr>
+<tr><td>“Prepare releases using these eight steps.”</td><td>Skill</td></tr>
+</tbody></table>
+<div class="callout warning"><div class="callout-title">Instruction debt</div><p>Vague rules such as “write clean code” consume context without changing behavior. Keep commands, constraints, routing guidance, and verification criteria; delete slogans.</p></div>
 <h2>Check Your Understanding</h2>
 <div class="quiz"><div class="quiz-question">Where should a rule that applies to every task in one repository live?</div><ul class="quiz-options"><li data-correct="true">Repository instructions in AGENTS.md</li><li>Personal defaults in config.toml</li><li>Reusable workflow in skill</li></ul><div class="quiz-feedback correct">Correct. Repository-wide working agreements belong in the root <code>AGENTS.md</code>.</div><div class="quiz-feedback incorrect">Use <code>AGENTS.md</code> for durable repository guidance; settings and workflows have different jobs.</div></div>
-<h2>Do This Now</h2><p>In one active repository, draft five lines covering the real test command, lint command, dependency policy, scope constraint, and definition of done.</p>
+<h2>Do This Now</h2><p>In one active repository, draft five lines covering the real test command, lint command, dependency policy, scope constraint, and definition of done. Then launch Codex from the root and a nested directory and ask it to list the active instruction sources in precedence order.</p>
 <div class="primary-source"><div class="primary-source-label">Primary Sources</div><p><a href="https://developers.openai.com/codex/guides/agents-md">Custom instructions with AGENTS.md</a> and <a href="https://developers.openai.com/codex/config-basic">Config basics</a>.</p></div>
 <div class="ask-teacher"><strong>Questions?</strong> Paste an existing Kiro or Claude instruction file and ask me to classify each line by Codex layer.</div>
 <div class="lesson-nav"><a href="0002-import-without-replacing.html">← Previous</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-set-a-real-trust-boundary.html">Next →</a></div>

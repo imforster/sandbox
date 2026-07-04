@@ -4,7 +4,7 @@
 <body>
 <nav class="lesson-top-nav"><a href="0003-put-guidance-in-the-right-layer.html" class="lesson-back-top">Previous</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-plan-steer-and-finish.html" class="lesson-next-top">Next →</a></nav>
 <h1>Set a Real Trust Boundary</h1>
-<div class="lesson-meta">Lesson 4 · Safety · ~8 minutes</div>
+<div class="lesson-meta">Lesson 4 · Safety · ~11 minutes</div>
 <p>Sandboxing and approvals solve different problems. The sandbox defines what commands can technically access. The approval policy defines when Codex must stop and ask before crossing that boundary.</p>
 <table><thead><tr><th>Sandbox</th><th>Use</th></tr></thead><tbody><tr><td><code>read-only</code></td><td>Inspection and consultation</td></tr><tr><td><code>workspace-write</code></td><td>Normal local development</td></tr><tr><td><code>danger-full-access</code></td><td>Controlled environments only</td></tr></tbody></table>
 <div class="callout tip"><div class="callout-title">Practical default</div><p>Use <code>workspace-write</code> with <code>on-request</code>. Add a writable root or a narrow command rule when needed instead of disabling the boundary.</p></div>
@@ -13,9 +13,21 @@ approval_policy = "on-request"
 approvals_reviewer = "user"</code></pre>
 <h2>Read Approval Requests as Diffs</h2>
 <p>Check the exact command, why it needs broader access, which files or network target it touches, and whether a narrower alternative exists. Permission is part of task design, not an interruption.</p>
+<h2>Choose the Narrowest Mechanism</h2>
+<table><thead><tr><th>Need</th><th>Mechanism</th></tr></thead><tbody>
+<tr><td>Write one adjacent project directory</td><td>Add a writable root</td></tr>
+<tr><td>Permit one known command prefix</td><td>Add a rule that allows or prompts</td></tr>
+<tr><td>Inspect an unfamiliar repository</td><td>Start read-only</td></tr>
+<tr><td>Normal implementation inside one repo</td><td>Workspace-write with on-request approvals</td></tr>
+<tr><td>Unrestricted machine and network access</td><td>Use only in a controlled disposable environment</td></tr>
+</tbody></table>
+<h2>Threat-Model the Task</h2>
+<p>Before broadening access, identify what is trusted. Repository code can execute through tests, package scripts, build hooks, and developer tools. Web pages and tool output can also contain hostile instructions.</p>
+<ol><li>What code will execute?</li><li>What credentials are present in the environment?</li><li>Which directories could be modified?</li><li>Can the task contact external systems?</li><li>What evidence will you review afterward?</li></ol>
+<div class="callout warning"><div class="callout-title">Approval policy is not a sandbox</div><p><code>approval_policy = "never"</code> means Codex will not ask; it does not grant access forbidden by the sandbox. Conversely, full access removes the technical boundary even if prompts still appear.</p></div>
 <h2>Check Your Understanding</h2>
 <div class="quiz"><div class="quiz-question">A test needs one adjacent fixture directory. What is the narrowest useful response?</div><ul class="quiz-options"><li data-correct="true">Add one writable root</li><li>Enable unrestricted full access</li><li>Disable every approval prompt</li></ul><div class="quiz-feedback correct">Correct. Extend the boundary only to the required directory.</div><div class="quiz-feedback incorrect">Keep the sandbox and add the smallest required exception.</div></div>
-<h2>Do This Now</h2><p>Run <code>/permissions</code>, identify the active mode, and explain what would trigger the next approval request in your current workspace.</p>
+<h2>Do This Now</h2><p>Run <code>/permissions</code>, identify the active mode, and explain what would trigger the next approval request. Then design the narrowest permission profile for a task that edits one repository, runs tests, and needs no network access.</p>
 <div class="primary-source"><div class="primary-source-label">Primary Source</div><p><a href="https://developers.openai.com/codex/concepts/sandboxing">Codex sandboxing</a> explains boundaries, approval policies, writable roots, and safe defaults.</p></div>
 <div class="ask-teacher"><strong>Questions?</strong> Bring me a permission prompt before approving it and we can evaluate the minimum authority required.</div>
 <div class="lesson-nav"><a href="0003-put-guidance-in-the-right-layer.html">← Previous</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-plan-steer-and-finish.html">Next →</a></div>

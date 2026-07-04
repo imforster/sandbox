@@ -4,7 +4,7 @@
 <body>
 <nav class="lesson-top-nav"><a href="0004-set-a-real-trust-boundary.html" class="lesson-back-top">Previous</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0006-isolate-parallel-work.html" class="lesson-next-top">Next →</a></nav>
 <h1>Plan, Steer, and Finish</h1>
-<div class="lesson-meta">Lesson 5 · Execution control · ~7 minutes</div>
+<div class="lesson-meta">Lesson 5 · Execution control · ~10 minutes</div>
 <p>Codex gives you two useful controls for difficult work: Plan mode shapes an ambiguous task before edits; Goal mode keeps a measurable objective active across a long execution.</p>
 <pre class="diagram">Unclear problem or tradeoffs? → /plan
 Clear multi-step objective?   → /goal
@@ -16,9 +16,21 @@ Need explanation mid-task?    → side chat</pre>
 Preserve current behavior, add a regression benchmark,
 and report the before/after measurement.</code></pre>
 <div class="callout warning"><div class="callout-title">Do not confuse persistence with scope</div><p>A long-running goal still needs explicit constraints. “Do not change the API” remains relevant at every step.</p></div>
+<h2>Use Checkpoints, Not Constant Steering</h2>
+<p>Interrupting every small decision prevents Codex from completing a coherent loop. Instead, establish checkpoints where new evidence should change the plan:</p>
+<ol><li>After reproducing the baseline problem</li><li>After choosing between materially different approaches</li><li>After the first complete implementation</li><li>After verification and before cleanup</li></ol>
+<p>At a checkpoint, ask for the evidence gathered, assumptions invalidated, remaining risks, and the next bounded step.</p>
+<h2>Manage Thread Context Deliberately</h2>
+<table><thead><tr><th>Situation</th><th>Response</th></tr></thead><tbody>
+<tr><td>Same task, new constraint</td><td>Continue the thread and state the constraint explicitly</td></tr>
+<tr><td>Need explanation without redirecting work</td><td>Use a side chat when available</td></tr>
+<tr><td>Unrelated objective</td><td>Start a new thread</td></tr>
+<tr><td>Long task after compaction</td><td>Restate critical constraints and completion tests</td></tr>
+</tbody></table>
+<div class="callout tip"><div class="callout-title">Status prompt</div><p>Ask: “Report completed evidence, unresolved decisions, changed files, verification run, and the next action.” This exposes drift without restarting the task.</p></div>
 <h2>Check Your Understanding</h2>
 <div class="quiz"><div class="quiz-question">The outcome is valuable but the requirements remain ambiguous. What should you use first?</div><ul class="quiz-options"><li data-correct="true">Start with Plan mode</li><li>Start an unattended goal</li><li>Launch parallel write agents</li></ul><div class="quiz-feedback correct">Correct. Resolve ambiguity before turning the result into a persistent goal.</div><div class="quiz-feedback incorrect">Use Plan mode to clarify the task and completion criteria first.</div></div>
-<h2>Do This Now</h2><p>Take one fuzzy backlog item. Ask Codex in Plan mode to interview you, expose assumptions, and produce a goal with one measurable completion condition.</p>
+<h2>Do This Now</h2><p>Take one fuzzy backlog item. Ask Codex in Plan mode to interview you, expose assumptions, and produce a goal with one measurable completion condition. Add two checkpoints and state what evidence must be available at each one.</p>
 <div class="primary-source"><div class="primary-source-label">Primary Source</div><p><a href="https://developers.openai.com/codex/prompting">Prompting Codex</a> documents threads, context, Plan mode guidance, and Goal mode.</p></div>
 <div class="ask-teacher"><strong>Questions?</strong> Show me a draft goal and I will challenge whether Codex can objectively determine completion.</div>
 <div class="lesson-nav"><a href="0004-set-a-real-trust-boundary.html">← Previous</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0006-isolate-parallel-work.html">Next →</a></div>
