@@ -164,6 +164,7 @@
       { text: 'Safe Agentic Workflows', href: '/sandbox/safe-agentic-workflows/' },
       { text: 'Learn Graphify', href: '/sandbox/learn-graphify/' },
       { text: 'Learn Jujutsu (jj)', href: '/sandbox/learn-jj/' },
+      { text: 'Learn Codex', href: '/sandbox/learn-codex/' },
       { text: 'Learn Cloudflare Workers', href: '/sandbox/learn-cloudflare/' },
       { text: 'IDEO Design Sprint', href: 'https://blog.imfsoftware.com/ideo-design-sprint-game/' },
     ]},
