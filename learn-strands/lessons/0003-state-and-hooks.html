@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3: State &amp; Hooks</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .state-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .state-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .state-card h4 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    .state-card code {
+      font-size: 0.8rem;
+    }
+    .hook-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      margin: 1.5rem 0;
+      padding: 1.5rem;
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.6;
+    }
+    .hook-timeline .event {
+      color: var(--color-accent);
+      font-weight: 600;
+    }
+    .hook-timeline .action {
+      color: var(--color-muted);
+      padding-left: 1.5rem;
+    }
+    @media (max-width: 768px) {
+      .state-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0002-custom-tools-with-zod.html" class="lesson-back-top" title="Custom Tools with Zod"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-prompts-and-sops.html" class="lesson-next-top" title="Prompts &amp; Agent SOPs">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>State &amp; Hooks</h1>
+
+<div class="lesson-meta">
+  Lesson 3 · Strands Agents (TypeScript) · ~15 minutes
+</div>
+
+<p>The agent loop from Lesson 1 controls <em>how</em> the cycle runs. Tools from Lesson 2 define <em>what</em> the agent can do. This lesson covers the two mechanisms that let you control agent behavior <strong>from outside the prompt</strong>: state management and lifecycle hooks.</p>
+
+<p>State lets you persist information across turns without polluting the model's context window. Hooks let you intercept every phase of the loop — logging, rate-limiting, cancelling dangerous tool calls, injecting context — without touching agent logic. Together, they're how production agents get guardrails, audit trails, and cost controls.</p>
+
+<h2>Three Types of State</h2>
+
+<p>Strands separates state into three distinct stores, each with different visibility and lifetime:</p>
+
+<div class="state-grid">
+  <div class="state-card">
+    <h4>Conversation History</h4>
+    <p><code>agent.messages</code></p>
+    <p>The full message array the model sees. User turns, assistant turns, tool results. This <em>is</em> the model's memory.</p>
+    <p><strong>Lifetime:</strong> Persists across invocations on the same agent instance. Managed by <code>ConversationManager</code>.</p>
+  </div>
+  <div class="state-card">
+    <h4>Agent State</h4>
+    <p><code>agent.appState</code></p>
+    <p>A persistent key-value store <strong>not</strong> sent to the model. JSON-serializable. Use for counters, feature flags, accumulated results, user preferences.</p>
+    <p><strong>Lifetime:</strong> Persists across invocations. You own serialization/deserialization.</p>
+  </div>
+  <div class="state-card">
+    <h4>Invocation State</h4>
+    <p><code>invocationState</code></p>
+    <p>Per-invoke context object. Shared by reference across all hooks and tools within a single <code>invoke()</code> call. Returned on the result.</p>
+    <p><strong>Lifetime:</strong> One invocation only. Fresh each time you call <code>invoke()</code>.</p>
+  </div>
+</div>
+
+<h3>When to use which</h3>
+
+<table>
+  <thead>
+    <tr><th>Need</th><th>Use</th><th>Why</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Model needs context from prior turns</td><td><code>agent.messages</code></td><td>It's what the model sees — the only way to give it memory</td></tr>
+    <tr><td>Track total cost across a session</td><td><code>agent.appState</code></td><td>Persists across invocations, model doesn't need to see dollar amounts</td></tr>
+    <tr><td>Pass request-ID to all hooks in one invoke</td><td><code>invocationState</code></td><td>Scoped to one call, shared by reference, no cleanup needed</td></tr>
+    <tr><td>Accumulate results that a hook summarizes at the end</td><td><code>invocationState</code></td><td>Hook reads what tools wrote during the same invocation</td></tr>
+  </tbody>
+</table>
+
+<h3>Example: Using all three</h3>
+
+<pre><code>import { Agent, tool } from '@strands-agents/sdk'
+import { z } from '@strands-agents/sdk/zod'
+
+const agent = new Agent({
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  tools: [/* ... */],
+})
+
+// Agent state — persists across invocations, invisible to model
+agent.appState.totalCost = 0
+agent.appState.invokeCount = 0
+
+// Invoke with invocation state — scoped to this one call
+const result = await agent.invoke('Analyze the Q3 report', {
+  invocationState: {
+    requestId: crypto.randomUUID(),
+    toolCallLog: [],  // hooks will push to this
+  },
+})
+
+// After invoke, read what accumulated
+console.log('Request:', result.invocationState.requestId)
+console.log('Tools called:', result.invocationState.toolCallLog)
+
+// Update persistent state
+agent.appState.totalCost += result.metrics.totalTokens * 0.00001
+agent.appState.invokeCount += 1
+
+// Conversation history is updated automatically
+console.log('Messages in history:', agent.messages.length)</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Key distinction</div>
+  <p><code>appState</code> survives between invocations but you must serialize it yourself if you want durability across process restarts. <code>invocationState</code> is fire-and-forget — it exists only for the duration of one <code>invoke()</code> call. Both are invisible to the model.</p>
+</div>
+
+<h2>Conversation Management</h2>
+
+<p>Without management, <code>agent.messages</code> grows unboundedly. After 50 turns of tool-heavy interaction, you'll hit context limits. Strands provides <code>SlidingWindowConversationManager</code> to keep history within bounds:</p>
+
+<pre><code>import { Agent, SlidingWindowConversationManager } from '@strands-agents/sdk'
+
+const agent = new Agent({
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  conversationManager: new SlidingWindowConversationManager({
+    windowSize: 20,  // Keep last 20 messages
+  }),
+  tools: [/* ... */],
+})</code></pre>
+
+<p>The sliding window trims oldest messages when the array exceeds <code>windowSize</code>. This is a blunt instrument — it doesn't summarize, it discards. For most single-task agents with turn limits, this is fine. The model forgets early turns but keeps recent context.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Watch for orphaned tool results</div>
+  <p>If the window trims an assistant message containing a <code>tool_use</code> block but keeps the corresponding <code>tool_result</code>, the model sees a result with no matching call. Strands handles this by trimming in message pairs — but be aware if you manipulate <code>agent.messages</code> manually.</p>
+</div>
+
+<h2>The Hooks System</h2>
+
+<p>Hooks intercept the agent loop at seven well-defined points. They're your primary mechanism for cross-cutting concerns: logging, cost tracking, guardrails, audit, rate limiting.</p>
+
+<h3>Hook events and when they fire</h3>
+
+<div class="hook-timeline">
+  <span class="event">BeforeInvocationEvent</span>
+  <span class="action">→ invoke() called, before first model call</span>
+  <span class="action">  ┌─ loop starts ─────────────────────────</span>
+  <span class="event">  │  BeforeModelCallEvent</span>
+  <span class="action">  │  → about to send messages to model</span>
+  <span class="action">  │  ... model responds ...</span>
+  <span class="event">  │  AfterModelCallEvent</span>
+  <span class="action">  │  → model response received</span>
+  <span class="event">  │  MessageAddedEvent</span>
+  <span class="action">  │  → each time a message is appended to history</span>
+  <span class="action">  │  ... if tool_use in response ...</span>
+  <span class="event">  │  BeforeToolCallEvent</span>
+  <span class="action">  │  → about to execute tool (can cancel/modify)</span>
+  <span class="action">  │  ... tool runs ...</span>
+  <span class="event">  │  AfterToolCallEvent</span>
+  <span class="action">  │  → tool finished (can modify result)</span>
+  <span class="action">  └─ loop continues or exits ────────────</span>
+  <span class="event">AfterInvocationEvent</span>
+  <span class="action">→ loop finished, about to return AgentResult</span>
+</div>
+
+<h3>Registering hooks</h3>
+
+<p>Use <code>agent.addHook(EventClass, callback)</code> to register a hook for any event:</p>
+
+<pre><code>import { Agent, BeforeToolCallEvent, AfterToolCallEvent } from '@strands-agents/sdk'
+
+const agent = new Agent({
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  tools: [/* ... */],
+})
+
+// Log every tool call
+agent.addHook(BeforeToolCallEvent, (event) => {
+  console.log(`[hook] Calling tool: ${event.toolUse.name}`)
+  console.log(`[hook] Input:`, JSON.stringify(event.toolUse.input))
+})
+
+agent.addHook(AfterToolCallEvent, (event) => {
+  console.log(`[hook] Tool result:`, event.result)
+})</code></pre>
+
+<h3>Mutable event properties</h3>
+
+<p>Some hook events expose properties you can mutate to alter behavior:</p>
+
+<table>
+  <thead>
+    <tr><th>Event</th><th>Mutable Property</th><th>Effect</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>BeforeToolCallEvent</code></td><td><code>cancel = true</code></td><td>Skips tool execution entirely. Returns a "cancelled" result to the model.</td></tr>
+    <tr><td><code>BeforeToolCallEvent</code></td><td><code>toolUse</code></td><td>Modify or replace the tool use object (rename tool, change input). The modified version executes.</td></tr>
+    <tr><td><code>AfterToolCallEvent</code></td><td><code>result</code></td><td>Replace the tool result before it's sent back to the model. Use for sanitization or enrichment.</td></tr>
+  </tbody>
+</table>
+
+<pre><code>// Block a dangerous tool
+agent.addHook(BeforeToolCallEvent, (event) => {
+  if (event.toolUse.name === 'delete_database') {
+    event.cancel = true  // Tool won't execute
+    console.warn('[guardrail] Blocked delete_database call')
+  }
+})
+
+// Sanitize tool output before model sees it
+agent.addHook(AfterToolCallEvent, (event) => {
+  if (typeof event.result === 'string' && event.result.includes('SECRET')) {
+    event.result = '[REDACTED — contains sensitive data]'
+  }
+})</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Cancellation from hooks</div>
+  <p>When you set <code>event.cancel = true</code> on a <code>BeforeToolCallEvent</code>, the model receives a tool result indicating cancellation. It can then decide what to do — typically it'll inform the user or try a different approach. This is far better than throwing an error, which would require the model to recover from a failure.</p>
+</div>
+
+<h2>Plugins: Bundled Hook Collections</h2>
+
+<p>When you have multiple related hooks (logging + timing + error tracking), bundle them as a <strong>Plugin</strong>. A plugin is a class with an <code>initAgent()</code> method that registers all its hooks:</p>
+
+<pre><code>import {
+  Agent,
+  Plugin,
+  BeforeToolCallEvent,
+  AfterToolCallEvent,
+  BeforeInvocationEvent,
+  AfterInvocationEvent,
+} from '@strands-agents/sdk'
+
+class LoggingPlugin implements Plugin {
+  private timers = new Map&lt;string, number&gt;()
+
+  initAgent(agent: Agent): void {
+    agent.addHook(BeforeInvocationEvent, (event) => {
+      console.log(`[LoggingPlugin] Invocation started`)
+      this.timers.set('invocation', Date.now())
+    })
+
+    agent.addHook(BeforeToolCallEvent, (event) => {
+      const callId = event.toolUse.id
+      this.timers.set(callId, Date.now())
+      console.log(`[LoggingPlugin] Tool: ${event.toolUse.name}`, event.toolUse.input)
+    })
+
+    agent.addHook(AfterToolCallEvent, (event) => {
+      const callId = event.toolUse.id
+      const start = this.timers.get(callId)
+      const elapsed = start ? Date.now() - start : 0
+      this.timers.delete(callId)
+      console.log(`[LoggingPlugin] Tool completed in ${elapsed}ms`)
+    })
+
+    agent.addHook(AfterInvocationEvent, (event) => {
+      const start = this.timers.get('invocation')
+      const elapsed = start ? Date.now() - start : 0
+      this.timers.delete('invocation')
+      console.log(`[LoggingPlugin] Invocation finished in ${elapsed}ms`)
+      console.log(`[LoggingPlugin] Stop reason: ${event.result.stopReason}`)
+    })
+  }
+}
+
+// Register the plugin
+const agent = new Agent({
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  plugins: [new LoggingPlugin()],
+  tools: [/* ... */],
+})</code></pre>
+
+<p>Plugins are the composition unit. They're instantiated once, and <code>initAgent()</code> is called when the agent is created. This keeps hook registration co-located with the state the hooks need (like the <code>timers</code> map above).</p>
+
+<h2>Practical Example: Tool-Count Limiter</h2>
+
+<p>A common production need: cap how many tools an agent can call per invocation. This prevents runaway loops where the model calls the same tool repeatedly (e.g., retrying a broken API).</p>
+
+<pre><code>import {
+  Agent,
+  Plugin,
+  BeforeToolCallEvent,
+  AfterInvocationEvent,
+} from '@strands-agents/sdk'
+
+class ToolCountLimiterPlugin implements Plugin {
+  private maxCalls: number
+  private callCount = 0
+
+  constructor(maxCalls: number) {
+    this.maxCalls = maxCalls
+  }
+
+  initAgent(agent: Agent): void {
+    agent.addHook(BeforeToolCallEvent, (event) => {
+      this.callCount++
+      if (this.callCount > this.maxCalls) {
+        event.cancel = true
+        console.warn(
+          `[ToolLimiter] Blocked ${event.toolUse.name} — ` +
+          `exceeded ${this.maxCalls} tool calls`
+        )
+      }
+    })
+
+    // Reset counter between invocations
+    agent.addHook(AfterInvocationEvent, () => {
+      this.callCount = 0
+    })
+  }
+}
+
+const agent = new Agent({
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  plugins: [
+    new LoggingPlugin(),
+    new ToolCountLimiterPlugin(10),  // Max 10 tool calls per invoke
+  ],
+  tools: [/* ... */],
+})</code></pre>
+
+<p>Note the separation of concerns: the agent logic doesn't know about the limiter. The limiter doesn't know about logging. Both compose cleanly via the plugin system.</p>
+
+<h2>Combining State and Hooks</h2>
+
+<p>The real power emerges when hooks read and write state. Here's a cost-tracking plugin that uses <code>appState</code> for persistence and <code>invocationState</code> for per-request accounting:</p>
+
+<pre><code>class CostTrackingPlugin implements Plugin {
+  private costPerInputToken: number
+  private costPerOutputToken: number
+  private budgetLimit: number
+
+  constructor(opts: { costPerInputToken: number; costPerOutputToken: number; budgetLimit: number }) {
+    this.costPerInputToken = opts.costPerInputToken
+    this.costPerOutputToken = opts.costPerOutputToken
+    this.budgetLimit = opts.budgetLimit
+  }
+
+  initAgent(agent: Agent): void {
+    // Initialize persistent state
+    agent.appState.totalSpend ??= 0
+
+    agent.addHook(BeforeInvocationEvent, (event) => {
+      // Check budget before starting
+      if (agent.appState.totalSpend >= this.budgetLimit) {
+        throw new Error(
+          `Budget exhausted: $${agent.appState.totalSpend.toFixed(4)} ` +
+          `of $${this.budgetLimit} spent`
+        )
+      }
+    })
+
+    agent.addHook(AfterModelCallEvent, (event) => {
+      // Track cost per model call
+      const inputCost = (event.usage?.inputTokens ?? 0) * this.costPerInputToken
+      const outputCost = (event.usage?.outputTokens ?? 0) * this.costPerOutputToken
+      const callCost = inputCost + outputCost
+
+      agent.appState.totalSpend += callCost
+
+      // Also record in invocation state for per-request reporting
+      event.invocationState.costThisInvoke ??= 0
+      event.invocationState.costThisInvoke += callCost
+    })
+
+    agent.addHook(AfterInvocationEvent, (event) => {
+      console.log(
+        `[Cost] This invoke: $${event.invocationState.costThisInvoke?.toFixed(4)} | ` +
+        `Total: $${agent.appState.totalSpend.toFixed(4)} / $${this.budgetLimit}`
+      )
+    })
+  }
+}
+
+const agent = new Agent({
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  plugins: [
+    new CostTrackingPlugin({
+      costPerInputToken: 0.000003,    // $3 per 1M input tokens
+      costPerOutputToken: 0.000015,   // $15 per 1M output tokens
+      budgetLimit: 1.00,              // Hard stop at $1
+    }),
+  ],
+  tools: [/* ... */],
+})</code></pre>
+
+<h2>The Production Insight</h2>
+
+<p>Hooks are how you add operational concerns without modifying agent logic. This matters because:</p>
+
+<ul>
+  <li><strong>Agent prompts stay clean.</strong> Guardrails live in hooks, not in "please don't delete the database" system prompt additions that models can ignore.</li>
+  <li><strong>Concerns compose independently.</strong> Logging, cost tracking, rate limiting, PII redaction — each is a plugin. Add or remove without touching the others.</li>
+  <li><strong>Hard stops, not soft asks.</strong> A hook that cancels a tool call is deterministic. A prompt instruction is probabilistic. For security boundaries, you want determinism.</li>
+  <li><strong>Audit trails are complete.</strong> Every tool call passes through hooks regardless of why the model called it. No "the model found a way around the guardrail" scenarios.</li>
+</ul>
+
+<div class="callout tip">
+  <div class="callout-title">Design principle</div>
+  <p>If a constraint must <em>always</em> hold (budget limits, blocked tools, PII redaction), enforce it in a hook. If a constraint is a preference (response style, level of detail), put it in the prompt. Hooks are for invariants; prompts are for heuristics.</p>
+</div>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">You need to track which user triggered an invocation across all hooks and tools in that call. Which state mechanism do you use?</div>
+  <ul class="quiz-options">
+    <li>Add it to <code>agent.messages</code> as a system message</li>
+    <li>Store it in <code>agent.appState.currentUser</code></li>
+    <li data-correct="true">Pass it via <code>invocationState</code> on the invoke call</li>
+    <li>Set it as a global variable before calling invoke</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. <code>invocationState</code> is scoped to one invoke call and shared by reference across all hooks and tools in that invocation — exactly right for per-request context like user IDs, request IDs, or trace spans.</div>
+  <div class="quiz-feedback incorrect"><code>invocationState</code> is the answer. It's per-invoke, shared by reference across hooks and tools, and returned on the result. <code>appState</code> would persist between invocations (wrong lifetime). Messages would waste context window. Globals are unsafe with concurrent invocations.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">A <code>BeforeToolCallEvent</code> hook sets <code>event.cancel = true</code>. What does the model receive?</div>
+  <ul class="quiz-options">
+    <li>Nothing — the tool use is silently dropped from history</li>
+    <li>An error with a stack trace from the cancelled execution</li>
+    <li data-correct="true">A tool result message indicating the call was cancelled</li>
+    <li>The invocation terminates immediately with stopReason "cancelled"</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The model receives a tool result saying the call was cancelled. This keeps the message history valid (every tool_use has a matching tool_result) and lets the model decide how to proceed — inform the user, try another approach, or stop.</div>
+  <div class="quiz-feedback incorrect">When a hook cancels a tool, the model still gets a tool_result message (indicating cancellation). This maintains history consistency and lets the model react. The invocation doesn't stop — the model sees the result and decides what to do next.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">What's the difference between <code>agent.appState</code> and a class property on a Plugin?</div>
+  <ul class="quiz-options">
+    <li>No difference — they're equivalent storage mechanisms</li>
+    <li data-correct="true"><code>appState</code> is JSON-serializable and accessible from tools; plugin properties are private to the plugin class</li>
+    <li><code>appState</code> is sent to the model; plugin properties are not</li>
+    <li>Plugin properties persist across process restarts; <code>appState</code> does not</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. <code>appState</code> is the shared, JSON-serializable store accessible from anywhere (tools, hooks, calling code). Plugin class properties are encapsulated — only that plugin's hooks can read/write them. Use <code>appState</code> for data that crosses boundaries; plugin properties for internal plugin state like timers.</div>
+  <div class="quiz-feedback incorrect"><code>appState</code> is a shared key-value store (JSON-serializable, accessible from tools and hooks and calling code). Plugin class properties are private to that plugin instance — only its own hooks use them. Neither is sent to the model, and neither persists across process restarts without explicit serialization.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://strandsagents.com/docs/user-guide/concepts/agents/hooks/">Hooks — Strands Agents Docs</a> — Full reference for all hook events, mutable properties, plugin interface, and composition patterns.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask about any hook event, state management pattern, or how to build a specific guardrail. I can walk through PII redaction plugins, retry-limit hooks, or conversation persistence strategies.
+</div>
+
+<div class="lesson-nav">
+  <a href="0002-custom-tools-with-zod.html" class="lesson-nav-prev" title="Custom Tools with Zod">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0004-prompts-and-sops.html" class="lesson-nav-next" title="Prompts &amp; Agent SOPs">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

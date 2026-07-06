@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4: Prompts & Agent SOPs</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .spectrum {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin: 2rem 0;
+      padding: 1.5rem;
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+    }
+    .spectrum-node {
+      flex: 1;
+      text-align: center;
+      padding: 0.75rem 0.5rem;
+      font-size: 0.8rem;
+      border-radius: 6px;
+    }
+    .spectrum-node.left {
+      background: var(--color-accent-light);
+      border: 1px solid var(--color-accent);
+    }
+    .spectrum-node.middle {
+      background: #e8f5e9;
+      border: 2px solid #4caf50;
+      font-weight: 600;
+    }
+    .spectrum-node.right {
+      background: #fff3e0;
+      border: 1px solid #ff9800;
+    }
+    .spectrum-arrow {
+      color: var(--color-muted);
+      font-size: 1.2rem;
+      padding: 0 0.25rem;
+    }
+    .sop-block {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+    .sop-block h4 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-muted);
+      margin-bottom: 0.75rem;
+    }
+    .rfc-keyword {
+      font-weight: 700;
+      font-size: 0.75rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .rfc-must { background: #ffebee; color: #c62828; }
+    .rfc-should { background: #fff3e0; color: #e65100; }
+    .rfc-may { background: #e8f5e9; color: #2e7d32; }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0003-state-and-hooks.html" class="lesson-back-top" title="State &amp; Hooks"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-multi-agent-orchestration.html" class="lesson-next-top" title="Multi-Agent Orchestration">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Prompts & Agent SOPs</h1>
+
+<div class="lesson-meta">
+  Lesson 4 · Strands Agents (TypeScript) · ~10 minutes
+</div>
+
+<p>You've built agents with tools, hooks, and state. Now the question is: how do you make them <em>predictable</em>? With a powerful model like Claude Opus, you can get away with vague instructions. With Sonnet 4.6 — your cost-conscious default — you need precision. This lesson covers the hierarchy of steering mechanisms, from basic system prompts to Agent SOPs that give you deterministic-ish behavior without sacrificing the model's reasoning ability.</p>
+
+<h2>System Prompts: The Persistent Instruction Set</h2>
+
+<p>The system prompt is passed to the model on every turn of the agent loop. It defines the agent's role, capabilities, and constraints. In Strands, you set it via the <code>systemPrompt</code> option on the Agent constructor:</p>
+
+<pre><code>import { Agent } from '@strands-agents/sdk'
+
+const agent = new Agent({
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: `You are a code reviewer for TypeScript projects.
+
+Your role:
+- Review code for correctness, readability, and performance
+- Flag security issues immediately
+- Suggest concrete improvements with code examples
+
+Constraints:
+- Never approve code with any TODO comments
+- Always check for proper error handling
+- Respond in markdown format`,
+  tools: [/* ... */],
+})</code></pre>
+
+<p>The system prompt is your first determinism lever. Sonnet 4.6 follows explicit instructions faithfully — the more specific you are, the more predictable the output. Compare:</p>
+
+<table>
+  <thead>
+    <tr><th>Vague (non-deterministic)</th><th>Explicit (deterministic)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>"Review this code"</td><td>"Check for: 1) unused imports 2) missing error handling 3) type safety issues. Output as a numbered list."</td></tr>
+    <tr><td>"Help with the API"</td><td>"Generate a REST endpoint handler. Use express. Return JSON. Include input validation with zod."</td></tr>
+    <tr><td>"Analyze the logs"</td><td>"Extract all ERROR-level entries from the last 24h. Group by service. Count occurrences. Output as a markdown table."</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">Determinism principle</div>
+  <p>Every decision you leave implicit is a decision the model makes non-deterministically. Sonnet 4.6 is capable but literal — it does what you say, not what you mean. Spell out format, order, constraints, and edge-case handling.</p>
+</div>
+
+<h2>User Messages: Text and Multi-Modal</h2>
+
+<p>The system prompt is persistent context. User messages are the per-invocation input. Three patterns:</p>
+
+<h3>Plain text</h3>
+
+<pre><code>// Simple text input — most common
+const result = await agent.invoke('Review this function for security issues')</code></pre>
+
+<h3>Multi-modal (text + images)</h3>
+
+<pre><code>import { TextBlock, ImageBlock } from '@strands-agents/sdk'
+
+// Send text alongside an image (e.g., a screenshot of a UI bug)
+const result = await agent.invoke([
+  new TextBlock('What accessibility issues do you see in this UI?'),
+  new ImageBlock({
+    source: { type: 'base64', mediaType: 'image/png', data: screenshotBase64 },
+  }),
+])</code></pre>
+
+<h3>Pre-filling conversation history</h3>
+
+<p>You can seed the agent with prior context via the <code>messages</code> option. This is useful for multi-turn workflows where you're reconstructing a session:</p>
+
+<pre><code>const result = await agent.invoke('Now implement the changes we discussed', {
+  messages: [
+    { role: 'user', content: 'Review src/auth.ts for security issues' },
+    { role: 'assistant', content: 'I found 3 issues: 1) No rate limiting...' },
+    { role: 'user', content: 'Fix issues 1 and 3, skip issue 2' },
+  ],
+})</code></pre>
+
+<p>The model sees the full history as context — it "remembers" the prior conversation. This is how you build stateful multi-step workflows without keeping the agent alive between requests.</p>
+
+<h2>The Determinism Spectrum</h2>
+
+<p>There's a spectrum between fully coded logic and fully open-ended agents:</p>
+
+<div class="spectrum">
+  <div class="spectrum-node left">Hardcoded<br><small>if/else chains</small></div>
+  <span class="spectrum-arrow">→</span>
+  <div class="spectrum-node middle">Agent SOPs<br><small>structured freedom</small></div>
+  <span class="spectrum-arrow">→</span>
+  <div class="spectrum-node right">Open-ended<br><small>"figure it out"</small></div>
+</div>
+
+<p>Hardcoded logic is perfectly deterministic but can't handle novel inputs. Open-ended agents handle anything but produce unpredictable outputs. Agent SOPs hit the sweet spot: you define the <em>process</em> (steps, constraints, decision points) while the model handles the <em>reasoning</em> within each step.</p>
+
+<h2>Agent SOPs: Structured Workflows in Natural Language</h2>
+
+<p>An Agent SOP is a markdown document that defines a structured workflow for an agent. It uses RFC 2119 keywords (<span class="rfc-keyword rfc-must">MUST</span>, <span class="rfc-keyword rfc-should">SHOULD</span>, <span class="rfc-keyword rfc-may">MAY</span>) to specify constraints at each step. The agent follows the SOP like a checklist — but retains the ability to reason about edge cases within each step.</p>
+
+<h3>Why SOPs matter</h3>
+
+<ul>
+  <li><strong>Debuggable</strong> — when an agent misbehaves, you can trace which SOP step it deviated from</li>
+  <li><strong>Testable</strong> — each step has clear success criteria you can assert against</li>
+  <li><strong>Model-agnostic</strong> — swap Sonnet for Haiku or Opus without rewriting tool code</li>
+  <li><strong>Versionable</strong> — SOPs live in your repo as markdown, diff-able and reviewable</li>
+  <li><strong>Composable</strong> — one agent can orchestrate sub-agents, each with their own SOP</li>
+</ul>
+
+<h3>SOP structure</h3>
+
+<div class="sop-block">
+  <h4>Anatomy of an Agent SOP</h4>
+<pre><code># [Agent Name] SOP
+
+## Parameters
+- `input_param`: description and type
+- `output_param`: what this agent produces
+
+## Steps
+
+### Step 1: [Name]
+- MUST [hard constraint — violation is a bug]
+- SHOULD [strong preference — deviate only with justification]
+- MAY [optional behavior — agent decides based on context]
+
+### Step 2: [Name]
+- MUST [...]
+- If [condition], MUST [branch behavior]
+
+## Output Format
+- MUST return [structured format description]
+- MUST NOT include [excluded content]</code></pre>
+</div>
+
+<h3>Example: Code Review SOP</h3>
+
+<pre><code>const CODE_REVIEW_SOP = `
+# Code Review Agent SOP
+
+## Parameters
+- \`diff\`: The git diff to review (string)
+- \`language\`: Programming language of the changed files
+
+## Steps
+
+### Step 1: Classify Changes
+- MUST categorize each changed file as: feature, bugfix, refactor, test, or config
+- MUST identify the primary intent of the PR in one sentence
+- MUST NOT proceed if the diff is empty
+
+### Step 2: Security Scan
+- MUST check for: hardcoded secrets, SQL injection, XSS vectors, auth bypasses
+- MUST flag any finding as severity: critical, high, medium, low
+- If critical findings exist, MUST stop and report immediately
+
+### Step 3: Logic Review
+- MUST verify error handling for all external calls
+- MUST check that new branches have corresponding tests
+- SHOULD flag functions over 50 lines
+- MAY suggest alternative implementations if significantly simpler
+
+### Step 4: Style Check
+- MUST verify consistent naming conventions
+- SHOULD flag magic numbers without named constants
+- MUST NOT block on purely cosmetic issues
+
+## Output Format
+- MUST return a JSON object with: summary, findings[], verdict (approve|request_changes|block)
+- Each finding MUST have: file, line, severity, message, suggestion
+- MUST NOT include praise or filler text
+`
+
+const reviewer = new Agent({
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: CODE_REVIEW_SOP,
+  tools: [readFileTool, searchCodeTool],
+})</code></pre>
+
+<p>The SOP tells Sonnet 4.6 exactly what process to follow, what's mandatory versus optional, and what format to produce. The model still reasons — it decides <em>what</em> to flag — but the <em>how</em> is constrained.</p>
+
+<h2>Practical Pattern: API Endpoint Generator</h2>
+
+<p>Here's a production-grade SOP for a consultant's bread-and-butter task: generating API endpoints from a spec. The agent follows a fixed process but reasons about the domain-specific details.</p>
+
+<pre><code>const API_GENERATOR_SOP = `
+# API Endpoint Generator SOP
+
+## Parameters
+- \`spec\`: OpenAPI path object or natural language endpoint description
+- \`framework\`: Target framework (express | fastify | hono)
+- \`outputDir\`: Directory to write generated files
+
+## Steps
+
+### Step 1: Parse Specification
+- MUST extract: HTTP method, path, request body schema, response schema, auth requirements
+- MUST identify path parameters and query parameters with their types
+- If spec is ambiguous, MUST ask for clarification before proceeding
+- MUST NOT invent fields not present in the spec
+
+### Step 2: Scaffold Files
+- MUST create these files:
+  - \`{outputDir}/handler.ts\` — the route handler
+  - \`{outputDir}/schema.ts\` — Zod schemas for request/response validation
+  - \`{outputDir}/handler.test.ts\` — test file with happy path + error cases
+- MUST use the project's existing patterns (check adjacent handlers for style)
+- SHOULD reuse existing shared schemas if they match
+
+### Step 3: Implement Handler
+- MUST validate request body with the generated Zod schema
+- MUST return proper HTTP status codes (201 for creation, 404 for not found, 422 for validation)
+- MUST include error handling that returns structured error responses
+- MUST NOT use any/unknown types — all inputs and outputs fully typed
+- If auth is required, MUST use the project's auth middleware pattern
+- MAY add request logging if the project uses a structured logger
+
+### Step 4: Write Tests
+- MUST test: happy path, validation failure, auth failure (if applicable), not-found case
+- MUST use the project's test utilities (check conftest/setup files)
+- SHOULD test edge cases specific to the business logic
+- MUST NOT mock the validation layer — test it end-to-end
+
+### Step 5: Verify
+- MUST run TypeScript compilation (tsc --noEmit) on generated files
+- MUST run tests and confirm all pass
+- If compilation or tests fail, MUST fix before reporting done
+
+## Output Format
+- MUST report: files created, test results, any decisions made
+- MUST flag any spec ambiguities that were resolved with assumptions
+`
+
+const apiGenerator = new Agent({
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: API_GENERATOR_SOP,
+  tools: [readFileTool, writeFileTool, shellTool, searchTool],
+  limits: { turns: 15 },
+})
+
+// Usage
+const result = await apiGenerator.invoke(`
+Generate endpoint from this spec:
+POST /api/v1/invoices
+Body: { clientId: string, lineItems: [{description: string, amount: number}], dueDate: ISO date }
+Response: 201 with created invoice including generated ID and total
+Auth: Bearer token required
+Framework: hono
+Output to: src/routes/invoices/create/
+`)</code></pre>
+
+<p>This pattern scales to any repeatable task in your consulting work: database migrations, infrastructure modules, data pipeline steps, onboarding checklists. The SOP defines the process; the agent handles the reasoning.</p>
+
+<h2>SOP Design Principles</h2>
+
+<p>Writing effective SOPs for Sonnet 4.6 requires specific techniques:</p>
+
+<table>
+  <thead>
+    <tr><th>Principle</th><th>Why</th><th>Example</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Steps are ordered</strong></td>
+      <td>Sequential execution is easier for the model to follow than parallel</td>
+      <td>Parse → Scaffold → Implement → Test → Verify</td>
+    </tr>
+    <tr>
+      <td><strong>MUST for invariants</strong></td>
+      <td>Sonnet treats MUST as non-negotiable — use it for correctness constraints</td>
+      <td>"MUST validate input before processing"</td>
+    </tr>
+    <tr>
+      <td><strong>SHOULD for preferences</strong></td>
+      <td>Gives the model flexibility when context makes the preference inapplicable</td>
+      <td>"SHOULD reuse existing schemas if they match"</td>
+    </tr>
+    <tr>
+      <td><strong>MAY for optionality</strong></td>
+      <td>Model decides based on context — preserves reasoning without mandating</td>
+      <td>"MAY add logging if logger is configured"</td>
+    </tr>
+    <tr>
+      <td><strong>Explicit edge cases</strong></td>
+      <td>Prevents the model from inventing behavior for unspecified scenarios</td>
+      <td>"If spec is ambiguous, MUST ask — MUST NOT guess"</td>
+    </tr>
+    <tr>
+      <td><strong>Output format at the end</strong></td>
+      <td>Anchors the model's final response structure</td>
+      <td>"MUST return JSON with: summary, files, verdict"</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">Key Insight</div>
+  <p>SOPs are the primary determinism tool for simpler models. They constrain the model's decision space without removing its reasoning ability. A well-written SOP with Sonnet 4.6 will produce more consistent output than a vague prompt with Opus — at a fraction of the cost.</p>
+</div>
+
+<h2>Combining Prompts: System + SOP + User Input</h2>
+
+<p>In practice, the full prompt stack looks like this:</p>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────┐
+│  System Prompt (SOP)                                 │
+│  - Role, capabilities, constraints                   │
+│  - Step-by-step procedure with MUST/SHOULD/MAY       │
+│  - Output format specification                       │
+├─────────────────────────────────────────────────────┤
+│  Conversation History (messages option)              │
+│  - Prior context if multi-turn                       │
+│  - Pre-filled examples for few-shot                  │
+├─────────────────────────────────────────────────────┤
+│  User Message (invoke argument)                      │
+│  - The specific task instance                        │
+│  - Parameters the SOP expects                        │
+└─────────────────────────────────────────────────────┘
+</div>
+
+<p>The SOP lives in the system prompt. The user message provides the specific instance data. The conversation history provides continuity across turns. Together, they form a complete instruction set that's both structured and flexible.</p>
+
+<pre><code>// Full pattern: SOP + few-shot examples + task
+const agent = new Agent({
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: API_GENERATOR_SOP,
+  tools: [readFileTool, writeFileTool, shellTool],
+})
+
+// Few-shot via messages option — shows the agent a completed example
+const result = await agent.invoke('Generate POST /api/v1/payments endpoint...', {
+  messages: [
+    { role: 'user', content: 'Generate GET /api/v1/users/:id endpoint...' },
+    { role: 'assistant', content: 'Step 1: Parsed spec...\nStep 2: Created files...\n...' },
+  ],
+})</code></pre>
+
+<h2>When SOPs Aren't Enough</h2>
+
+<p>SOPs work best for tasks with a repeatable process. They're less effective for:</p>
+
+<ul>
+  <li><strong>Open-ended exploration</strong> — "understand this codebase" has no fixed steps</li>
+  <li><strong>Highly branching workflows</strong> — if step 3 has 10 possible paths, the SOP becomes unwieldy</li>
+  <li><strong>Real-time adaptation</strong> — tasks where the process itself needs to change based on findings</li>
+</ul>
+
+<p>For these cases, combine SOPs with multi-agent orchestration (next lesson) — a coordinator agent with a loose SOP delegates to specialist agents with tight SOPs.</p>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">You have an agent that sometimes returns results as a markdown table and sometimes as a bulleted list. Which approach best fixes this with Sonnet 4.6?</div>
+  <ul class="quiz-options">
+    <li>Switch to Claude Opus which handles ambiguity better</li>
+    <li>Add a post-processing step that reformats the output</li>
+    <li data-correct="true">Add "MUST return results as a markdown table with columns: Name, Status, Details" to the SOP's Output Format section</li>
+    <li>Use temperature=0 to make the model deterministic</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The non-determinism comes from an underspecified output format. A MUST constraint in the SOP eliminates the ambiguity — Sonnet 4.6 follows explicit format instructions reliably. Temperature=0 reduces randomness in token selection but doesn't solve format ambiguity.</div>
+  <div class="quiz-feedback incorrect">The right fix is adding an explicit format constraint. "MUST return results as a markdown table with columns: Name, Status, Details" eliminates the ambiguity at the source. Temperature affects token sampling randomness but doesn't help when the model has two equally valid interpretations of an underspecified instruction.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">What's the key difference between using MUST vs SHOULD in an Agent SOP?</div>
+  <ul class="quiz-options">
+    <li>MUST runs before SHOULD in the step execution order</li>
+    <li>MUST applies to all models while SHOULD only applies to simpler models</li>
+    <li data-correct="true">MUST is an invariant the agent cannot violate; SHOULD is a preference the agent can override when context justifies it</li>
+    <li>MUST produces an error if violated; SHOULD produces a warning</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. MUST defines hard constraints — the agent treats them as non-negotiable rules. SHOULD defines strong preferences that the agent can deviate from when the specific context makes them inapplicable. This gives you determinism on the things that matter (correctness, security, format) while preserving flexibility where reasoning adds value.</div>
+  <div class="quiz-feedback incorrect">The distinction is about constraint strength. MUST is an invariant — violation means the agent is broken. SHOULD is a strong preference — the agent can deviate when context justifies it (e.g., "SHOULD reuse existing schemas" doesn't apply if no existing schemas match). There's no runtime error/warning mechanism — it's about how the model interprets the instruction.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://strandsagents.com/docs/user-guide/concepts/agents/prompts/">Prompts — Strands Agents Docs</a> — Official documentation on system prompts, user messages, multi-modal input, and conversation history management.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me about SOP design patterns, how to debug non-deterministic agent behavior, or how to structure prompts for your specific use case.
+</div>
+
+<div class="lesson-nav">
+  <a href="0003-state-and-hooks.html" class="lesson-nav-prev" title="State &amp; Hooks">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0005-multi-agent-orchestration.html" class="lesson-nav-next" title="Multi-Agent Orchestration">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

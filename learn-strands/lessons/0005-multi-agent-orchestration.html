@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5: Multi-Agent Orchestration</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .pattern-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .pattern-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .pattern-card h4 {
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+      color: var(--color-accent);
+    }
+    .pattern-card p {
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      margin: 0;
+    }
+    .decision-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+    }
+    .decision-table th, .decision-table td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border: 1px solid var(--color-border);
+    }
+    .decision-table th {
+      background: var(--color-card-bg);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .flow-diagram {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 1.5rem 0;
+      padding: 1.25rem;
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .flow-node {
+      background: var(--color-accent-light);
+      border: 1px solid var(--color-accent);
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .flow-arrow {
+      color: var(--color-muted);
+      font-size: 1.2rem;
+    }
+    @media (max-width: 700px) {
+      .pattern-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0004-prompts-and-sops.html" class="lesson-back-top" title="Prompts &amp; Agent SOPs"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span class="lesson-nav-disabled"></span></nav>
+
+<h1>Multi-Agent Orchestration</h1>
+
+<div class="lesson-meta">
+  Lesson 5 · Strands Agents (TypeScript) · ~15 minutes
+</div>
+
+<p>You've built single agents with tools, state, and hooks. Now the question becomes: how do you compose multiple agents into a system? Strands provides three orchestration patterns — each with different tradeoffs between determinism and flexibility. This is where your interest in controlled, repeatable pipelines meets the need for LLM-driven branching.</p>
+
+<h2>Three Patterns, Three Tradeoffs</h2>
+
+<p>Every multi-agent system answers one question differently: <strong>who decides what runs next?</strong></p>
+
+<div class="pattern-grid">
+  <div class="pattern-card">
+    <h4>Graph</h4>
+    <p>Developer defines nodes + edges. The LLM decides which edge to follow at each node. Cycles allowed. Good for conditional branching where you control the topology but not the path.</p>
+  </div>
+  <div class="pattern-card">
+    <h4>Swarm</h4>
+    <p>Pool of agents with handoff tools. Agents autonomously decide which peer to delegate to. Emergent path. Good for exploration and creative problem-solving.</p>
+  </div>
+  <div class="pattern-card">
+    <h4>Workflow</h4>
+    <p>DAG of tasks with fixed execution order. Independent tasks run in parallel. Fully deterministic — same input always produces the same execution path. Good for repeatable processes.</p>
+  </div>
+</div>
+
+<p>The core insight: these patterns sit on a spectrum from most deterministic (Workflow) to most autonomous (Swarm), with Graph in the middle giving you structural control with runtime flexibility.</p>
+
+<div class="diagram">
+Deterministic ◄──────────────────────────────────────────► Autonomous
+
+  Workflow              Graph                    Swarm
+  (fixed DAG)         (edges defined,          (agents decide
+                       LLM picks path)          handoffs)
+</div>
+
+<h2>Graph: Controlled Branching</h2>
+
+<p>A Graph is a set of agent nodes connected by directed edges. You define the topology — which agents <em>can</em> talk to each other. The LLM at each node decides whether to follow an edge or stop. Cycles are allowed, so a reviewer can send work back to a writer.</p>
+
+<h3>Basic structure</h3>
+
+<pre><code>import { Agent } from '@strands-agents/sdk'
+import { Graph } from '@strands-agents/sdk/multi-agent'
+
+// Each node is a standalone agent
+const researcher = new Agent({
+  name: 'researcher',
+  systemPrompt: 'Research the given topic. Provide facts and sources.',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+const writer = new Agent({
+  name: 'writer',
+  systemPrompt: 'Write a clear, concise article from the research provided.',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+// Define topology: researcher feeds into writer
+const graph = new Graph({
+  nodes: [researcher, writer],
+  edges: [['researcher', 'writer']],
+})
+
+const result = await graph.invoke('Research and write about WebAssembly')</code></pre>
+
+<p>The graph engine passes the output of each node as input context to the next. The LLM at the <code>researcher</code> node produces research, which becomes part of the <code>writer</code> node's conversation.</p>
+
+<h3>Adding cycles: reviewer loop</h3>
+
+<p>Graphs support cycles — a reviewer can reject and send work back to the writer:</p>
+
+<pre><code>const reviewer = new Agent({
+  name: 'reviewer',
+  systemPrompt: `Review the article for accuracy and clarity.
+If it meets standards, approve it.
+If not, send it back to the writer with specific feedback.`,
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+const graph = new Graph({
+  nodes: [researcher, writer, reviewer],
+  edges: [
+    ['researcher', 'writer'],
+    ['writer', 'reviewer'],
+    ['reviewer', 'writer'],  // Cycle: reviewer can send back to writer
+  ],
+  maxCycles: 3,  // Prevent infinite loops
+})</code></pre>
+
+<div class="flow-diagram">
+  <span class="flow-node">Researcher</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-node">Writer</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-node">Reviewer</span>
+  <span class="flow-arrow">↩</span>
+  <span class="flow-node">Writer</span>
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">Key Insight</div>
+  <p>Always set <code>maxCycles</code> on graphs with cycles. Without it, a pedantic reviewer and a stubborn writer can loop indefinitely, burning tokens. Start with <code>maxCycles: 3</code> and increase only if your use case requires it.</p>
+</div>
+
+<h2>Swarm: Emergent Orchestration</h2>
+
+<p>A Swarm gives each agent a <code>handoff</code> tool — the ability to transfer control to another agent in the pool. No edges defined by you. The agents decide among themselves who should handle what.</p>
+
+<pre><code>import { Swarm } from '@strands-agents/sdk/multi-agent'
+
+const analyst = new Agent({
+  name: 'analyst',
+  systemPrompt: `You analyze data and identify patterns.
+If you need creative writing, hand off to the copywriter.
+If you need technical details, hand off to the engineer.`,
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+const copywriter = new Agent({
+  name: 'copywriter',
+  systemPrompt: `You write compelling copy from analysis.
+If you need more data, hand off back to the analyst.`,
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+const engineer = new Agent({
+  name: 'engineer',
+  systemPrompt: `You provide technical implementation details.
+If you need analysis of requirements, hand off to the analyst.`,
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+const swarm = new Swarm({
+  agents: [analyst, copywriter, engineer],
+  entryAgent: 'analyst',  // Who receives the initial input
+  maxHandoffs: 5,         // Safety limit
+})
+
+const result = await swarm.invoke('Create a product brief for our new API')</code></pre>
+
+<p>The swarm automatically injects handoff tools into each agent. When the analyst decides it needs creative writing, it calls the handoff tool targeting the copywriter. The copywriter receives the conversation context and continues.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Swarm tradeoff</div>
+  <p>Swarms are powerful for exploration but non-deterministic by nature. The same input can produce different handoff sequences on different runs. Use them for creative/exploratory tasks, not for repeatable business processes. Always set <code>maxHandoffs</code> to prevent runaway delegation.</p>
+</div>
+
+<h2>Workflow: Deterministic DAGs</h2>
+
+<p>A Workflow defines a fixed execution order. You specify which tasks depend on which — the engine resolves the DAG, runs independent tasks in parallel, and executes dependent tasks in order. Same input, same execution path, every time.</p>
+
+<pre><code>import { Workflow } from '@strands-agents/sdk/multi-agent'
+
+const researchTask = new Agent({
+  name: 'research',
+  systemPrompt: 'Research the given topic thoroughly.',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+const outlineTask = new Agent({
+  name: 'outline',
+  systemPrompt: 'Create a structured outline from the research.',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+const writeTask = new Agent({
+  name: 'write',
+  systemPrompt: 'Write the full article following the outline.',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+const formatTask = new Agent({
+  name: 'format',
+  systemPrompt: 'Format the article as clean markdown with headers.',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+const workflow = new Workflow({
+  tasks: [
+    { agent: researchTask, dependsOn: [] },
+    { agent: outlineTask, dependsOn: ['research'] },
+    { agent: writeTask, dependsOn: ['outline'] },
+    { agent: formatTask, dependsOn: ['write'] },
+  ],
+})
+
+// Execution is deterministic: research → outline → write → format
+const result = await workflow.invoke('Write about edge computing')</code></pre>
+
+<h3>Parallel execution</h3>
+
+<p>When tasks have no dependency relationship, the workflow engine runs them concurrently:</p>
+
+<pre><code>const workflow = new Workflow({
+  tasks: [
+    { agent: researchAgent, dependsOn: [] },
+    { agent: competitorAgent, dependsOn: [] },   // Runs parallel with research
+    { agent: synthesizerAgent, dependsOn: ['research', 'competitor'] },  // Waits for both
+  ],
+})</code></pre>
+
+<div class="diagram">
+  research ──────┐
+                 ├──▶ synthesizer
+  competitor ────┘
+  (parallel)        (waits for both)
+</div>
+
+<p>This is the pattern for consulting deliverables: research and competitive analysis happen in parallel, synthesis waits for both to complete. The execution graph is fixed — you get repeatability and parallelism without sacrificing control.</p>
+
+<h2>Shared State Across Patterns</h2>
+
+<p>All three patterns share a common state mechanism. When you invoke a multi-agent system, an <code>invocationState</code> object flows through every node. This is how agents pass structured data — not just conversation text — to each other.</p>
+
+<pre><code>import { Graph, InvocationState } from '@strands-agents/sdk/multi-agent'
+
+// Create shared state accessible to all nodes
+const state: InvocationState = {
+  results: new Map(),    // Each node's output, keyed by node name
+  steps: [],             // Ordered list of which nodes have run
+  app: new StateStore(), // Your custom application state
+}
+
+const graph = new Graph({
+  nodes: [researcher, writer, reviewer],
+  edges: [
+    ['researcher', 'writer'],
+    ['writer', 'reviewer'],
+  ],
+  invocationState: state,
+})</code></pre>
+
+<p>Inside a tool or hook, access the multi-agent state to make decisions:</p>
+
+<pre><code>// In a hook: check what previous nodes produced
+const writerOutput = state.results.get('writer')
+const researchLength = state.results.get('researcher')?.length</code></pre>
+
+<p>The <code>MultiAgentState</code> structure provides:</p>
+
+<table>
+  <thead>
+    <tr><th>Field</th><th>Type</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>results</code></td><td><code>Map&lt;string, string&gt;</code></td><td>Output of each completed node, keyed by name</td></tr>
+    <tr><td><code>nodes</code></td><td><code>string[]</code></td><td>List of all node names in the system</td></tr>
+    <tr><td><code>steps</code></td><td><code>string[]</code></td><td>Ordered execution trace — which nodes ran and in what order</td></tr>
+    <tr><td><code>app</code></td><td><code>StateStore</code></td><td>Your custom application state (counters, flags, accumulated data)</td></tr>
+  </tbody>
+</table>
+
+<h2>Multi-Agent Hooks</h2>
+
+<p>You already know agent-level hooks from Lesson 3. Multi-agent systems add orchestration-level hooks that fire at node boundaries — letting you observe, modify, or cancel node execution.</p>
+
+<h3>BeforeNodeCallEvent</h3>
+
+<p>Fires before each node agent is invoked. You can inspect the input, modify it, or cancel the node entirely:</p>
+
+<pre><code>import { Graph, BeforeNodeCallEvent } from '@strands-agents/sdk/multi-agent'
+
+const graph = new Graph({
+  nodes: [researcher, writer, reviewer],
+  edges: [
+    ['researcher', 'writer'],
+    ['writer', 'reviewer'],
+    ['reviewer', 'writer'],
+  ],
+  hooks: {
+    onBeforeNodeCall: (event: BeforeNodeCallEvent) => {
+      console.log(`About to call node: ${event.nodeName}`)
+      console.log(`Input: ${event.input.slice(0, 100)}...`)
+
+      // Conditionally skip a node
+      if (event.nodeName === 'reviewer' && someCondition) {
+        event.cancel()  // Skip this node, proceed to next edge or end
+      }
+    },
+  },
+})</code></pre>
+
+<h3>AfterNodeCallEvent</h3>
+
+<p>Fires after a node completes. Inspect outputs, update custom state, log metrics:</p>
+
+<pre><code>hooks: {
+  onAfterNodeCall: (event: AfterNodeCallEvent) => {
+    console.log(`Node ${event.nodeName} completed`)
+    console.log(`Output length: ${event.result.length} chars`)
+    console.log(`Stop reason: ${event.stopReason}`)
+
+    // Track execution in custom state
+    state.app.set(`${event.nodeName}_completedAt`, Date.now())
+  },
+}</code></pre>
+
+<h3>MultiAgentHandoffEvent (Swarm only)</h3>
+
+<p>Fires when an agent in a Swarm hands off to another. Observe the delegation chain:</p>
+
+<pre><code>const swarm = new Swarm({
+  agents: [analyst, copywriter, engineer],
+  entryAgent: 'analyst',
+  hooks: {
+    onHandoff: (event: MultiAgentHandoffEvent) => {
+      console.log(`${event.fromAgent} → ${event.toAgent}`)
+      console.log(`Reason: ${event.reason}`)
+    },
+  },
+})</code></pre>
+
+<h3>NodeStreamUpdateEvent</h3>
+
+<p>Fires as tokens stream from a node's inner agent. Use this for real-time progress updates in a UI:</p>
+
+<pre><code>hooks: {
+  onNodeStreamUpdate: (event: NodeStreamUpdateEvent) => {
+    process.stdout.write(event.chunk)  // Stream to terminal
+    // Or emit to a WebSocket for live UI updates
+  },
+}</code></pre>
+
+<h2>Practical Example: Content Pipeline with Conditional Review</h2>
+
+<p>Let's build the full pattern: a content creation graph where the reviewer is skipped if the writer's output is short (implying a simple, low-risk response that doesn't need review).</p>
+
+<pre><code>import { Agent } from '@strands-agents/sdk'
+import {
+  Graph,
+  BeforeNodeCallEvent,
+  AfterNodeCallEvent,
+  InvocationState,
+  StateStore,
+} from '@strands-agents/sdk/multi-agent'
+
+// --- Agents ---
+const researcher = new Agent({
+  name: 'researcher',
+  systemPrompt: `Research the given topic. Provide 3-5 key facts with sources.
+Be thorough but concise.`,
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+const writer = new Agent({
+  name: 'writer',
+  systemPrompt: `Write a clear article from the research provided.
+Target 200-500 words. Use simple language.`,
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+const reviewer = new Agent({
+  name: 'reviewer',
+  systemPrompt: `Review the article for accuracy and clarity.
+Provide a final approved version with any corrections.`,
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+})
+
+// --- Shared state ---
+const state: InvocationState = {
+  results: new Map(),
+  steps: [],
+  nodes: ['researcher', 'writer', 'reviewer'],
+  app: new StateStore(),
+}
+
+// --- Graph with conditional hook ---
+const REVIEW_THRESHOLD = 200  // Skip review for short outputs
+
+const contentPipeline = new Graph({
+  nodes: [researcher, writer, reviewer],
+  edges: [
+    ['researcher', 'writer'],
+    ['writer', 'reviewer'],
+  ],
+  invocationState: state,
+  hooks: {
+    onAfterNodeCall: (event: AfterNodeCallEvent) => {
+      // Store output length for the conditional check
+      if (event.nodeName === 'writer') {
+        state.app.set('writerOutputLength', event.result.length)
+      }
+    },
+    onBeforeNodeCall: (event: BeforeNodeCallEvent) => {
+      // Skip reviewer if writer output is short (low complexity)
+      if (event.nodeName === 'reviewer') {
+        const writerLength = state.app.get('writerOutputLength') ?? 0
+        if (writerLength < REVIEW_THRESHOLD) {
+          console.log(
+            `Skipping reviewer — writer output (${writerLength} chars) ` +
+            `below threshold (${REVIEW_THRESHOLD})`
+          )
+          event.cancel()
+        }
+      }
+    },
+  },
+})
+
+// --- Run it ---
+const result = await contentPipeline.invoke(
+  'Explain what a semaphore is in operating systems'
+)
+
+console.log('Execution trace:', state.steps)
+console.log('Final output:', result.message?.content)</code></pre>
+
+<p>This pattern gives you structural determinism (researcher → writer → reviewer) with runtime flexibility (skip the reviewer when it's not needed). The hook inspects shared state to make the decision — no LLM involved in the skip logic.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Production pattern</div>
+  <p>This conditional-skip pattern is common in consulting workflows: skip QA for trivial changes, skip legal review for low-risk content, skip manager approval below a dollar threshold. The hook makes the decision based on structured data, not model judgment.</p>
+</div>
+
+<h2>Decision Framework</h2>
+
+<p>When designing a multi-agent system, start with the determinism requirement:</p>
+
+<table class="decision-table">
+  <thead>
+    <tr><th>Need</th><th>Pattern</th><th>Why</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Fixed process, parallel tasks, repeatable</td>
+      <td><strong>Workflow</strong></td>
+      <td>DAG guarantees execution order. Same input → same path. Independent tasks parallelize automatically.</td>
+    </tr>
+    <tr>
+      <td>Conditional branching, cycles, review loops</td>
+      <td><strong>Graph</strong></td>
+      <td>You control the topology (what's possible). The LLM controls the path (what actually happens). Cycles enable feedback loops.</td>
+    </tr>
+    <tr>
+      <td>Exploratory, creative, unknown path</td>
+      <td><strong>Swarm</strong></td>
+      <td>Agents self-organize. The system discovers the right sequence through handoffs. Best when you can't predict the workflow in advance.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Combining patterns</h3>
+
+<p>These patterns compose. A Workflow step can itself be a Graph. A Graph node can be a single agent with complex tools. Use the simplest pattern that satisfies your requirements at each level:</p>
+
+<pre><code>// A workflow where one step is itself a graph
+const researchGraph = new Graph({
+  nodes: [webSearcher, factChecker],
+  edges: [['webSearcher', 'factChecker'], ['factChecker', 'webSearcher']],
+  maxCycles: 2,
+})
+
+const pipeline = new Workflow({
+  tasks: [
+    { agent: researchGraph, dependsOn: [] },
+    { agent: writerAgent, dependsOn: ['research'] },
+    { agent: formatterAgent, dependsOn: ['write'] },
+  ],
+})</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Design heuristic</div>
+  <p>Start with Workflow. Only reach for Graph when you need cycles or conditional edges. Only reach for Swarm when you genuinely don't know the path upfront. Each step up the autonomy spectrum is harder to debug and predict.</p>
+</div>
+
+<h2>Key Takeaways</h2>
+
+<ul>
+  <li><strong>Workflow</strong> = fixed DAG, parallel independent tasks, fully deterministic. Your default choice.</li>
+  <li><strong>Graph</strong> = developer-defined topology, LLM-chosen path, cycles allowed. Use when branching decisions depend on content.</li>
+  <li><strong>Swarm</strong> = autonomous handoffs, emergent paths. Use for exploration — never for repeatable business processes.</li>
+  <li><strong>Shared state</strong> (<code>InvocationState</code>) flows through all nodes in every pattern. Use it for structured data passing and hook decisions.</li>
+  <li><strong>Hooks</strong> at the multi-agent level (<code>BeforeNodeCallEvent</code>, <code>AfterNodeCallEvent</code>) give you programmatic control without LLM involvement — conditional execution, logging, state updates.</li>
+  <li><strong>Always set safety limits</strong>: <code>maxCycles</code> for Graphs, <code>maxHandoffs</code> for Swarms, <code>limits.turns</code> on each inner agent.</li>
+</ul>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">You need to build a document processing pipeline: extract text, classify it, then route to either legal review or standard formatting based on the classification. Which pattern fits best?</div>
+  <ul class="quiz-options">
+    <li>Workflow — it's a fixed linear process</li>
+    <li data-correct="true">Graph — the path depends on classification output (conditional branching)</li>
+    <li>Swarm — the agents should figure out who handles what</li>
+    <li>Two separate Workflows selected by an if-statement</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The conditional routing (legal vs. standard) based on content makes this a Graph problem. You define the topology (classifier → legal, classifier → formatter) and the LLM at the classifier node decides which edge to follow based on document content.</div>
+  <div class="quiz-feedback incorrect">The key signal is "route based on classification" — that's conditional branching. A Workflow can't branch. A Swarm is overkill (you know the possible paths). A Graph lets you define both paths as edges and let the classifier node's LLM decide which to follow.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">In the content pipeline example, why does the conditional review-skip use a hook (<code>BeforeNodeCallEvent</code>) instead of putting the skip logic in the reviewer's system prompt?</div>
+  <ul class="quiz-options">
+    <li>Hooks run faster than prompt instructions</li>
+    <li>The reviewer agent can't access the writer's output length</li>
+    <li data-correct="true">The hook makes a deterministic, programmatic decision — no LLM involved, no token cost, no risk of the model ignoring the instruction</li>
+    <li>Strands requires all conditional logic to be in hooks</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The hook executes deterministic code — a simple length check. No model invocation means zero token cost, zero latency, and zero chance of the model deciding to review anyway. For structural control decisions (skip/proceed), always prefer hooks over prompts.</div>
+  <div class="quiz-feedback incorrect">The key advantage is determinism. A prompt instruction ("skip if short") still invokes the model (tokens, latency) and the model might ignore it. A hook is plain TypeScript — if the condition is true, the node is cancelled. No ambiguity, no cost.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">What happens when a Swarm agent calls the handoff tool but <code>maxHandoffs</code> has been reached?</div>
+  <ul class="quiz-options">
+    <li>The handoff silently succeeds but the target agent is never invoked</li>
+    <li>The swarm throws a MaxHandoffsExceeded error</li>
+    <li data-correct="true">The handoff tool returns an error result to the current agent, which must then complete the task itself or produce a final response</li>
+    <li>The swarm automatically restarts from the entry agent</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Consistent with Strands' error-recovery philosophy (from Lesson 1): the handoff failure is returned as a tool result. The current agent sees "handoff denied" and must wrap up on its own. The loop doesn't crash — it degrades gracefully.</div>
+  <div class="quiz-feedback incorrect">Remember Strands' error handling pattern from Lesson 1: tool failures become error results, not exceptions. The same applies to handoff tools — when the limit is hit, the current agent gets an error result and must finish the task itself.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://strandsagents.com/docs/user-guide/concepts/multi-agent/multi-agent-patterns/">Multi-Agent Patterns — Strands Agents Docs</a> — Official documentation on Graph, Swarm, and Workflow patterns with additional examples and API reference. ~12 min read.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me about choosing between patterns, composing multi-agent systems, debugging handoff chains, or how these map to real consulting delivery workflows.
+</div>
+
+<div class="lesson-nav">
+  <a href="0004-prompts-and-sops.html" class="lesson-nav-prev" title="Prompts &amp; Agent SOPs">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <span class="lesson-nav-disabled"></span>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

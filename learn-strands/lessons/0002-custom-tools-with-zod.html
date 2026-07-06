@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 2: Custom Tools with Zod</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .schema-mapping {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: start;
+      gap: 0.75rem 1rem;
+      margin: 1.5rem 0;
+      padding: 1.25rem;
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+    }
+    .schema-mapping-header {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-muted);
+      font-weight: 600;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .schema-arrow {
+      color: var(--color-muted);
+      font-size: 1.1rem;
+      padding-top: 0.15rem;
+    }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .comparison-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .comparison-card h4 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-muted);
+      margin-bottom: 0.75rem;
+    }
+    @media (max-width: 600px) {
+      .comparison-grid { grid-template-columns: 1fr; }
+      .schema-mapping { grid-template-columns: 1fr; }
+      .schema-mapping-header:nth-child(2),
+      .schema-arrow { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0001-the-strands-agent-loop.html" class="lesson-back-top" title="The Strands Agent Loop"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0003-state-and-hooks.html" class="lesson-next-top" title="State &amp; Hooks">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Custom Tools with Zod</h1>
+
+<div class="lesson-meta">
+  Lesson 2 · Strands Agents (TypeScript) · ~12 minutes
+</div>
+
+<p>In Lesson 1 you built a <code>word_counter</code> tool and saw how the agent loop invokes it. Now we go deeper into the <code>tool()</code> function — how Zod schemas give you type safety <em>and</em> generate the JSON Schema the model needs, how descriptions drive deterministic tool selection, and how tools can access agent state through the context parameter.</p>
+
+<p>By the end of this lesson you'll build two tools that work together: a <code>file_reader</code> and a <code>json_validator</code>. The agent will read a file, then validate its contents — exercising multi-tool orchestration that the model decides on its own.</p>
+
+<h2>The <code>tool()</code> Function API</h2>
+
+<p>Every custom tool in Strands TypeScript is created with the <code>tool()</code> factory function. It takes a single configuration object with four fields:</p>
+
+<pre><code>import { tool } from '@strands-agents/sdk'
+import { z } from '@strands-agents/sdk/zod'
+
+const myTool = tool({
+  name: 'my_tool',              // Unique identifier the model references
+  description: 'What it does',  // The model reads this to decide when to call it
+  inputSchema: z.object({...}), // Zod schema → validates input AND generates JSON Schema
+  callback: async (input, context?) => {
+    // input is fully typed from the Zod schema
+    return { result: 'something' }
+  },
+})</code></pre>
+
+<p>The type signature is generic over your Zod schema — <code>input</code> in the callback is automatically typed as <code>z.infer&lt;typeof yourSchema&gt;</code>. No manual type annotations needed, no runtime type mismatches possible.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Zod ships with the SDK</div>
+  <p>Import Zod from <code>@strands-agents/sdk/zod</code> — it's bundled so you don't need a separate dependency. This guarantees version compatibility between the schema validation and the JSON Schema generation.</p>
+</div>
+
+<h2>Zod Schemas → JSON Schema for the Model</h2>
+
+<p>When you pass a Zod schema as <code>inputSchema</code>, Strands does two things at tool registration time:</p>
+
+<ol>
+  <li><strong>Converts it to JSON Schema</strong> — sent to the model so it knows what parameters to provide</li>
+  <li><strong>Validates input at runtime</strong> — if the model sends malformed input, Zod catches it before your callback runs</li>
+</ol>
+
+<p>Here's how common Zod types map to the JSON Schema the model sees:</p>
+
+<div class="schema-mapping">
+  <div class="schema-mapping-header">Zod (you write)</div>
+  <div class="schema-mapping-header" style="text-align: center;"></div>
+  <div class="schema-mapping-header">JSON Schema (model sees)</div>
+
+  <code>z.string()</code>
+  <span class="schema-arrow">→</span>
+  <code>{ "type": "string" }</code>
+
+  <code>z.number()</code>
+  <span class="schema-arrow">→</span>
+  <code>{ "type": "number" }</code>
+
+  <code>z.boolean()</code>
+  <span class="schema-arrow">→</span>
+  <code>{ "type": "boolean" }</code>
+
+  <code>z.enum(['a', 'b', 'c'])</code>
+  <span class="schema-arrow">→</span>
+  <code>{ "type": "string", "enum": ["a", "b", "c"] }</code>
+
+  <code>z.array(z.string())</code>
+  <span class="schema-arrow">→</span>
+  <code>{ "type": "array", "items": { "type": "string" } }</code>
+
+  <code>z.object({ name: z.string() })</code>
+  <span class="schema-arrow">→</span>
+  <code>{ "type": "object", "properties": { "name": { "type": "string" } }, "required": ["name"] }</code>
+
+  <code>z.string().optional()</code>
+  <span class="schema-arrow">→</span>
+  <code>Property removed from "required" array</code>
+
+  <code>z.string().describe('The file path')</code>
+  <span class="schema-arrow">→</span>
+  <code>{ "type": "string", "description": "The file path" }</code>
+</div>
+
+<p>The <code>.describe()</code> method is critical — it adds a <code>description</code> field to the JSON Schema property. The model uses these descriptions to understand what each parameter expects. Think of it as inline documentation that the model reads at inference time.</p>
+
+<pre><code>const searchTool = tool({
+  name: 'search_documents',
+  description: 'Search documents by keyword with optional filters',
+  inputSchema: z.object({
+    query: z.string().describe('The search query string'),
+    maxResults: z.number().optional().describe('Maximum results to return (default: 10)'),
+    format: z.enum(['json', 'text', 'markdown']).describe('Output format for results'),
+    tags: z.array(z.string()).optional().describe('Filter by these tags'),
+  }),
+  callback: async (input) => {
+    // input is typed as:
+    // { query: string; maxResults?: number; format: 'json' | 'text' | 'markdown'; tags?: string[] }
+    return { result: `Found results for: ${input.query}` }
+  },
+})</code></pre>
+
+<h2>Descriptions as the Lever for Determinism</h2>
+
+<p>With simpler models — or even with Claude Sonnet 4.6 on ambiguous prompts — the model can pick the wrong tool. The <strong>tool description</strong> and <strong>parameter descriptions</strong> are your primary levers for fixing this. The model sees them in the system-level tool definitions before processing user input.</p>
+
+<div class="comparison-grid">
+  <div class="comparison-card">
+    <h4>❌ Vague — model guesses</h4>
+    <pre><code>tool({
+  name: 'get_data',
+  description: 'Gets data',
+  inputSchema: z.object({
+    input: z.string(),
+  }),
+  ...
+})</code></pre>
+  </div>
+  <div class="comparison-card">
+    <h4>✅ Precise — model selects correctly</h4>
+    <pre><code>tool({
+  name: 'read_json_file',
+  description: 'Read and parse a JSON file from the local filesystem. Returns the parsed object or an error if the file does not exist or contains invalid JSON.',
+  inputSchema: z.object({
+    path: z.string().describe('Absolute or relative path to the .json file'),
+  }),
+  ...
+})</code></pre>
+  </div>
+</div>
+
+<p>Three rules for effective descriptions:</p>
+
+<ul>
+  <li><strong>State what it does AND what it returns.</strong> "Read a file and return its contents as a string" beats "Read a file."</li>
+  <li><strong>State preconditions.</strong> "Only works with local files, not URLs" prevents the model from passing a URL as a path.</li>
+  <li><strong>Distinguish from siblings.</strong> If you have both <code>read_file</code> and <code>search_files</code>, make the descriptions explain <em>when</em> to use each: "Use when you know the exact file path" vs "Use when you need to find files matching a pattern."</li>
+</ul>
+
+<div class="callout warning">
+  <div class="callout-title">Name matters too</div>
+  <p>Tool names are snake_case identifiers that the model references in its tool_use blocks. A name like <code>file_reader</code> primes the model correctly; a name like <code>utility_1</code> forces all the disambiguation burden onto the description. Use descriptive names that encode the primary action.</p>
+</div>
+
+<h2>Error Handling in Tools</h2>
+
+<p>Two patterns work — both are valid, with different ergonomics:</p>
+
+<h3>Pattern 1: Return an error result</h3>
+
+<p>Return a string or object describing the error. Strands wraps it as a tool result and the model sees it as a failed tool call it can reason about.</p>
+
+<pre><code>const fileReader = tool({
+  name: 'read_file',
+  description: 'Read file contents from the local filesystem',
+  inputSchema: z.object({
+    path: z.string().describe('Path to the file to read'),
+  }),
+  callback: async (input) => {
+    try {
+      const content = await fs.readFile(input.path, 'utf-8')
+      return { result: content }
+    } catch (err) {
+      // Model sees this as the tool result — can retry with a different path
+      return { error: `File not found: ${input.path}` }
+    }
+  },
+})</code></pre>
+
+<h3>Pattern 2: Throw an error</h3>
+
+<p>Strands catches thrown errors and converts them to error tool results automatically. The model sees the error message and can decide what to do.</p>
+
+<pre><code>const fileReader = tool({
+  name: 'read_file',
+  description: 'Read file contents from the local filesystem',
+  inputSchema: z.object({
+    path: z.string().describe('Path to the file to read'),
+  }),
+  callback: async (input) => {
+    // If this throws, Strands wraps it as an error result for the model
+    const content = await fs.readFile(input.path, 'utf-8')
+    return { result: content }
+  },
+})</code></pre>
+
+<p>Which to choose? <strong>Return errors</strong> when you want to provide a structured, informative message that helps the model recover. <strong>Throw</strong> when you want the simplest code path and are fine with the raw error message reaching the model. Either way, the agent loop continues — it does not crash.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Zod validation errors</div>
+  <p>If the model sends input that doesn't match your Zod schema (wrong type, missing required field), Strands catches the Zod validation error <em>before</em> your callback runs and returns it as an error tool result. You don't need to validate input yourself — Zod handles it.</p>
+</div>
+
+<h2>Accessing Agent Context</h2>
+
+<p>The callback's second parameter is an optional <code>ToolContext</code> object that provides access to the running agent, the current tool use metadata, and per-invocation state:</p>
+
+<pre><code>callback: async (input, context?) => {
+  // The agent instance — access appState, messages, cancelSignal
+  context?.agent.appState    // Durable state (persists across invocations)
+  context?.agent.cancelSignal // AbortSignal for cooperative cancellation
+  context?.agent.messages     // Conversation history
+
+  // The current tool use request metadata
+  context?.toolUse.toolUseId  // Unique ID for this specific tool call
+  context?.toolUse.name       // The tool name the model requested
+
+  // Per-invocation ephemeral state (shared across tools within one invoke())
+  context?.invocationState    // Mutable object — read/write freely
+}</code></pre>
+
+<h3>Using <code>appState</code> for cross-invocation persistence</h3>
+
+<pre><code>const counterTool = tool({
+  name: 'increment_counter',
+  description: 'Increment a named counter and return the new value',
+  inputSchema: z.object({
+    name: z.string().describe('Counter name'),
+  }),
+  callback: async (input, context) => {
+    const state = context?.agent.appState
+    const current = (state?.get('counters') as Record&lt;string, number&gt;) ?? {}
+    current[input.name] = (current[input.name] ?? 0) + 1
+    state?.set('counters', current)
+    return { result: `${input.name} = ${current[input.name]}` }
+  },
+})</code></pre>
+
+<h3>Using <code>cancelSignal</code> for cooperative cancellation</h3>
+
+<pre><code>const slowProcessor = tool({
+  name: 'process_items',
+  description: 'Process a list of items one by one',
+  inputSchema: z.object({
+    items: z.array(z.string()).describe('Items to process'),
+  }),
+  callback: async (input, context) => {
+    const results: string[] = []
+    for (const item of input.items) {
+      // Check cancellation between items
+      if (context?.agent.cancelSignal.aborted) {
+        return { result: `Processed ${results.length}/${input.items.length} before cancellation`, partial: results }
+      }
+      results.push(await processItem(item))
+    }
+    return { result: results }
+  },
+})</code></pre>
+
+<h3>Using <code>invocationState</code> for request-scoped context</h3>
+
+<pre><code>// Set invocation state before invoke()
+const result = await agent.invoke('Validate the config', {
+  invocationState: { requestId: 'req-123', userId: 'user-456' },
+})
+
+// Tools read it during execution
+const auditTool = tool({
+  name: 'audit_log',
+  description: 'Write an audit log entry',
+  inputSchema: z.object({ action: z.string() }),
+  callback: async (input, context) => {
+    const requestId = context?.invocationState?.requestId
+    console.log(`[${requestId}] Action: ${input.action}`)
+    return { result: 'logged' }
+  },
+})</code></pre>
+
+<h2>Practical Example: <code>file_reader</code> + <code>json_validator</code></h2>
+
+<p>Let's build two tools that naturally compose. The agent will decide on its own to read a file first, then validate its JSON structure — multi-tool orchestration driven entirely by the model's reasoning.</p>
+
+<pre><code>import { Agent, tool } from '@strands-agents/sdk'
+import { z } from '@strands-agents/sdk/zod'
+import * as fs from 'node:fs/promises'
+
+// Tool 1: Read a file from disk
+const fileReader = tool({
+  name: 'file_reader',
+  description:
+    'Read the contents of a file from the local filesystem. Returns the raw text content. ' +
+    'Use this when you need to inspect file contents before processing them.',
+  inputSchema: z.object({
+    path: z.string().describe('Absolute or relative path to the file'),
+    encoding: z
+      .enum(['utf-8', 'ascii', 'base64'])
+      .optional()
+      .describe('File encoding (default: utf-8)'),
+  }),
+  callback: async (input) => {
+    try {
+      const content = await fs.readFile(input.path, input.encoding ?? 'utf-8')
+      return { result: content }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return { error: `Failed to read file: ${message}` }
+    }
+  },
+})
+
+// Tool 2: Validate JSON against a shape
+const jsonValidator = tool({
+  name: 'json_validator',
+  description:
+    'Validate a JSON string for correct syntax and optionally check that specific ' +
+    'top-level keys exist. Returns validation status and any errors found. ' +
+    'Use this after reading a file to verify its structure.',
+  inputSchema: z.object({
+    jsonString: z.string().describe('The raw JSON string to validate'),
+    requiredKeys: z
+      .array(z.string())
+      .optional()
+      .describe('Top-level keys that must be present in the parsed object'),
+  }),
+  callback: async (input) => {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(input.jsonString)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return { valid: false, error: `Invalid JSON: ${message}` }
+    }
+
+    if (input.requiredKeys && typeof parsed === 'object' && parsed !== null) {
+      const missing = input.requiredKeys.filter(
+        (key) => !(key in (parsed as Record&lt;string, unknown&gt;))
+      )
+      if (missing.length > 0) {
+        return { valid: false, error: `Missing required keys: ${missing.join(', ')}` }
+      }
+    }
+
+    return { valid: true, result: 'JSON is valid and contains all required keys' }
+  },
+})
+
+// Wire them into an agent
+const agent = new Agent({
+  systemPrompt:
+    'You are a file validation assistant. When asked to validate a JSON file, ' +
+    'first read it with file_reader, then validate it with json_validator. ' +
+    'Report the results clearly.',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  tools: [fileReader, jsonValidator],
+})
+
+// The agent will: 1) call file_reader  2) call json_validator  3) report results
+const result = await agent.invoke(
+  'Validate the file ./config.json and check it has "name", "version", and "dependencies" keys',
+  { limits: { turns: 5 } }
+)
+
+console.log(result.message?.content)</code></pre>
+
+<p>Notice how the descriptions guide the model's tool selection: <code>file_reader</code> says "use this when you need to inspect file contents" and <code>json_validator</code> says "use this after reading a file." These phrases create a natural ordering in the model's reasoning without requiring explicit orchestration code.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Why not one combined tool?</div>
+  <p>You <em>could</em> make a single <code>validate_json_file</code> tool. But separate tools give the model more flexibility: it can read a file without validating, validate JSON that came from somewhere else (user input, another tool), or retry validation with different required keys. Composable tools are more reusable than monolithic ones.</p>
+</div>
+
+<h2>Putting It All Together: Context-Aware File Reader</h2>
+
+<p>Here's the <code>file_reader</code> enhanced with context — it logs reads to invocation state and respects cancellation for large files:</p>
+
+<pre><code>const fileReader = tool({
+  name: 'file_reader',
+  description:
+    'Read file contents from the local filesystem. Tracks all files read during ' +
+    'this invocation. Returns raw text content.',
+  inputSchema: z.object({
+    path: z.string().describe('Path to the file to read'),
+  }),
+  callback: async (input, context) => {
+    // Check cancellation before potentially slow I/O
+    if (context?.agent.cancelSignal.aborted) {
+      return { error: 'Operation cancelled' }
+    }
+
+    try {
+      const content = await fs.readFile(input.path, 'utf-8')
+
+      // Track which files were read during this invocation
+      const state = context?.invocationState as Record&lt;string, unknown&gt; | undefined
+      if (state) {
+        const reads = (state.filesRead as string[]) ?? []
+        reads.push(input.path)
+        state.filesRead = reads
+      }
+
+      return { result: content }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return { error: `Cannot read ${input.path}: ${message}` }
+    }
+  },
+})</code></pre>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">What happens if the model sends input that doesn't match your Zod schema (e.g., a number where a string is expected)?</div>
+  <ul class="quiz-options">
+    <li>Your callback receives the raw input and you must validate manually</li>
+    <li>The agent loop throws an unhandled exception and stops</li>
+    <li data-correct="true">Strands catches the Zod validation error and returns it as an error tool result to the model</li>
+    <li>The tool is skipped silently and the model continues without a result</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Zod validates input <em>before</em> your callback executes. If validation fails, Strands wraps the Zod error as a tool result so the model can see what went wrong and potentially retry with corrected input.</div>
+  <div class="quiz-feedback incorrect">Zod validation happens before your callback runs. When it fails, Strands converts the error into a tool result message — just like a thrown error from inside your callback. The model sees it and can try again.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">You have two tools: <code>search_files</code> and <code>read_file</code>. The model keeps using <code>search_files</code> when the user provides an exact path. What's the most effective fix?</div>
+  <ul class="quiz-options">
+    <li>Add <code>z.string().url()</code> validation to force path format checking</li>
+    <li data-correct="true">Update the descriptions: <code>read_file</code> says "Use when you have the exact file path" and <code>search_files</code> says "Use when you need to find files by name or pattern"</li>
+    <li>Remove the <code>search_files</code> tool from the agent</li>
+    <li>Add a system prompt rule that says "Never use search_files when given a path"</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Tool descriptions are the primary lever for guiding tool selection. Adding "when to use" guidance directly to each tool's description is more robust than system prompt rules because it's co-located with the tool definition the model reads.</div>
+  <div class="quiz-feedback incorrect">The most effective approach is clarifying the <em>when to use</em> in each tool's description. The model reads these descriptions before deciding which tool to call. System prompts work too but descriptions are more maintainable — they travel with the tool definition.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">What's the difference between <code>context?.agent.appState</code> and <code>context?.invocationState</code>?</div>
+  <ul class="quiz-options">
+    <li>appState is read-only; invocationState is read-write</li>
+    <li>appState is for system data; invocationState is for user data</li>
+    <li data-correct="true">appState persists across invocations (durable, JSON-serializable); invocationState is ephemeral per invoke() call (shared across tools within one invocation)</li>
+    <li>They're the same thing with different access patterns</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. <code>appState</code> is a persistent store that survives across multiple <code>invoke()</code> calls — think session-level data. <code>invocationState</code> lives only for the duration of one <code>invoke()</code> — think request-scoped context like a requestId or accumulated tool results. Both are mutable and shared across all tools during execution.</div>
+  <div class="quiz-feedback incorrect"><code>appState</code> is durable and JSON-serializable — it persists across multiple invocations of the same agent (like session data). <code>invocationState</code> is ephemeral — it exists only for one <code>invoke()</code> call and can hold arbitrary (non-serializable) values. Both are mutable and visible to all tools.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://strandsagents.com/docs/user-guide/concepts/tools/custom-tools/">Creating Custom Tools — Strands Agents Docs</a> — Official reference covering <code>tool()</code> configuration, Zod and JSON Schema inputs, ToolContext, streaming tools, and class-based tools.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me about Zod schema patterns, when to use context vs system prompts for tool guidance, or how to debug tool selection issues with simpler models.
+</div>
+
+<div class="lesson-nav">
+  <a href="0001-the-strands-agent-loop.html" class="lesson-nav-prev" title="The Strands Agent Loop">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0003-state-and-hooks.html" class="lesson-nav-next" title="State &amp; Hooks">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

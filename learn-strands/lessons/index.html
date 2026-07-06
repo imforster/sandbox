@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strands Agents — Learn</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    .course-header {
+      text-align: center;
+      padding: 2.5rem 1rem 1.5rem;
+    }
+    .course-header h1 {
+      font-size: 1.8rem;
+      margin: 0 0 0.5rem;
+    }
+    .course-header p {
+      color: var(--text-muted, #6b7280);
+      font-size: 0.95rem;
+      margin: 0;
+      max-width: 520px;
+      margin-inline: auto;
+    }
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted, #6b7280);
+      padding: 1.5rem 1rem 0.5rem;
+    }
+    .lesson-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 auto;
+      max-width: 640px;
+    }
+    .lesson-list li {
+      border-bottom: 1px solid var(--border, #e5e7eb);
+    }
+    .lesson-list li:last-child {
+      border-bottom: none;
+    }
+    .lesson-card {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr auto;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      text-decoration: none;
+      color: inherit;
+      border-radius: 0.5rem;
+      transition: background 0.15s;
+    }
+    .lesson-card:hover {
+      background: var(--bg-hover, #f9fafb);
+    }
+    .lesson-num {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted, #6b7280);
+      text-align: center;
+    }
+    .lesson-info {
+      min-width: 0;
+    }
+    .lesson-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin: 0 0 0.2rem;
+    }
+    .lesson-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted, #6b7280);
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .lesson-time {
+      font-size: 0.75rem;
+      color: var(--text-muted, #6b7280);
+      white-space: nowrap;
+    }
+    .resources-link {
+      text-align: center;
+      padding: 2rem 1rem;
+      font-size: 0.85rem;
+    }
+    .resources-link a {
+      color: var(--link, #2563eb);
+      text-decoration: none;
+    }
+    .resources-link a:hover {
+      text-decoration: underline;
+    }
+    @media (max-width: 600px) {
+      .lesson-card {
+        grid-template-columns: 2rem 1fr;
+        gap: 0.75rem;
+      }
+      .lesson-time {
+        display: none;
+      }
+      .lesson-desc {
+        white-space: normal;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <a href="../../" class="lesson-back-top">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 10 4 6 8 2"/></svg>
+    All Courses
+  </a>
+</nav>
+
+<div class="course-header">
+  <h1>Strands Agents</h1>
+  <p>Production agent development in TypeScript — from the agent loop to multi-agent orchestration.</p>
+</div>
+
+<div class="section-label">Core Concepts</div>
+<ul class="lesson-list">
+  <li>
+    <a href="0001-the-strands-agent-loop.html" class="lesson-card">
+      <span class="lesson-num">01</span>
+      <div class="lesson-info">
+        <div class="lesson-title">The Strands Agent Loop</div>
+        <p class="lesson-desc">How Strands implements the reason-act-observe cycle. Limits, cancellation, and your first TypeScript agent.</p>
+      </div>
+      <span class="lesson-time">~12 min</span>
+    </a>
+  </li>
+  <li>
+    <a href="0002-custom-tools-with-zod.html" class="lesson-card">
+      <span class="lesson-num">02</span>
+      <div class="lesson-info">
+        <div class="lesson-title">Custom Tools with Zod</div>
+        <p class="lesson-desc">Type-safe tool definitions, error handling, and designing tools simpler models use reliably.</p>
+      </div>
+      <span class="lesson-time">~12 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Agent Control</div>
+<ul class="lesson-list">
+  <li>
+    <a href="0003-state-and-hooks.html" class="lesson-card">
+      <span class="lesson-num">03</span>
+      <div class="lesson-info">
+        <div class="lesson-title">State & Hooks</div>
+        <p class="lesson-desc">Conversation history, app state, invocation state, and lifecycle hooks for guardrails and observability.</p>
+      </div>
+      <span class="lesson-time">~15 min</span>
+    </a>
+  </li>
+  <li>
+    <a href="0004-prompts-and-sops.html" class="lesson-card">
+      <span class="lesson-num">04</span>
+      <div class="lesson-info">
+        <div class="lesson-title">Prompts & Agent SOPs</div>
+        <p class="lesson-desc">System prompts, multi-modal input, and structured SOPs for deterministic behavior.</p>
+      </div>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Orchestration</div>
+<ul class="lesson-list">
+  <li>
+    <a href="0005-multi-agent-orchestration.html" class="lesson-card">
+      <span class="lesson-num">05</span>
+      <div class="lesson-info">
+        <div class="lesson-title">Multi-Agent Orchestration</div>
+        <p class="lesson-desc">Graph, Swarm, and Workflow patterns. Shared state, multi-agent hooks, and when to use each.</p>
+      </div>
+      <span class="lesson-time">~15 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="resources-link">
+  <a href="https://strandsagents.com">Strands Agents Documentation →</a>
+</div>
+
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

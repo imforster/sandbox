@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1: The Strands Agent Loop</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .loop-diagram {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 1rem;
+      margin: 2rem 0;
+      padding: 1.5rem;
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+    }
+    .loop-step {
+      background: var(--color-accent-light);
+      border: 1px solid var(--color-accent);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .loop-arrow {
+      color: var(--color-muted);
+      font-size: 1.2rem;
+    }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .comparison-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .comparison-card h4 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-muted);
+      margin-bottom: 0.75rem;
+    }
+    @media (max-width: 600px) {
+      .comparison-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><span class="lesson-nav-disabled"></span><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0002-custom-tools-with-zod.html" class="lesson-next-top" title="Custom Tools with Zod">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>The Strands Agent Loop</h1>
+
+<div class="lesson-meta">
+  Lesson 1 · Strands Agents (TypeScript) · ~12 minutes
+</div>
+
+<p>You've built agentic loops from scratch. You know the cycle: send messages to the model, check if it wants to call a tool, execute the tool, feed the result back, repeat until the model says "done." Strands implements exactly this pattern — but gives you lifecycle hooks, invocation limits, cancellation, conversation management, and observability for free.</p>
+
+<p>This lesson maps what you already know to Strands' TypeScript API. By the end, you'll have a running agent with a custom tool, configured for Bedrock with Claude Sonnet 4.6, with explicit control over how many cycles it can run.</p>
+
+<h2>Language Support</h2>
+
+<p>The Strands Agents SDK is available natively in two languages:</p>
+
+<table>
+  <thead>
+    <tr><th>Language</th><th>Status</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Python</strong></td><td>Mature (since May 2025)</td><td>Full feature set, 25M+ downloads. Community tools package with 30+ tools.</td></tr>
+    <tr><td><strong>TypeScript</strong></td><td>v1.0 (April 2026)</td><td>Full type safety, runs in Node.js and browser. 4 built-in vended tools.</td></tr>
+  </tbody>
+</table>
+
+<h3>Using tools written in other languages</h3>
+
+<p>While the agent orchestration itself runs in Python or TypeScript, your <strong>tools</strong> can be written in any language via <a href="https://modelcontextprotocol.io">MCP (Model Context Protocol)</a>. An MCP server is a standalone process that exposes tools over stdio or HTTP — it can be written in Go, Rust, Java, C#, or anything else that speaks the protocol.</p>
+
+<pre><code>// Connect to an MCP server written in any language
+import { Agent } from '@strands-agents/sdk'
+import { McpClient, StdioClientTransport } from '@strands-agents/sdk/mcp'
+
+// This could be a Go binary, a Rust server, a Java JAR — anything
+const mcpClient = new McpClient({
+  transport: new StdioClientTransport({
+    command: './my-tool-server',  // Your binary in any language
+    args: ['--mode', 'mcp'],
+  }),
+})
+
+const agent = new Agent({
+  tools: [mcpClient],  // Tools auto-discovered from the MCP server
+})
+
+await agent.invoke('Use the tools from my custom server')</code></pre>
+
+<p>This means: orchestrate in TypeScript, but delegate heavy lifting to tools in whatever language suits the task. A Go binary for file system operations, a Rust process for data parsing, a Java service for legacy system integration — all accessible as MCP tools.</p>
+
+<div class="callout tip">
+  <div class="callout-title">MCP transports</div>
+  <p>MCP supports three transports: <strong>stdio</strong> (spawn a local process), <strong>Streamable HTTP</strong> (call a remote server), and <strong>SSE</strong> (server-sent events). Use stdio for local tools, HTTP for remote services.</p>
+</div>
+
+<p>Both SDKs share the same architecture and concepts. We're using TypeScript throughout this course. The Python SDK has a larger community tools ecosystem, but the core features (agent loop, multi-agent, hooks, plugins, streaming, structured output) are at parity.</p>
+
+<h2>What Strands Calls Things</h2>
+
+<p>The vocabulary maps cleanly to what you've built by hand:</p>
+
+<table>
+  <thead>
+    <tr><th>Your hand-rolled loop</th><th>Strands equivalent</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>The outer while loop</td><td><code>Agent</code> class + its internal loop</td></tr>
+    <tr><td>Tool definitions (JSON schema)</td><td><code>tool()</code> function with Zod schemas</td></tr>
+    <tr><td>Checking stop_reason from API</td><td><code>result.stopReason</code> on <code>AgentResult</code></td></tr>
+    <tr><td>Conversation history array</td><td>Managed by <code>ConversationManager</code></td></tr>
+    <tr><td>System prompt string</td><td><code>systemPrompt</code> option on Agent</td></tr>
+    <tr><td>Model client (Anthropic SDK)</td><td><code>BedrockModel</code> or string model ID</td></tr>
+  </tbody>
+</table>
+
+<h2>The Loop Internals</h2>
+
+<p>Strands' agent loop follows this cycle on every invocation:</p>
+
+<div class="diagram">
+Input ──▶ ┌──────────────────────────────────────────┐
+          │  1. Send messages to model               │
+          │  2. Model responds with text OR tool_use │
+          │  3. If tool_use: execute, append result  │
+          │  4. Loop back to step 1                  │
+          │  5. If end_turn: return AgentResult      │
+          └──────────────────────────────────────────┘ ──▶ Response
+</div>
+
+<p>Key details that differ from a naive hand-rolled loop:</p>
+
+<ul>
+  <li><strong>Parallel tool calls.</strong> If the model requests multiple tools in one turn, Strands executes them all (sequentially by default, or with a custom executor) before the next model invocation.</li>
+  <li><strong>Error recovery.</strong> A failed tool returns an error <em>result</em> to the model rather than crashing the loop. The model gets a chance to retry or work around it.</li>
+  <li><strong>Invocation limits.</strong> You can cap turns, output tokens, or total tokens per <code>invoke()</code> call. The loop checks limits at the top of each cycle.</li>
+  <li><strong>Cancellation.</strong> Call <code>agent.cancel()</code> or pass an <code>AbortSignal</code>. The loop checks for cancellation at four checkpoints: top of cycle, during streaming, before tool execution, and between sequential tool calls.</li>
+</ul>
+
+<div class="callout tip">
+  <div class="callout-title">Key Insight</div>
+  <p>Stop reasons in Strands are richer than the raw API. Beyond <code>end_turn</code> and <code>tool_use</code>, you get <code>limitTurns</code>, <code>limitTotalTokens</code>, <code>limitOutputTokens</code>, <code>cancelled</code>, <code>contentFiltered</code>, and <code>guardrailIntervention</code>. These let you build deterministic budgets around non-deterministic model behavior.</p>
+</div>
+
+<h2>Your First Strands Agent (TypeScript)</h2>
+
+<p>Let's build a minimal agent that does something concrete: counts words in text. This maps directly to the tool-use pattern you've built before, but through Strands' API.</p>
+
+<h3>Project setup</h3>
+
+<pre><code>mkdir strands-hello && cd strands-hello
+npm init -y
+npm pkg set type=module
+npm install @strands-agents/sdk</code></pre>
+
+<h3>The agent</h3>
+
+<p>Create <code>agent.ts</code>:</p>
+
+<pre><code>import { Agent, tool } from '@strands-agents/sdk'
+import { z } from '@strands-agents/sdk/zod'
+
+// Define a tool — Zod schema replaces hand-written JSON schema
+const wordCounter = tool({
+  name: 'word_counter',
+  description: 'Count words in a given text',
+  inputSchema: z.object({
+    text: z.string().describe('The text to count words in'),
+  }),
+  callback: async (input) => {
+    const count = input.text.trim().split(/\s+/).length
+    return { result: `${count} words` }
+  },
+})
+
+// Create the agent — Bedrock + Claude Sonnet 4.6
+const agent = new Agent({
+  systemPrompt: 'You are a helpful text analysis assistant.',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  tools: [wordCounter],
+})
+
+// Invoke with an explicit turn limit
+const result = await agent.invoke(
+  'How many words are in: "The quick brown fox jumps over the lazy dog"',
+  { limits: { turns: 3 } }
+)
+
+console.log('Stop reason:', result.stopReason)
+console.log('Response:', result.message?.content)</code></pre>
+
+<h3>Run it</h3>
+
+<pre><code>npx tsx agent.ts</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">Credentials required</div>
+  <p>This assumes AWS credentials configured for Bedrock access (via environment variables, <code>~/.aws/credentials</code>, or IAM role). The model ID <code>us.anthropic.claude-sonnet-4-6-20250725-v1:0</code> must be enabled in your Bedrock console for the configured region.</p>
+</div>
+
+<h2>What You Get For Free</h2>
+
+<p>Compare what you'd need to build yourself versus what Strands handles:</p>
+
+<div class="comparison-grid">
+  <div class="comparison-card">
+    <h4>Hand-rolled</h4>
+    <ul>
+      <li>Write the loop yourself</li>
+      <li>Parse tool_use blocks from response</li>
+      <li>Match tool names to handlers</li>
+      <li>Build conversation array manually</li>
+      <li>Handle token limits yourself</li>
+      <li>No observability</li>
+    </ul>
+  </div>
+  <div class="comparison-card">
+    <h4>Strands gives you</h4>
+    <ul>
+      <li>Loop with lifecycle hooks</li>
+      <li>Zod-validated tool inputs</li>
+      <li>Tool registry with schema export</li>
+      <li>Conversation managers (sliding window, summarizing)</li>
+      <li>Turn/token limits as config</li>
+      <li>OpenTelemetry traces + metrics</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Controlling the Loop</h2>
+
+<p>The <code>limits</code> option is your primary lever for determinism. In a consulting context where you're running agents against client data, unbounded loops are unacceptable. Three caps:</p>
+
+<pre><code>const result = await agent.invoke('Analyze this codebase', {
+  limits: {
+    turns: 5,          // Max 5 reason→act cycles
+    outputTokens: 2000, // Cap model output per invocation
+    totalTokens: 10000,  // Cap total (input + output) tokens
+  },
+})
+
+// Check why the loop stopped
+switch (result.stopReason) {
+  case 'endTurn':
+    // Normal completion — model finished its response
+    break
+  case 'limitTurns':
+    // Hit the turn budget — model wanted to keep going
+    break
+  case 'limitTotalTokens':
+    // Token budget exhausted
+    break
+  case 'cancelled':
+    // External cancellation (AbortSignal or agent.cancel())
+    break
+}</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Production pattern</div>
+  <p>Always set <code>limits.turns</code> in production. A model that enters a retry loop on a broken tool can burn through your token budget in seconds. Start with <code>turns: 10</code> as a reasonable ceiling for most single-task agents.</p>
+</div>
+
+<h2>Cancellation with AbortSignal</h2>
+
+<p>This is the TypeScript-native pattern — pass standard <code>AbortSignal</code> instances for timeout or user-driven cancellation:</p>
+
+<pre><code>// Timeout after 30 seconds
+const result = await agent.invoke('Summarize this report', {
+  cancelSignal: AbortSignal.timeout(30_000),
+})
+
+// Or with a manual controller (e.g., user clicks "Stop")
+const controller = new AbortController()
+someButton.onclick = () => controller.abort()
+
+const result2 = await agent.invoke('Long analysis task', {
+  cancelSignal: controller.signal,
+})</code></pre>
+
+<p>Tools can also participate in cancellation by forwarding the signal:</p>
+
+<pre><code>const fetchTool = tool({
+  name: 'fetch_url',
+  description: 'Fetch content from a URL',
+  inputSchema: z.object({ url: z.string().url() }),
+  callback: async (input, context) => {
+    // Forward cancel signal to fetch
+    const res = await fetch(input.url, {
+      signal: context?.agent.cancelSignal,
+    })
+    return { result: await res.text() }
+  },
+})</code></pre>
+
+<h2>The Mental Model</h2>
+
+<p>Think of Strands as the <strong>framework layer</strong> on top of the loop you already understand. It doesn't change the fundamental mechanic — it standardizes the interfaces around it:</p>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────┐
+│                    Your Application                       │
+├─────────────────────────────────────────────────────────┤
+│  Agent  │  Tools (Zod)  │  Hooks  │  Plugins            │
+├─────────────────────────────────────────────────────────┤
+│              Strands Agent Loop                           │
+│  (cycle management, limits, cancellation, error recovery)│
+├─────────────────────────────────────────────────────────┤
+│          Model Provider (BedrockModel)                    │
+│  (streaming, token counting, retries)                    │
+├─────────────────────────────────────────────────────────┤
+│           AWS Bedrock / Claude Sonnet 4.6                  │
+└─────────────────────────────────────────────────────────┘
+</div>
+
+<p>The value proposition for your workflow: you stop writing loop plumbing and start writing tools and prompts. The framework handles the mechanics. When you need to customize behavior (hook into pre/post tool execution, manage conversation windows, add guardrails), you extend rather than rewrite.</p>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">When a Strands agent hits its turn limit, what happens to pending tool calls?</div>
+  <ul class="quiz-options">
+    <li>They execute before the loop terminates</li>
+    <li data-correct="true">The limit is checked at the top of the next cycle, so the previous turn's tools have already completed</li>
+    <li>They are queued for the next invocation call</li>
+    <li>They throw a MaxTokensReachedException error</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Limits fire at the top of each iteration — tools from the previous turn always run to completion before the check. The agent's message history stays valid and reinvokable.</div>
+  <div class="quiz-feedback incorrect">Not quite. The limit check happens at the <em>start</em> of a new cycle, meaning any tools requested in the previous turn have already executed. This keeps the conversation history in a valid state.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">What's the TypeScript-native way to cancel a Strands agent after a timeout?</div>
+  <ul class="quiz-options">
+    <li>Set a maxTimeout property on the Agent constructor options</li>
+    <li>Call agent.cancel() from within a setTimeout callback</li>
+    <li data-correct="true">Pass AbortSignal.timeout(ms) via the cancelSignal invoke option</li>
+    <li>Configure a timeout field in the limits object alongside turns</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Strands accepts standard AbortSignal instances via the <code>cancelSignal</code> option on invoke(). This composes with <code>agent.cancel()</code> — either can trigger cancellation independently.</div>
+  <div class="quiz-feedback incorrect">The idiomatic TypeScript approach is <code>AbortSignal.timeout(ms)</code> passed as the <code>cancelSignal</code> option. Strands uses <code>AbortSignal.any()</code> internally to compose it with its own controller.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">If a tool throws an error during execution, what does Strands do?</div>
+  <ul class="quiz-options">
+    <li data-correct="true">Returns the error as a tool result message so the model can reason about it</li>
+    <li>Retries the tool up to three times before failing the invocation</li>
+    <li>Throws the error up to the calling code immediately stopping the loop</li>
+    <li>Skips the tool and continues to the next model invocation silently</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Strands wraps tool failures as error results rather than exceptions. This gives the model a chance to recover — try a different tool, adjust parameters, or inform the user. The loop continues.</div>
+  <div class="quiz-feedback incorrect">Strands doesn't crash the loop on tool errors. It wraps the failure as an error tool result, letting the model see what went wrong and decide how to proceed. This is the same pattern you'd build into a robust hand-rolled loop.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://strandsagents.com/docs/user-guide/concepts/agents/agent-loop/">Agent Loop — Strands Agents Docs</a> — The official deep dive on loop mechanics, stop reasons, cancellation checkpoints, limits, and concurrent invocations. ~10 min read.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me anything that's unclear. I can explain how Strands differs from your Go implementation, dive deeper into any stop reason, or help you set up your first real project.
+</div>
+
+<div class="lesson-nav">
+  <span class="lesson-nav-disabled"></span>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0002-custom-tools-with-zod.html" class="lesson-nav-next" title="Custom Tools with Zod">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>
