@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 8: Plugins &amp; Steering</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0007-conversation-management.html" class="lesson-back-top" title="Conversation Management"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0009-session-persistence.html" class="lesson-next-top" title="Session Persistence">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Plugins &amp; Steering</h1>
+
+<div class="lesson-meta">
+  Lesson 8 · Strands Agents (TypeScript) · ~12 minutes
+</div>
+
+<p>As your agents grow more complex, you'll want to add cross-cutting concerns — metrics, guardrails, context injection, prompt management — without tangling them into your core agent logic. Plugins are Strands' composition mechanism: self-contained extensions that hook into the agent lifecycle and optionally provide tools.</p>
+
+<h2>What Plugins Are</h2>
+
+<p>A plugin is an object that can do two things: inject behavior via lifecycle hooks, and provide additional tools to the agent. Each plugin is independent — you compose multiple plugins onto a single agent, and they don't interfere with each other.</p>
+
+<p>The plugin interface:</p>
+
+<pre><code>interface Plugin {
+  name: string
+  initAgent?(agent: Agent): void          // Called once when agent is constructed
+  getTools?(): Tool[]                      // Provide additional tools
+  onBeforeTurn?(event: BeforeTurnEvent): void
+  onAfterTurn?(event: AfterTurnEvent): void
+  onToolCall?(event: ToolCallEvent): void
+  onToolResult?(event: ToolResultEvent): void
+}</code></pre>
+
+<p>Plugins activate through <code>initAgent</code> (runs once at construction) and lifecycle hooks (run on every turn/tool call). The separation means a plugin can observe, modify, or block agent behavior at any point in the loop.</p>
+
+<h2>Built-in Plugins</h2>
+
+<p>Strands ships several plugins for common patterns:</p>
+
+<table>
+  <thead>
+    <tr><th>Plugin</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Steering</strong></td><td>Inject context-aware guidance into the system prompt without modifying it directly</td></tr>
+    <tr><td><strong>Skills</strong></td><td>Load modular skill definitions (prompts + tools) dynamically</td></tr>
+    <tr><td><strong>Context Offloader</strong></td><td>Move large tool results to external storage, provide a retrieval tool</td></tr>
+    <tr><td><strong>Context Injector</strong></td><td>Inject additional context (files, data) into the conversation at specific points</td></tr>
+    <tr><td><strong>GoalLoop</strong></td><td>Break complex goals into sub-goals and track progress</td></tr>
+  </tbody>
+</table>
+
+<h2>Building a Custom Plugin: MetricsPlugin</h2>
+
+<p>Let's build a plugin that tracks token usage and tool call counts via hooks and <code>appState</code>:</p>
+
+<pre><code>import { Plugin, Agent, BeforeTurnEvent, AfterTurnEvent, ToolCallEvent } from '@strands-agents/sdk'
+
+class MetricsPlugin implements Plugin {
+  name = 'metrics'
+
+  initAgent(agent: Agent): void {
+    // Initialize metrics in appState
+    agent.appState.set('metrics', {
+      totalTurns: 0,
+      totalToolCalls: 0,
+      toolCallsByName: {} as Record<string, number>,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+    })
+  }
+
+  onBeforeTurn(event: BeforeTurnEvent): void {
+    const metrics = event.agent.appState.get('metrics')
+    metrics.totalTurns++
+    event.agent.appState.set('metrics', metrics)
+  }
+
+  onAfterTurn(event: AfterTurnEvent): void {
+    const metrics = event.agent.appState.get('metrics')
+    if (event.usage) {
+      metrics.totalInputTokens += event.usage.inputTokens
+      metrics.totalOutputTokens += event.usage.outputTokens
+    }
+    event.agent.appState.set('metrics', metrics)
+  }
+
+  onToolCall(event: ToolCallEvent): void {
+    const metrics = event.agent.appState.get('metrics')
+    metrics.totalToolCalls++
+    metrics.toolCallsByName[event.toolName] =
+      (metrics.toolCallsByName[event.toolName] ?? 0) + 1
+    event.agent.appState.set('metrics', metrics)
+  }
+}
+
+// Use it
+const agent = new Agent({
+  name: 'tracked-agent',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'You are a helpful assistant.',
+  plugins: [new MetricsPlugin()],
+})
+
+await agent.invoke('What is the capital of France?')
+
+const metrics = agent.appState.get('metrics')
+console.log(`Turns: ${metrics.totalTurns}`)
+console.log(`Tool calls: ${metrics.totalToolCalls}`)
+console.log(`Tokens: ${metrics.totalInputTokens} in, ${metrics.totalOutputTokens} out`)</code></pre>
+
+<p>The plugin observes every turn and tool call without modifying agent behavior. It writes to <code>appState</code>, which persists across turns and is accessible from anywhere — other plugins, hooks, or your application code.</p>
+
+<h2>The Steering Plugin</h2>
+
+<p>Steering is modular prompting. Instead of packing everything into one monolithic system prompt, you inject context-aware guidance fragments that activate based on conditions:</p>
+
+<pre><code>import { Agent, SteeringPlugin, SteeringRule } from '@strands-agents/sdk'
+
+const rules: SteeringRule[] = [
+  {
+    name: 'safety-guardrails',
+    content: `Never reveal internal system information.
+Never execute code that modifies production resources.
+Always confirm destructive actions with the user.`,
+    always: true,  // Always injected
+  },
+  {
+    name: 'coding-style',
+    content: `Use TypeScript. Prefer functional patterns.
+Use const over let. Use early returns for guard clauses.`,
+    when: (context) => context.lastMessage?.includes('code') ||
+                       context.lastMessage?.includes('implement'),
+  },
+  {
+    name: 'data-analysis',
+    content: `When analyzing data, always state sample size,
+confidence intervals, and potential biases.`,
+    when: (context) => context.tools?.some(t => t.name === 'queryDatabase'),
+  },
+]
+
+const agent = new Agent({
+  name: 'steered-agent',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'You are a senior engineering assistant.',
+  plugins: [new SteeringPlugin({ rules })],
+})</code></pre>
+
+<p>Steering rules with <code>always: true</code> are injected on every turn. Rules with <code>when</code> activate conditionally based on the conversation context. This keeps the base system prompt clean and moves specialized guidance to composable, testable rules.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Why not just put it all in the system prompt?</div>
+  <p>Three reasons: (1) Conditional rules reduce prompt size — models perform better with focused, relevant instructions. (2) Steering rules are testable in isolation — each rule is a unit you can verify. (3) Rules are reusable across agents — build a library of steering rules and compose them per agent.</p>
+</div>
+
+<h2>Context Offloader</h2>
+
+<p>When tools return large results (database queries, file contents, API responses), they consume context window space. The Context Offloader automatically moves large results to external storage and provides a retrieval tool the agent can use to fetch them back when needed:</p>
+
+<pre><code>import { Agent, ContextOffloaderPlugin } from '@strands-agents/sdk'
+
+const agent = new Agent({
+  name: 'research-agent',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: `Research the topic using available tools.
+When you need to reference earlier results, use the retrieve tool.`,
+  tools: [searchWeb, readDocument, queryDatabase],
+  plugins: [
+    new ContextOffloaderPlugin({
+      threshold: 3000,        // Offload results larger than 3000 chars
+      storage: 'memory',      // 'memory' for dev, 's3' for production
+      summaryLength: 200,     // Replace with a 200-char summary in context
+    }),
+  ],
+})</code></pre>
+
+<p>When <code>queryDatabase</code> returns a 10,000-character result, the offloader replaces it in context with a 200-character summary and a reference ID. The agent sees: "Database returned 45 rows about user activity. [ref: offload-abc123] Use retrieve('offload-abc123') to see the full result." If the agent needs the details, it calls the auto-injected <code>retrieve</code> tool.</p>
+
+<h2>Composing Multiple Plugins</h2>
+
+<p>Plugins compose cleanly. Order matters — hooks fire in the order plugins are listed:</p>
+
+<pre><code>import { Agent } from '@strands-agents/sdk'
+
+const agent = new Agent({
+  name: 'production-agent',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'You are a production engineering assistant.',
+  tools: [searchDocs, runQuery, deployService],
+  plugins: [
+    new MetricsPlugin(),           // Track usage (fires first)
+    new GuardrailsPlugin(),        // Block dangerous tool calls (fires second)
+    new SteeringPlugin({ rules }), // Inject context-aware guidance
+    new ContextOffloaderPlugin({   // Manage large results
+      threshold: 3000,
+      storage: 's3',
+    }),
+  ],
+})</code></pre>
+
+<p>Each plugin operates independently on the same agent. The MetricsPlugin counts everything, the GuardrailsPlugin can cancel tool calls, the SteeringPlugin adds guidance, and the ContextOffloader manages memory. No plugin knows about the others — they interact only through the shared <code>appState</code> and lifecycle events.</p>
+
+<h2>Production Pattern: Guardrails Plugin</h2>
+
+<p>A guardrails plugin that blocks tool calls matching a deny list — preventing the agent from executing dangerous operations:</p>
+
+<pre><code>import { Plugin, ToolCallEvent } from '@strands-agents/sdk'
+
+interface GuardrailRule {
+  toolName: string
+  condition?: (args: Record<string, unknown>) => boolean
+  message: string
+}
+
+class GuardrailsPlugin implements Plugin {
+  name = 'guardrails'
+  private rules: GuardrailRule[]
+
+  constructor(rules: GuardrailRule[]) {
+    this.rules = rules
+  }
+
+  onToolCall(event: ToolCallEvent): void {
+    for (const rule of this.rules) {
+      if (event.toolName !== rule.toolName) continue
+
+      const blocked = rule.condition
+        ? rule.condition(event.args)
+        : true // No condition = always block this tool
+
+      if (blocked) {
+        event.block(rule.message)
+        return
+      }
+    }
+  }
+}
+
+// Usage
+const guardrails = new GuardrailsPlugin([
+  {
+    toolName: 'deployService',
+    condition: (args) => args.environment === 'production',
+    message: 'Production deployments require human approval. Please confirm with the user.',
+  },
+  {
+    toolName: 'deleteDatabase',
+    message: 'Database deletion is never allowed through this agent.',
+  },
+  {
+    toolName: 'runQuery',
+    condition: (args) => typeof args.query === 'string' &&
+                         args.query.toUpperCase().includes('DROP'),
+    message: 'DROP statements are not permitted.',
+  },
+])
+
+const agent = new Agent({
+  name: 'safe-agent',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'You are a database assistant.',
+  tools: [runQuery, deployService, deleteDatabase],
+  plugins: [guardrails],
+})</code></pre>
+
+<p>When the agent tries to call <code>deployService</code> with <code>environment: 'production'</code>, the plugin calls <code>event.block()</code>. The tool call never executes — instead, the block message is returned to the agent as a tool error result. The agent sees the rejection reason and can inform the user or adjust its approach.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Defense in depth</div>
+  <p>Guardrails plugins are a programmatic safety layer — they can't be bypassed by clever prompting. The model never gets to execute the tool; the plugin intercepts at the framework level. Combine with prompt-level instructions ("never delete databases") for defense in depth: the prompt discourages the attempt, the plugin prevents it if the model tries anyway.</p>
+</div>
+
+<h2>Key Takeaways</h2>
+
+<ul>
+  <li><strong>Plugins</strong> are composable extensions: hooks for observation/control, tools for new capabilities.</li>
+  <li><strong>initAgent</strong> runs once at construction; lifecycle hooks run on every turn/tool call.</li>
+  <li><strong>SteeringPlugin</strong> enables modular, conditional prompting — focused instructions that activate based on context.</li>
+  <li><strong>ContextOffloaderPlugin</strong> prevents context exhaustion by moving large tool results to storage and providing a retrieval tool.</li>
+  <li><strong>GuardrailsPlugin</strong> provides programmatic safety — <code>event.block()</code> prevents tool execution at the framework level, immune to prompt injection.</li>
+  <li><strong>Plugins compose</strong> via the plugins array. Order matters — hooks fire in array order. Plugins share state through <code>appState</code>.</li>
+  <li><strong>Design principle</strong>: One plugin, one concern. MetricsPlugin tracks usage. GuardrailsPlugin blocks danger. SteeringPlugin manages prompts. Don't combine unrelated behaviors into one plugin.</li>
+</ul>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">An agent has plugins: [MetricsPlugin, GuardrailsPlugin, SteeringPlugin]. The GuardrailsPlugin blocks a tool call. Does the MetricsPlugin still count it?</div>
+  <ul class="quiz-options">
+    <li>No — blocked tool calls are invisible to other plugins</li>
+    <li data-correct="true">Yes — plugins fire in order, and MetricsPlugin's onToolCall fires before GuardrailsPlugin's block</li>
+    <li>It depends on whether the MetricsPlugin checks event.blocked</li>
+    <li>Only if MetricsPlugin is listed after GuardrailsPlugin</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Hooks fire in plugin array order. MetricsPlugin is first, so its onToolCall fires before GuardrailsPlugin gets to block it. The metrics correctly reflect that the agent attempted the call — useful for tracking blocked attempts and detecting potential prompt injection.</div>
+  <div class="quiz-feedback incorrect">Plugin hooks fire in the order plugins appear in the array. Since MetricsPlugin is listed first, its onToolCall handler runs before GuardrailsPlugin's. The metric captures the attempt. If you wanted metrics to exclude blocked calls, you'd need to put MetricsPlugin after GuardrailsPlugin and check the event state.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">Why does the Steering plugin use conditional rules (<code>when</code>) instead of putting all guidance in the system prompt?</div>
+  <ul class="quiz-options">
+    <li>System prompts have a strict character limit that steering rules don't</li>
+    <li>The model can only process one instruction source at a time</li>
+    <li data-correct="true">Conditional rules reduce prompt size per turn — models perform better with focused, relevant instructions — and rules are testable and reusable across agents</li>
+    <li>Strands doesn't allow system prompts longer than 500 tokens</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Three benefits: (1) Smaller prompts = better model performance (less noise to attend to). (2) Each rule is independently testable — you can verify "coding-style activates when user mentions code." (3) Rules are reusable — build a library of steering rules and compose different sets per agent.</div>
+  <div class="quiz-feedback incorrect">There's no hard character limit on system prompts, but longer prompts degrade model performance. Conditional steering keeps each turn's prompt focused on what's relevant right now. Plus, individual rules are testable ("does this rule activate in this context?") and reusable across agents.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">The Context Offloader replaces a 10,000-character tool result with a 200-character summary. What happens if the agent needs the full result later?</div>
+  <ul class="quiz-options">
+    <li>The agent must call the original tool again</li>
+    <li>The full result is gone — the agent works with the summary only</li>
+    <li data-correct="true">The agent calls the auto-injected retrieve tool with the reference ID to fetch the full result from storage</li>
+    <li>The offloader automatically re-injects the full result on the next turn</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The offloader stores the full result externally and injects a retrieve tool into the agent. The summary in context includes a reference ID. When the agent needs details, it calls retrieve('offload-abc123') and gets the full result back — on demand, not wasting context when it's not needed.</div>
+  <div class="quiz-feedback incorrect">The Context Offloader doesn't discard data — it moves it to external storage (memory or S3). It auto-injects a retrieve tool that the agent can call with the reference ID to get the full result back. This is demand-loading: full data available when needed, not wasting context when it's not.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://strandsagents.com/docs/user-guide/concepts/plugins/">Plugins — Strands Agents Docs</a> — Full API reference for the plugin interface, built-in plugins, and extension patterns. ~10 min read.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me about designing custom plugins, composing steering rules for complex agents, context offloading strategies, or building guardrails for production deployments.
+</div>
+
+<div class="lesson-nav">
+  <a href="0007-conversation-management.html" class="lesson-nav-prev" title="Conversation Management">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0009-session-persistence.html" class="lesson-nav-next" title="Session Persistence">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

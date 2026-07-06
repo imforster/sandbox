@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 9: Session Persistence</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0008-plugins-and-steering.html" class="lesson-back-top" title="Plugins &amp; Steering"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0010-deploying-to-production.html" class="lesson-next-top" title="Deploying to Production">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Session Persistence</h1>
+
+<div class="lesson-meta">
+  Lesson 9 · Strands Agents (TypeScript) · ~12 minutes
+</div>
+
+<p>An in-memory agent dies when the process ends. For production agents — ones that serve multiple users, survive Lambda cold starts, or resume multi-turn conversations days later — you need session persistence. Strands provides a SessionManager that snapshots the full agent state to pluggable storage backends.</p>
+
+<h2>Why Sessions Matter</h2>
+
+<p>Without persistence, every agent invocation starts fresh. The user says "continue where we left off" and the agent has no idea what they're talking about. Session persistence solves three production problems:</p>
+
+<ul>
+  <li><strong>Multi-turn conversations</strong> — User talks to your agent across HTTP requests. Each request is a new Lambda invocation, but the conversation continues seamlessly.</li>
+  <li><strong>Multi-user isolation</strong> — Each user gets their own session. User A's conversation doesn't leak into User B's context.</li>
+  <li><strong>Crash recovery</strong> — The process dies mid-conversation. When it restarts, the agent resumes from the last snapshot — no lost context.</li>
+</ul>
+
+<h2>SessionManager with FileStorage</h2>
+
+<p>For local development, use FileStorage — sessions persist to disk as JSON files:</p>
+
+<pre><code>import { Agent, SessionManager, FileStorage } from '@strands-agents/sdk'
+
+const storage = new FileStorage({
+  directory: './sessions',  // Writes to ./sessions/<sessionId>.json
+})
+
+const sessionManager = new SessionManager({ storage })
+
+const agent = new Agent({
+  name: 'assistant',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'You are a helpful project assistant.',
+  sessionManager,
+})
+
+// First conversation — creates a new session
+const session = await sessionManager.create()
+await agent.invoke('My project is called Atlas. We use TypeScript.', {
+  sessionId: session.id,
+})
+
+// Later — resume the same session
+await agent.invoke('What language does Atlas use?', {
+  sessionId: session.id,
+})
+// Agent remembers: "TypeScript" — it loaded the session from disk</code></pre>
+
+<p>FileStorage is simple and debuggable — you can open the JSON file and inspect the conversation. But it's local-only, not suitable for distributed systems.</p>
+
+<h2>SessionManager with S3Storage</h2>
+
+<p>For production, use S3Storage — sessions persist to an S3 bucket, accessible from any compute instance:</p>
+
+<pre><code>import { Agent, SessionManager, S3Storage } from '@strands-agents/sdk'
+
+const storage = new S3Storage({
+  bucket: 'my-agent-sessions',
+  prefix: 'v1/',             // Optional: organize by version
+  region: 'us-east-1',
+})
+
+const sessionManager = new SessionManager({ storage })
+
+const agent = new Agent({
+  name: 'production-assistant',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'You are a customer support agent.',
+  sessionManager,
+})
+
+// In a Lambda handler:
+export async function handler(event: APIGatewayEvent) {
+  const sessionId = event.headers['x-session-id']
+
+  const result = await agent.invoke(event.body, { sessionId })
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ response: result.message?.content }),
+  }
+}</code></pre>
+
+<p>S3Storage handles concurrent access, works across Lambda invocations, and scales to millions of sessions. The session is loaded at the start of each invocation and saved at the end — atomic per turn.</p>
+
+<h2>What Gets Persisted</h2>
+
+<p>A session snapshot captures everything the agent needs to resume:</p>
+
+<table>
+  <thead>
+    <tr><th>Component</th><th>Persisted</th><th>Why</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>messages</code></td><td>Full conversation history</td><td>The agent needs context of prior turns to continue coherently</td></tr>
+    <tr><td><code>appState</code></td><td>All key-value pairs</td><td>Custom state (user preferences, accumulated data, counters) survives restarts</td></tr>
+    <tr><td><code>systemPrompt</code></td><td>Current system prompt</td><td>Allows dynamic prompt evolution across sessions</td></tr>
+    <tr><td><code>conversationManager</code></td><td>Manager state (summaries, window position)</td><td>Compression state resumes correctly — no re-summarization</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">What doesn't get persisted</div>
+  <p>Tools and plugins are not serialized — they're re-attached when the agent is constructed. The session stores data, not code. This means your agent constructor must always provide the same tools and plugins, regardless of whether it's a fresh session or a resumed one.</p>
+</div>
+
+<h2>Immutable Snapshots</h2>
+
+<p>Every save creates an immutable snapshot with a UUID v7 ID (time-ordered). This gives you time-travel — restore a session to any previous point:</p>
+
+<pre><code>// List snapshots for a session
+const snapshots = await sessionManager.listSnapshots(sessionId)
+// Returns: [{ id: '019...' , createdAt: '2026-07-03T...' }, ...]
+
+// Restore to a specific snapshot (undo the last 3 turns)
+await sessionManager.restore(sessionId, snapshots[2].id)
+
+// The agent now sees the conversation as it was at snapshot 2
+await agent.invoke('Let me try a different approach...', { sessionId })</code></pre>
+
+<p>UUID v7 ordering means snapshots sort chronologically by default. You can also set a <code>snapshotTrigger</code> callback to control when snapshots are created:</p>
+
+<pre><code>const sessionManager = new SessionManager({
+  storage,
+  snapshotTrigger: (event) => {
+    // Only snapshot after tool calls (not after every turn)
+    return event.type === 'afterToolCall'
+  },
+})</code></pre>
+
+<p>This reduces storage costs for chatty conversations while still capturing state after meaningful actions (tool executions).</p>
+
+<h2>Multi-Agent Session Management</h2>
+
+<p>In a multi-agent system (Graph, Swarm, Workflow), only the <strong>orchestrator</strong> gets a session manager. Inner agents don't persist independently — their state flows through the orchestrator's conversation:</p>
+
+<pre><code>import { Agent, SessionManager, S3Storage, Graph } from '@strands-agents/sdk'
+
+const researcher = new Agent({
+  name: 'researcher',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'Research topics thoroughly.',
+  // No sessionManager — inner agent
+})
+
+const writer = new Agent({
+  name: 'writer',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'Write clear articles from research.',
+  // No sessionManager — inner agent
+})
+
+const graph = new Graph({
+  nodes: [researcher, writer],
+  edges: [['researcher', 'writer']],
+  sessionManager: new SessionManager({  // Orchestrator persists
+    storage: new S3Storage({ bucket: 'agent-sessions' }),
+  }),
+})</code></pre>
+
+<p>The orchestrator's session captures the full multi-agent conversation — including what each inner agent produced. When you restore the session, the orchestrator reconstructs the conversation context that includes all inner agent outputs.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Don't double-persist</div>
+  <p>If both the orchestrator and inner agents have session managers, you'll get duplicate storage, conflicting state, and confusing restore behavior. One session manager per system — always on the outermost agent or orchestrator.</p>
+</div>
+
+<h2>Custom Storage Backends</h2>
+
+<p>Implement the <code>SnapshotStorage</code> interface to use any storage system — DynamoDB, Redis, PostgreSQL, or your own service:</p>
+
+<pre><code>import { SnapshotStorage, Snapshot } from '@strands-agents/sdk'
+
+class DynamoDBStorage implements SnapshotStorage {
+  private tableName: string
+  private client: DynamoDBDocumentClient
+
+  constructor(tableName: string) {
+    this.tableName = tableName
+    this.client = DynamoDBDocumentClient.from(new DynamoDBClient({}))
+  }
+
+  async save(sessionId: string, snapshot: Snapshot): Promise<void> {
+    await this.client.send(new PutCommand({
+      TableName: this.tableName,
+      Item: {
+        pk: sessionId,
+        sk: snapshot.id,    // UUID v7 — sorts chronologically
+        data: JSON.stringify(snapshot),
+        ttl: Math.floor(Date.now() / 1000) + 86400 * 30,  // 30-day TTL
+      },
+    }))
+  }
+
+  async load(sessionId: string): Promise<Snapshot | null> {
+    const result = await this.client.send(new QueryCommand({
+      TableName: this.tableName,
+      KeyConditionExpression: 'pk = :pk',
+      ExpressionAttributeValues: { ':pk': sessionId },
+      ScanIndexForward: false,  // Latest first
+      Limit: 1,
+    }))
+    if (!result.Items?.length) return null
+    return JSON.parse(result.Items[0].data)
+  }
+
+  async listSnapshots(sessionId: string): Promise<Snapshot[]> {
+    const result = await this.client.send(new QueryCommand({
+      TableName: this.tableName,
+      KeyConditionExpression: 'pk = :pk',
+      ExpressionAttributeValues: { ':pk': sessionId },
+    }))
+    return result.Items?.map(item => JSON.parse(item.data)) ?? []
+  }
+}
+
+// Use it
+const sessionManager = new SessionManager({
+  storage: new DynamoDBStorage('agent-sessions'),
+})</code></pre>
+
+<h2>Production Pattern: Multi-Turn Lambda Assistant</h2>
+
+<p>Complete pattern for a multi-turn assistant deployed to Lambda with S3 session persistence:</p>
+
+<pre><code>import { Agent, SessionManager, S3Storage, SummarizingConversationManager } from '@strands-agents/sdk'
+import { APIGatewayEvent, APIGatewayProxyResult } from 'aws-lambda'
+
+// Agent is constructed once (reused across warm invocations)
+const agent = new Agent({
+  name: 'support-assistant',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: `You are a customer support assistant for Acme Corp.
+Help users with account issues, billing questions, and product guidance.
+Always verify the user's identity before discussing account details.`,
+  tools: [lookupAccount, checkBilling, createTicket],
+  sessionManager: new SessionManager({
+    storage: new S3Storage({
+      bucket: process.env.SESSION_BUCKET!,
+      prefix: 'support/v2/',
+    }),
+  }),
+  conversationManager: new SummarizingConversationManager({
+    preserveRecentMessages: 10,
+    proactiveCompression: { enabled: true, compressionThreshold: 0.7 },
+  }),
+  limits: { turns: 5 },  // Safety: max 5 turns per invocation
+})
+
+export async function handler(event: APIGatewayEvent): Promise<APIGatewayProxyResult> {
+  const body = JSON.parse(event.body ?? '{}')
+  const sessionId = body.sessionId ?? crypto.randomUUID()
+  const userMessage = body.message
+
+  if (!userMessage) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'No message provided' }) }
+  }
+
+  try {
+    const result = await agent.invoke(userMessage, { sessionId })
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        sessionId,
+        response: result.message?.content,
+        turnCount: result.turns,
+      }),
+    }
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Agent failed', sessionId }),
+    }
+  }
+}</code></pre>
+
+<p>This pattern handles: (1) New conversations — <code>sessionId</code> is generated. (2) Continued conversations — <code>sessionId</code> from the client resumes where it left off. (3) Cold starts — the session loads from S3 regardless of which Lambda instance handles the request. (4) Long conversations — the SummarizingConversationManager keeps context under control.</p>
+
+<h2>Key Takeaways</h2>
+
+<ul>
+  <li><strong>SessionManager</strong> persists full agent state (messages, appState, conversationManager state) to pluggable storage.</li>
+  <li><strong>FileStorage</strong> for development — human-readable JSON on disk.</li>
+  <li><strong>S3Storage</strong> for production — scales to millions of sessions, works across distributed compute.</li>
+  <li><strong>Immutable snapshots</strong> with UUID v7 enable time-travel restore to any previous conversation point.</li>
+  <li><strong>One session manager per system</strong> — on the orchestrator for multi-agent systems, never on inner agents.</li>
+  <li><strong>Custom backends</strong> via <code>SnapshotStorage</code> interface — DynamoDB, Redis, PostgreSQL, anything.</li>
+  <li><strong>Tools and plugins aren't serialized</strong> — provide them at construction time every time.</li>
+</ul>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">Your multi-agent Graph has a researcher and writer. Where should the SessionManager be attached?</div>
+  <ul class="quiz-options">
+    <li>On both the researcher and writer agents for redundancy</li>
+    <li>On the researcher only (first in the pipeline)</li>
+    <li data-correct="true">On the Graph orchestrator — inner agents don't get their own session managers</li>
+    <li>On whichever agent produces the final output</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The orchestrator (Graph) manages the full conversation flow — including what each inner agent produced. One session manager captures everything. Putting it on inner agents would cause duplicate storage and conflicting state on restore.</div>
+  <div class="quiz-feedback incorrect">In multi-agent systems, only the outermost orchestrator gets a session manager. The Graph captures the full execution (researcher output → writer output) in its own conversation state. Inner agents contribute to the orchestrator's state, not their own independent sessions.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">A Lambda function handles a request but the agent's tools and plugins aren't in the session snapshot. How does the agent have them on a resumed session?</div>
+  <ul class="quiz-options">
+    <li>The session manager automatically discovers and re-attaches them</li>
+    <li data-correct="true">Tools and plugins are provided at agent construction time — they're code, not data, so they're always available regardless of session state</li>
+    <li>They're serialized as JavaScript source code in the snapshot</li>
+    <li>The agent operates without tools on resumed sessions</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Sessions store data (messages, appState), not code (tools, plugins). Your agent constructor always provides the full tool and plugin set. When a session is restored, the data is loaded and the code (tools, plugins) is already there from construction. This separation means your tools can evolve between sessions without migration.</div>
+  <div class="quiz-feedback incorrect">Sessions persist data, not code. Tools and plugins are JavaScript functions — they exist in your deployed code, provided at agent construction. The session restores the conversation state (messages, appState), and the tools are always there because the agent constructor declares them. This is by design: it allows tool code to evolve between sessions.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://strandsagents.com/docs/user-guide/concepts/agents/session-management/">Session Management — Strands Agents Docs</a> — Full API reference for SessionManager, storage backends, snapshots, and multi-agent session patterns. ~10 min read.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me about session lifecycle management, storage backend selection, snapshot strategies, multi-tenant isolation, or handling session migration when your agent's schema evolves.
+</div>
+
+<div class="lesson-nav">
+  <a href="0008-plugins-and-steering.html" class="lesson-nav-prev" title="Plugins &amp; Steering">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0010-deploying-to-production.html" class="lesson-nav-next" title="Deploying to Production">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

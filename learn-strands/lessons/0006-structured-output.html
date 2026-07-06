@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6: Structured Output</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0005-multi-agent-orchestration.html" class="lesson-back-top" title="Multi-Agent Orchestration"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0007-conversation-management.html" class="lesson-next-top" title="Conversation Management">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Structured Output</h1>
+
+<div class="lesson-meta">
+  Lesson 6 · Strands Agents (TypeScript) · ~12 minutes
+</div>
+
+<p>An agent that returns raw text is fine for chat. But in production, your downstream code needs typed data — objects it can validate, store, and route without string parsing. Strands solves this with Zod schemas on the agent constructor, giving you type-safe structured output with automatic validation and retries.</p>
+
+<h2>Why Structured Output Matters</h2>
+
+<p>Consider what happens without it: your agent produces a response, and your application code has to parse free-form text into usable data. You write regex, you handle edge cases, you pray the model doesn't change its formatting. One day it wraps JSON in markdown backticks. Another day it adds a preamble. Your parser breaks at 2am.</p>
+
+<p>Structured output eliminates this entirely. You define a Zod schema, and Strands guarantees the agent's output conforms to it — or throws a typed error you can handle. The model is constrained at the API level to produce valid JSON matching your schema.</p>
+
+<h2>Defining Output Schemas</h2>
+
+<p>Pass a Zod schema as <code>structuredOutputSchema</code> on the Agent constructor. The agent's final response will be validated against this schema:</p>
+
+<pre><code>import { Agent } from '@strands-agents/sdk'
+import { z } from 'zod'
+
+const sentimentSchema = z.object({
+  sentiment: z.enum(['positive', 'negative', 'neutral']),
+  confidence: z.number().min(0).max(1),
+  reasoning: z.string(),
+  keywords: z.array(z.string()),
+})
+
+const analyzer = new Agent({
+  name: 'sentiment-analyzer',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: `Analyze the sentiment of the given text.
+Identify the overall sentiment, your confidence level, reasoning, and key words.`,
+  structuredOutputSchema: sentimentSchema,
+})</code></pre>
+
+<p>The schema is both a runtime validator and a type definition. TypeScript infers the output type from the schema — no manual type declarations needed.</p>
+
+<h2>Accessing Typed Results</h2>
+
+<p>When you invoke an agent with a structured output schema, the result includes a <code>structuredOutput</code> field with full type inference:</p>
+
+<pre><code>const result = await analyzer.invoke(
+  'The new feature launch exceeded all expectations. Users love it!'
+)
+
+// result.structuredOutput is fully typed:
+// { sentiment: 'positive' | 'negative' | 'neutral', confidence: number, ... }
+const { sentiment, confidence, reasoning, keywords } = result.structuredOutput
+
+console.log(`Sentiment: ${sentiment} (${(confidence * 100).toFixed(0)}% confident)`)
+console.log(`Keywords: ${keywords.join(', ')}`)
+console.log(`Reasoning: ${reasoning}`)</code></pre>
+
+<p>No <code>JSON.parse</code>. No type assertions. No "I hope the model returned what I asked for." The schema enforces it, and TypeScript knows the shape at compile time.</p>
+
+<h2>Error Handling</h2>
+
+<p>When the model produces output that doesn't match your schema, Strands throws a <code>StructuredOutputError</code>. This is distinct from other errors — it means the model responded, but the response didn't validate:</p>
+
+<pre><code>import { StructuredOutputError } from '@strands-agents/sdk'
+
+try {
+  const result = await analyzer.invoke('Analyze this review...')
+  // Use result.structuredOutput safely
+} catch (error) {
+  if (error instanceof StructuredOutputError) {
+    console.error('Model output failed validation:', error.validationErrors)
+    console.error('Raw output was:', error.rawOutput)
+    // Decide: retry, fall back to a default, or escalate
+  } else {
+    // Other errors: network, rate limit, etc.
+    throw error
+  }
+}</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">When does this actually fire?</div>
+  <p>In practice, <code>StructuredOutputError</code> is rare with well-designed schemas because Strands uses the model's constrained generation mode. But it can happen with complex Zod refinements that the model can't satisfy (e.g., a <code>.refine()</code> that checks business logic the model doesn't know about). Always handle it.</p>
+</div>
+
+<h2>Auto-Retries with Zod Refinements</h2>
+
+<p>Zod supports <code>.refine()</code> for custom validation logic beyond type checks. Strands integrates with this: when a refinement fails, the framework can automatically retry the model with feedback about what went wrong.</p>
+
+<pre><code>const actionItemSchema = z.object({
+  title: z.string().min(5, 'Title must be at least 5 characters'),
+  assignee: z.string(),
+  dueDate: z.string().refine(
+    (d) => !isNaN(Date.parse(d)),
+    'Must be a valid ISO date string'
+  ),
+  priority: z.enum(['high', 'medium', 'low']),
+  context: z.string().refine(
+    (c) => c.split(' ').length >= 10,
+    'Context must be at least 10 words for downstream processing'
+  ),
+})
+
+const extractor = new Agent({
+  name: 'action-item-extractor',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'Extract action items from meeting transcripts.',
+  structuredOutputSchema: actionItemSchema,
+  structuredOutputRetries: 2, // Retry up to 2 times on validation failure
+})</code></pre>
+
+<p>When the model produces output where <code>context</code> is only 6 words, Strands catches the refinement failure and re-prompts the model with the error message: "Context must be at least 10 words for downstream processing." The model corrects itself and retries — no manual intervention.</p>
+
+<h2>Combining Structured Output with Tools</h2>
+
+<p>Structured output and tools work together naturally. The agent uses tools to gather information, then produces a structured result from what it found:</p>
+
+<pre><code>import { Agent, tool } from '@strands-agents/sdk'
+import { z } from 'zod'
+
+const lookupUser = tool({
+  name: 'lookupUser',
+  description: 'Look up a user by email address',
+  schema: z.object({ email: z.string().email() }),
+  handler: async ({ email }) => {
+    // Simulate database lookup
+    return { name: 'Alice Chen', role: 'engineer', team: 'Platform' }
+  },
+})
+
+const lookupTickets = tool({
+  name: 'lookupTickets',
+  description: 'Get open tickets assigned to a user',
+  schema: z.object({ userName: z.string() }),
+  handler: async ({ userName }) => {
+    return [
+      { id: 'PLAT-123', title: 'Fix auth timeout', priority: 'high' },
+      { id: 'PLAT-456', title: 'Update SDK docs', priority: 'low' },
+    ]
+  },
+})
+
+const reportSchema = z.object({
+  userName: z.string(),
+  team: z.string(),
+  openTickets: z.number(),
+  highPriorityCount: z.number(),
+  summary: z.string(),
+})
+
+const statusReporter = new Agent({
+  name: 'status-reporter',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: `Look up the user and their tickets, then produce a status summary.`,
+  tools: [lookupUser, lookupTickets],
+  structuredOutputSchema: reportSchema,
+})
+
+const result = await statusReporter.invoke('Status report for alice@company.com')
+// result.structuredOutput: { userName, team, openTickets, highPriorityCount, summary }</code></pre>
+
+<p>The agent loops through tools (lookup user → lookup tickets), then produces the structured output as its final response. The schema constrains only the final output — tool calls remain flexible.</p>
+
+<h2>Streaming + Structured Output</h2>
+
+<p>You can stream events from an agent with structured output. The events flow normally during execution (tool calls, intermediate reasoning), and the typed <code>structuredOutput</code> is available on the final result:</p>
+
+<pre><code>const result = await statusReporter.invoke('Status for alice@company.com', {
+  streaming: true,
+  onEvent: (event) => {
+    switch (event.type) {
+      case 'toolCall':
+        console.log(`Calling: ${event.toolName}`)
+        break
+      case 'textChunk':
+        // Intermediate reasoning (not the structured output)
+        process.stdout.write(event.text)
+        break
+    }
+  },
+})
+
+// After streaming completes, structured output is available
+console.log('Report:', result.structuredOutput)</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">Streaming nuance</div>
+  <p>Structured output is available only after the stream completes — it's the final validated result. You can't incrementally build the typed object from stream chunks. Use streaming for progress feedback (tool calls, reasoning), not for partial structured data.</p>
+</div>
+
+<h2>Practical Pattern: Meeting Action Item Extractor</h2>
+
+<p>Let's build a complete example: an agent that takes raw meeting transcript text and extracts structured action items with assignees, due dates, and priorities.</p>
+
+<pre><code>import { Agent } from '@strands-agents/sdk'
+import { z } from 'zod'
+
+// Define the output schema
+const meetingOutputSchema = z.object({
+  meetingTitle: z.string(),
+  date: z.string(),
+  attendees: z.array(z.string()),
+  actionItems: z.array(z.object({
+    id: z.number(),
+    title: z.string().min(5),
+    assignee: z.string(),
+    dueDate: z.string().refine(
+      (d) => !isNaN(Date.parse(d)),
+      'Must be a valid ISO date'
+    ),
+    priority: z.enum(['high', 'medium', 'low']),
+    context: z.string(),
+  })),
+  decisions: z.array(z.object({
+    decision: z.string(),
+    rationale: z.string(),
+  })),
+  nextMeeting: z.string().optional(),
+})
+
+// Create the agent
+const meetingProcessor = new Agent({
+  name: 'meeting-processor',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: `You process meeting transcripts into structured data.
+Extract:
+- Meeting metadata (title, date, attendees)
+- Action items with assignees, due dates, and priorities
+- Key decisions with rationale
+- Next meeting date if mentioned
+
+Be precise with dates (ISO format). Infer priority from urgency language.
+If no due date is mentioned, use 1 week from the meeting date.`,
+  structuredOutputSchema: meetingOutputSchema,
+  structuredOutputRetries: 2,
+})
+
+// Use it
+const transcript = `
+Team sync - July 3, 2026
+Attendees: Alice, Bob, Carol
+
+Alice: The auth service is timing out under load. We need to fix this before
+the launch next Tuesday. Bob, can you take this?
+
+Bob: Yes, I'll have a fix by Monday. I'll also update the load test suite.
+
+Carol: I've decided we're going with Redis for the session cache instead of
+DynamoDB. The latency numbers are 3x better for our access pattern.
+
+Alice: Good call. Let's meet again Thursday to review Bob's fix.
+`
+
+const result = await meetingProcessor.invoke(transcript)
+const { actionItems, decisions, nextMeeting } = result.structuredOutput
+
+// Fully typed — send to your task management system
+for (const item of actionItems) {
+  console.log(`[${item.priority.toUpperCase()}] ${item.title}`)
+  console.log(`  Assigned to: ${item.assignee}, due: ${item.dueDate}`)
+}
+
+// Decisions are structured too
+for (const d of decisions) {
+  console.log(`Decision: ${d.decision}`)
+  console.log(`  Why: ${d.rationale}`)
+}</code></pre>
+
+<p>The output is guaranteed to match your schema. Feed it directly to a project management API, store it in a database with typed columns, or pass it to another agent in a workflow. No parsing, no prayer.</p>
+
+<h2>Key Takeaways</h2>
+
+<ul>
+  <li><strong>Structured output</strong> via <code>structuredOutputSchema</code> guarantees typed, validated agent responses — no string parsing.</li>
+  <li><strong>Type inference</strong> flows from Zod schema to <code>result.structuredOutput</code> — zero manual type declarations.</li>
+  <li><strong><code>StructuredOutputError</code></strong> gives you typed error handling when validation fails.</li>
+  <li><strong><code>structuredOutputRetries</code></strong> + Zod refinements enable auto-correction — the model sees the validation error and tries again.</li>
+  <li><strong>Tools + structured output</strong> compose naturally: tools gather data, structured schema constrains the final response.</li>
+  <li><strong>Streaming</strong> works with structured output but the typed result is only available after stream completion.</li>
+  <li><strong>Design tip</strong>: Keep schemas focused. One agent, one output shape. If you need multiple output types, use separate agents in a workflow.</li>
+</ul>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">An agent with <code>structuredOutputRetries: 2</code> produces output where a Zod <code>.refine()</code> fails. What happens?</div>
+  <ul class="quiz-options">
+    <li>The agent throws StructuredOutputError immediately</li>
+    <li data-correct="true">Strands re-prompts the model with the validation error message and retries up to 2 more times before throwing</li>
+    <li>The agent returns null for structuredOutput and sets an error flag</li>
+    <li>The refinement is silently ignored and the output is returned as-is</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Strands feeds the Zod error message back to the model as context for the retry. The model sees exactly what failed ("Context must be at least 10 words") and can correct it. After exhausting retries, it throws StructuredOutputError.</div>
+  <div class="quiz-feedback incorrect">With retries configured, Strands doesn't fail immediately. It takes the Zod error message, feeds it back to the model as "your output didn't validate because: [message]", and lets the model try again. Only after all retries are exhausted does it throw StructuredOutputError.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">You want to stream tool-call progress to a UI while also getting a typed result. Which approach works?</div>
+  <ul class="quiz-options">
+    <li>Parse the streaming text chunks incrementally into the Zod schema</li>
+    <li>Use a separate agent for streaming and another for structured output</li>
+    <li data-correct="true">Enable streaming with an onEvent callback for progress, then access result.structuredOutput after the stream completes</li>
+    <li>Structured output and streaming are mutually exclusive in Strands</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Streaming and structured output compose: use the event stream for progress feedback (tool calls, reasoning chunks), and access the fully validated structuredOutput on the final result object once the invocation completes.</div>
+  <div class="quiz-feedback incorrect">Streaming and structured output are compatible. Stream events give you real-time progress (tool calls, text chunks), and the final result object contains the validated structuredOutput. You can't build the structured object incrementally from chunks — it's only available at completion.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">Your agent uses tools to fetch data AND has a structuredOutputSchema. When does the schema validation apply?</div>
+  <ul class="quiz-options">
+    <li>After every tool call — each tool result is validated against the schema</li>
+    <li>Before tool calls — the schema determines which tools to invoke</li>
+    <li data-correct="true">Only on the agent's final response — tool calls are unconstrained, the schema applies to the end result</li>
+    <li>The schema applies to both tool inputs and the final output</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The structuredOutputSchema constrains only the final output. During the agent loop, tool calls happen freely — the model reasons, gathers data, and calls tools as needed. Only when the model produces its final response does Strands validate against the schema.</div>
+  <div class="quiz-feedback incorrect">The schema is a constraint on the final output, not on intermediate steps. Tools operate freely during the agent loop. Once the model decides to produce its final response (stop calling tools), that response is validated against the Zod schema.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://strandsagents.com/docs/user-guide/concepts/agents/structured-output/">Structured Output — Strands Agents Docs</a> — Full API reference for structured output schemas, retries, and error handling. ~8 min read.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me about schema design for complex domains, retry strategies, combining structured output with multi-agent patterns, or migrating from raw JSON parsing to validated schemas.
+</div>
+
+<div class="lesson-nav">
+  <a href="0005-multi-agent-orchestration.html" class="lesson-nav-prev" title="Multi-Agent Orchestration">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0007-conversation-management.html" class="lesson-nav-next" title="Conversation Management">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>

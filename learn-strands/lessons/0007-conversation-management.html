@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 7: Conversation Management</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0006-structured-output.html" class="lesson-back-top" title="Structured Output"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Back</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0008-plugins-and-steering.html" class="lesson-next-top" title="Plugins &amp; Steering">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Conversation Management</h1>
+
+<div class="lesson-meta">
+  Lesson 7 · Strands Agents (TypeScript) · ~12 minutes
+</div>
+
+<p>Every agent conversation grows. Each turn adds user messages, assistant responses, and tool results. Eventually, the context window fills up — and then the model either errors out or starts hallucinating because it can't see its own earlier reasoning. Conversation managers solve this by intelligently reducing the message history before it becomes a problem.</p>
+
+<h2>The Problem: Context Windows Are Finite</h2>
+
+<p>A long-running agent accumulates messages quickly. A single tool call adds 3 messages (assistant tool_use, tool result, assistant response). After 20 turns with tools, you might have 60+ messages. Large tool results (database queries, file contents) can fill thousands of tokens each.</p>
+
+<p>When the context window fills:</p>
+<ul>
+  <li>The API returns a context-length error (hard failure)</li>
+  <li>The model "forgets" earlier instructions (soft failure — more dangerous)</li>
+  <li>Response quality degrades as the model struggles to attend to everything</li>
+</ul>
+
+<p>Conversation managers prevent all three by reducing the message history to fit within limits while preserving the information that matters most.</p>
+
+<h2>Three Built-in Managers</h2>
+
+<h3>NullConversationManager</h3>
+
+<p>Does nothing. Messages accumulate without bound. This is the default — fine for short-lived agents with predictable workloads where you know context won't be exceeded:</p>
+
+<pre><code>import { Agent, NullConversationManager } from '@strands-agents/sdk'
+
+const agent = new Agent({
+  name: 'short-task',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'Answer the question briefly.',
+  conversationManager: new NullConversationManager(),
+  // This is the default — equivalent to not setting it at all
+})</code></pre>
+
+<h3>SlidingWindowConversationManager</h3>
+
+<p>Keeps the N most recent messages and drops everything older. Simple, fast, predictable — but loses context without replacement:</p>
+
+<pre><code>import { Agent, SlidingWindowConversationManager } from '@strands-agents/sdk'
+
+const agent = new Agent({
+  name: 'sliding-agent',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'You are a helpful assistant.',
+  conversationManager: new SlidingWindowConversationManager({
+    windowSize: 20,                  // Keep last 20 messages
+    shouldTruncateResults: true,     // Trim large tool results in kept messages
+    maxResultLength: 2000,           // Truncate tool results beyond 2000 chars
+  }),
+})</code></pre>
+
+<p>The sliding window is appropriate when recent context matters more than historical context — chatbots, iterative coding assistants, real-time Q&A.</p>
+
+<h3>SummarizingConversationManager</h3>
+
+<p>The intelligent option. Instead of dropping old messages, it summarizes them — preserving the key information in compressed form. Uses a separate model call to create the summary:</p>
+
+<pre><code>import { Agent, SummarizingConversationManager } from '@strands-agents/sdk'
+
+const agent = new Agent({
+  name: 'summarizing-agent',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'You are a project management assistant.',
+  conversationManager: new SummarizingConversationManager({
+    preserveRecentMessages: 10,   // Always keep the last 10 messages verbatim
+    maxSummaryTokens: 500,        // Target length for the summary
+    summarizationPrompt: `Summarize the following conversation history.
+Focus on: decisions made, action items assigned, and key context.
+Omit pleasantries, repeated questions, and tool call details.`,
+  }),
+})</code></pre>
+
+<p>When the conversation exceeds the threshold, messages older than <code>preserveRecentMessages</code> are replaced by a summary message. The agent sees: [summary of turns 1-30] + [verbatim turns 31-40]. Best of both worlds — compressed history plus full recent context.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Cost consideration</div>
+  <p>The SummarizingConversationManager makes an additional model call to produce the summary. This adds latency and cost per compression event. But it's far cheaper than hitting context limits and failing, or paying for a massive prompt on every turn. The summary call uses the full message history once, then subsequent turns use the compressed version.</p>
+</div>
+
+<h2>Message Pinning</h2>
+
+<p>Both SlidingWindow and Summarizing managers support <code>pinFirst</code> — protecting the first N messages from eviction. Use this to ensure system instructions or critical context survive compression:</p>
+
+<pre><code>const agent = new Agent({
+  name: 'pinned-agent',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'You are a financial analyst.',
+  conversationManager: new SlidingWindowConversationManager({
+    windowSize: 15,
+    pinFirst: 2,  // First 2 messages (system + initial context) never evicted
+  }),
+})</code></pre>
+
+<p>With <code>pinFirst: 2</code>, the conversation always contains the system prompt and whatever context message you injected first, regardless of how many messages are trimmed from the middle. This prevents the common failure mode where a long conversation causes the agent to "forget" its role.</p>
+
+<h2>Proactive Compression</h2>
+
+<p>By default, conversation managers trigger when the context would exceed the model's limit. Proactive compression triggers earlier — before you hit the wall — giving the model headroom to think:</p>
+
+<pre><code>const agent = new Agent({
+  name: 'proactive-agent',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'You are a research assistant.',
+  conversationManager: new SummarizingConversationManager({
+    preserveRecentMessages: 8,
+    proactiveCompression: {
+      enabled: true,
+      compressionThreshold: 0.7,  // Compress when 70% of context is used
+    },
+  }),
+})</code></pre>
+
+<p>With <code>compressionThreshold: 0.7</code>, compression fires when the conversation reaches 70% of the model's context window. This leaves 30% for the model's response and reasoning — preventing the case where the model has context for the question but no room to think about the answer.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Don't set too low</div>
+  <p>A <code>compressionThreshold</code> below 0.5 means you're compressing when the context is half full — wasteful. Between 0.6 and 0.8 is the sweet spot. Higher values (0.85+) risk cutting it too close and failing on turns with large tool results.</p>
+</div>
+
+<h2>Custom ConversationManager</h2>
+
+<p>If the built-in managers don't fit your needs, extend the base class and implement <code>reduce()</code>. The reduce method receives the full message array and must return a shorter one:</p>
+
+<pre><code>import { ConversationManager, Message } from '@strands-agents/sdk'
+
+class TopicBasedManager extends ConversationManager {
+  private maxMessages = 30
+
+  async reduce(messages: Message[]): Promise<Message[]> {
+    if (messages.length <= this.maxMessages) {
+      return messages // No reduction needed
+    }
+
+    // Custom logic: keep system messages, recent messages,
+    // and any message containing a "DECISION:" marker
+    const system = messages.filter(m => m.role === 'system')
+    const recent = messages.slice(-10)
+    const decisions = messages.filter(
+      m => m.role === 'assistant' &&
+           typeof m.content === 'string' &&
+           m.content.includes('DECISION:')
+    )
+
+    // Deduplicate (recent might overlap with decisions)
+    const kept = new Set([...system, ...decisions, ...recent])
+    return Array.from(kept)
+  }
+}
+
+const agent = new Agent({
+  name: 'custom-managed',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: 'Track decisions across a long conversation.',
+  conversationManager: new TopicBasedManager(),
+})</code></pre>
+
+<p>Custom managers let you implement domain-specific logic: keep messages tagged as important, preserve tool results from specific tools, or merge multiple messages into one.</p>
+
+<h2>Production Pattern: Choosing the Right Manager</h2>
+
+<p>Match your manager to your agent's lifecycle:</p>
+
+<table>
+  <thead>
+    <tr><th>Agent Type</th><th>Manager</th><th>Why</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Single-shot task (extract data, classify)</td>
+      <td>NullConversationManager</td>
+      <td>One turn, no accumulation. Don't pay for unnecessary management.</td>
+    </tr>
+    <tr>
+      <td>Short multi-turn (3-5 turns with tools)</td>
+      <td>NullConversationManager</td>
+      <td>Predictable size. If each turn adds ~2K tokens and you have 5 turns, you're well within limits.</td>
+    </tr>
+    <tr>
+      <td>Chat assistant (unbounded turns)</td>
+      <td>SlidingWindow</td>
+      <td>Fast, cheap, recent context is most relevant. Users don't reference turn 1 at turn 50.</td>
+    </tr>
+    <tr>
+      <td>Project assistant (long-running, decisions accumulate)</td>
+      <td>SummarizingConversationManager</td>
+      <td>Decisions from turn 5 matter at turn 50. Summary preserves them without full verbatim cost.</td>
+    </tr>
+    <tr>
+      <td>Research agent (large tool results)</td>
+      <td>SlidingWindow + shouldTruncateResults</td>
+      <td>Tool results are often huge but only the latest matters. Truncate old results, keep recent ones full.</td>
+    </tr>
+  </tbody>
+</table>
+
+<pre><code>// Production example: project management assistant
+// Long-lived, decisions accumulate, recent context critical
+const projectAssistant = new Agent({
+  name: 'project-assistant',
+  model: 'us.anthropic.claude-sonnet-4-6-20250725-v1:0',
+  systemPrompt: `You help manage a software project.
+Track decisions, action items, and blockers across conversations.`,
+  conversationManager: new SummarizingConversationManager({
+    preserveRecentMessages: 8,
+    maxSummaryTokens: 800,
+    proactiveCompression: {
+      enabled: true,
+      compressionThreshold: 0.7,
+    },
+    summarizationPrompt: `Summarize the conversation history for a project assistant.
+Preserve: all decisions, action items with owners, unresolved blockers.
+Discard: greetings, clarification exchanges, tool call mechanics.`,
+  }),
+})</code></pre>
+
+<h2>Key Takeaways</h2>
+
+<ul>
+  <li><strong>Context windows are finite</strong> — without management, long conversations error out or degrade silently.</li>
+  <li><strong>NullConversationManager</strong> (default) is fine for short-lived agents. Don't add complexity you don't need.</li>
+  <li><strong>SlidingWindow</strong> is fast and cheap — drops old messages. Good when recent context is most relevant.</li>
+  <li><strong>SummarizingConversationManager</strong> preserves information by compressing old messages into summaries. Costs one extra model call per compression event.</li>
+  <li><strong>pinFirst</strong> protects critical messages (system prompt, initial context) from eviction.</li>
+  <li><strong>Proactive compression</strong> (threshold 0.6-0.8) fires before the limit is hit — leaves room for the model to think.</li>
+  <li><strong>Custom managers</strong> via <code>reduce()</code> let you implement domain-specific retention logic.</li>
+</ul>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">Your agent processes support tickets in a single turn — user provides ticket text, agent classifies and routes it. Which conversation manager should you use?</div>
+  <ul class="quiz-options">
+    <li>SlidingWindowConversationManager with windowSize: 5</li>
+    <li>SummarizingConversationManager for safety</li>
+    <li data-correct="true">NullConversationManager (the default) — no management needed for a single-turn agent</li>
+    <li>A custom manager that keeps only the system prompt</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. A single-turn agent never accumulates enough messages to cause problems. Adding a conversation manager here is unnecessary overhead — no compression cost, no configuration complexity, no edge cases. The default NullConversationManager is perfect.</div>
+  <div class="quiz-feedback incorrect">For single-turn agents, there's nothing to manage. The conversation has one user message and one assistant response — well within any context window. NullConversationManager (the default) is the right choice. Don't add machinery you don't need.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">You set <code>proactiveCompression.compressionThreshold: 0.7</code> on a SummarizingConversationManager. What does this mean?</div>
+  <ul class="quiz-options">
+    <li>The summary will be compressed to 70% of its original length</li>
+    <li>Compression happens every 70 messages</li>
+    <li data-correct="true">When the conversation uses 70% of the model's context window, summarization triggers — leaving 30% headroom for the response</li>
+    <li>70% of messages are kept verbatim, 30% are summarized</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The threshold is measured against the model's total context window. At 70% usage, compression fires proactively — before you hit the wall. The remaining 30% gives the model room for reasoning and response generation.</div>
+  <div class="quiz-feedback incorrect">The compressionThreshold is a ratio of context window usage. At 0.7, it means: "when 70% of the model's context window is consumed by the conversation, trigger summarization." This leaves 30% free for the model's response. It's a proactive safety margin.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">Your project assistant uses SummarizingConversationManager. A user asks "what did we decide about the database in our first conversation?" but that decision was in messages that have been summarized. What happens?</div>
+  <ul class="quiz-options">
+    <li>The agent says it doesn't have that information</li>
+    <li>The agent hallucinates a decision that was never made</li>
+    <li data-correct="true">The agent finds the decision in the summary message — the summarization prompt was designed to preserve decisions</li>
+    <li>The agent automatically re-fetches the original messages from storage</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The quality of the summarization prompt directly determines what survives compression. A well-written prompt ("Preserve: all decisions, action items with owners") ensures key information persists in the summary. This is why the summarization prompt matters so much — it's your retention policy in natural language.</div>
+  <div class="quiz-feedback incorrect">The SummarizingConversationManager replaces old messages with a summary. If your summarization prompt says "preserve all decisions," the decision will be in the summary message and the agent can reference it. The prompt is your retention policy — what you tell it to keep, it keeps.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://strandsagents.com/docs/user-guide/concepts/agents/conversation-management/">Conversation Management — Strands Agents Docs</a> — Full API reference for all conversation managers, configuration options, and custom implementations. ~10 min read.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>💬 Questions?</strong> Ask me about sizing window parameters, writing effective summarization prompts, handling edge cases with tool results, or building custom managers for specific domains.
+</div>
+
+<div class="lesson-nav">
+  <a href="0006-structured-output.html" class="lesson-nav-prev" title="Structured Output">← Back</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0008-plugins-and-steering.html" class="lesson-nav-next" title="Plugins &amp; Steering">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="/sandbox/shared/nav.js"></script>
+<script src="../assets/copy-button.js"></script>
+</body>
+</html>
