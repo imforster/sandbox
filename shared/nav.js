@@ -166,6 +166,7 @@
       { text: 'Learn Jujutsu (jj)', href: '/sandbox/learn-jj/' },
       { text: 'Learn Codex', href: '/sandbox/learn-codex/' },
       { text: 'Learn Cloudflare Workers', href: '/sandbox/learn-cloudflare/' },
+      { text: 'Learn Strands Agents', href: '/sandbox/learn-strands/' },
       { text: 'IDEO Design Sprint', href: 'https://blog.imfsoftware.com/ideo-design-sprint-game/' },
       { text: 'LLM Wiki', href: 'https://blog.imfsoftware.com/llm-wiki/docs/' },
     ]},
