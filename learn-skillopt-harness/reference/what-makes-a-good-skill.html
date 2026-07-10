@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reference: What Makes a Good Skill</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .rubric-card {
+      border: 1px solid var(--color-border);
+      border-left: 4px solid var(--color-success);
+      border-radius: var(--radius);
+      background: var(--color-card-bg);
+      padding: 1rem 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .rubric-card h3 { margin-top: 0; }
+    .rubric-rate { font-size: 0.78rem; color: var(--color-muted); font-weight: 600; }
+    .contrast-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0; }
+    .contrast-col { border: 1px solid var(--color-border); border-radius: var(--radius); padding: 1rem; font-size: 0.85rem; }
+    .contrast-col.good { border-top: 4px solid var(--color-success); }
+    .contrast-col.bad { border-top: 4px solid var(--color-danger); }
+    .contrast-col .label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .contrast-col.good .label { color: var(--color-success); }
+    .contrast-col.bad .label { color: var(--color-danger); }
+    @media (max-width: 600px) { .contrast-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <span></span>
+  <a href="../lessons/index.html" class="lesson-home-top" title="All Lessons">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <span></span>
+</nav>
+
+<h1>What Makes a Good Skill</h1>
+
+<p>
+Compressed from <a href="https://arxiv.org/abs/2605.23899"><em>From Raw Experience to Skill
+Consumption</em> (SkillLens, MSR 2026)</a> — the systematic study behind SkillOpt, covering
+5 domains × 6 targets × 5 extractors. Use this page whenever you write a seed skill, read a
+staged SkillOpt-Sleep proposal, or judge a <code>best_skill.md</code>.
+</p>
+
+<h2>The validated rubric — three properties that predict utility</h2>
+
+<p>
+Of seven candidate quality dimensions discovered by contrastive analysis of high-gap skill
+pairs, only three reliably aligned with downstream performance (Table 13 of the paper):
+</p>
+
+<div class="rubric-card">
+  <h3>1. Failure Mechanism Encoding <span class="rubric-rate">better-rate 65.5%</span></h3>
+  <p>The skill identifies <em>why</em> agents fail, not just <em>that</em> they fail — and pairs each mechanism with an executable remedy. Example: "formula strings are not evaluated in headless execution → always precompute static values in Python and write the scalar."</p>
+</div>
+
+<div class="rubric-card">
+  <h3>2. Actionable Specificity <span class="rubric-rate">better-rate 66.0%</span></h3>
+  <p>Step-level procedures that reference concrete domain objects and tools ("search for anchor headers to determine indices; never hardcode cell references") rather than process-level advice ("edit minimally and safely").</p>
+</div>
+
+<div class="rubric-card">
+  <h3>3. High-Risk Action Blacklist <span class="rubric-rate">better-rate 64.6%</span></h3>
+  <p>Explicitly forbids <em>specific</em> harmful action patterns ("never delete rows top-to-bottom — iterate bottom-to-top to avoid index shifting"), not generic caution ("be careful with destructive edits").</p>
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">Concrete remedies beat generic advice</div>
+  <p>
+    In the paper's flagship contrastive case (SpreadsheetBench, Δ gap = 10.3 pts), the winning
+    skill named three domain-specific failure mechanisms with fixes; the losing skill gave
+    eight reasonable-sounding process rules ("resolve the contract before coding"). Reasonable
+    ≠ useful.
+  </p>
+</div>
+
+<div class="contrast-grid">
+  <div class="contrast-col good">
+    <div class="label">Higher-utility skill sounds like</div>
+    "Writing formula strings does not trigger calculation engines in headless environments. Always calculate the final static value in Python and write the scalar result. When deleting rows, iterate bottom-to-top to avoid index-shifting errors."
+  </div>
+  <div class="contrast-col bad">
+    <div class="label">Lower-utility skill sounds like</div>
+    "Resolve the contract before coding. Choose the simplest method that matches the runtime. Edit minimally and safely, keeping changes inside the intended scope. Validate the saved result."
+  </div>
+</div>
+
+<h2>Things that do NOT predict skill quality</h2>
+
+<table>
+  <thead><tr><th>Non-signal</th><th>Evidence</th></tr></thead>
+  <tbody>
+    <tr><td>Format (list vs. checklist vs. prose)</td><td>Friedman test non-significant on every target (p &gt; 0.34); extractor swap significant on 5/6 (p &lt; 0.01). What a skill <em>says</em> matters, not how it looks.</td></tr>
+    <tr><td>How good the text "reads"</td><td>An unguided GPT-5.4 judge picked the better-performing skill 46.4% of the time — coin-flip. On the largest-gap pairs (δ ≥ 5 pts) it picked right only <strong>15.8%</strong>: the skill that reads better often performs <em>worse</em>.</td></tr>
+    <tr><td>Extractor model scale / task strength</td><td>On SpreadsheetBench the lightweight Gemini-3.1-Flash-Lite was the best extractor; GPT-5.4 ranked last despite the strongest baseline. Extraction is a distinct capability from execution.</td></tr>
+    <tr><td>Plausibility-rubric guidance (clarity, tone, structure…)</td><td>Adding a 7-dim "good writing" rubric to the extractor <em>hurt</em> average performance (−0.59 pts, worse in 6/9 cells). The 3-dim validated rubric improved all 9 cells (+1.55 pts).</td></tr>
+  </tbody>
+</table>
+
+<h2>Lifecycle facts to remember</h2>
+
+<table>
+  <thead><tr><th>Fact</th><th>Number</th><th>Implication for you</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Ungated model-generated skills cause negative transfer</td>
+      <td>25% of 150 extractor–target cells (47% on the worst domain)</td>
+      <td>This is <em>why</em> SkillOpt's validation gate exists. Never adopt a skill without held-out evidence.</td>
+    </tr>
+    <tr>
+      <td>All-failure experience pools produce the worst skills</td>
+      <td>Worst in every domain tested</td>
+      <td>Make sure your transcript/experience pool contains successes; the optimal success ratio is domain-specific (coding peaked mostly-successful).</td>
+    </tr>
+    <tr>
+      <td>The same skill text gives different gains per consumer</td>
+      <td>+1.8 to +9.5 pts across six targets, same skill</td>
+      <td>A skill trained for Claude Code may transfer to pi/Kiro — but re-validate; consumption ability is a per-model property.</td>
+    </tr>
+    <tr>
+      <td>Skills act by reshaping the default policy</td>
+      <td>Trajectory analysis, §5.3</td>
+      <td>A skill doesn't add abilities; it steers choices. A weak model can be steered into workflows it can't execute robustly — one source of negative transfer.</td>
+    </tr>
+    <tr>
+      <td>Rubric-guided judging beats unguided</td>
+      <td>46.4% → 73.8% judge accuracy</td>
+      <td>When you review a staged SkillOpt-Sleep proposal, score it against the three validated dimensions — don't trust your sense of "reads well".</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Reviewer checklist</h2>
+
+<p>Before adopting any skill artifact (staged Sleep proposal, <code>best_skill.md</code>, or hand-written seed):</p>
+
+<pre><code>☐ Does it name WHY failures happen, each with an executable remedy?
+☐ Are steps concrete — real tools, objects, commands — not process platitudes?
+☐ Does it blacklist specific harmful action patterns?
+☐ Is there held-out evidence it improves this exact target model?
+☐ Was it distilled from a pool containing successful trajectories?</code></pre>
+
+<div class="primary-source">
+  <div class="primary-source-label">Source</div>
+  <p><a href="https://arxiv.org/abs/2605.23899">From Raw Experience to Skill Consumption: A Systematic Study of Model-Generated Agent Skills</a> — Huang, Xu, Yang, et al., Fudan / MSR / SJTU, May 2026. Code: <a href="https://aka.ms/SkillLens">aka.ms/SkillLens</a>. Local copy in ~/Documents.</p>
+</div>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

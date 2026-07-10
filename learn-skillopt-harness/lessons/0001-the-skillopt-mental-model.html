@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1: The SkillOpt Mental Model</title>
+  <link rel="stylesheet" href="../assets/style.css?v=2">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+  <style>
+    .loop-diagram {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: center;
+      margin: 2rem 0;
+    }
+    .loop-step {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 0.6rem 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: var(--shadow-card);
+    }
+    .loop-step small { display: block; font-weight: 400; color: var(--color-muted); font-size: 0.72rem; margin-top: 0.15rem; }
+    .loop-step.harness { border-color: var(--color-accent); background: var(--color-accent-light); }
+    .loop-arrow { color: var(--color-muted); font-size: 1rem; }
+    .analogy-table td:first-child { font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <span></span>
+  <a href="index.html" class="lesson-home-top" title="All Lessons">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0002-install-and-deterministic-sleep-experiment.html" class="lesson-next-top" title="Install &amp; the Deterministic Sleep Experiment">
+    Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg>
+  </a>
+</nav>
+
+<h1>The SkillOpt Mental Model</h1>
+
+<div class="lesson-meta">
+  Lesson 1 · SkillOpt &amp; Agent Harnesses · ~10 minutes
+</div>
+
+<p>
+Before we install anything, you need one mental model. Every later lesson — running
+training, harvesting your Claude Code sessions, wiring in pi or Kiro — hangs off it.
+</p>
+
+<h2>The big idea: train the document, not the model</h2>
+
+<p>
+Every coding agent you use today has a frozen brain. You can't fine-tune GPT-5.5 or
+Claude on your workflows. What you <em>can</em> change is the text you feed it: system
+prompts, <code>AGENTS.md</code> files, skill documents. Normally these are hand-written
+and never systematically improved.
+</p>
+
+<p>
+<a href="https://github.com/microsoft/SkillOpt">SkillOpt</a>'s move is to treat a single
+skill document as the <strong>trainable state</strong> of the agent — and train it with
+the same discipline as neural network weights: epochs, batches, a learning rate, and a
+validation gate. Except every "weight update" is a bounded text edit
+(<em>add / delete / replace</em>) made by a separate optimizer model. The output is a
+compact <code>best_skill.md</code> (300–2,000 tokens) that you drop into your agent —
+with <strong>zero extra model calls at inference time</strong>.
+</p>
+
+<table class="analogy-table">
+  <thead><tr><th>Deep learning</th><th>SkillOpt equivalent</th></tr></thead>
+  <tbody>
+    <tr><td>Weights</td><td>The skill document (plain markdown)</td></tr>
+    <tr><td>Forward pass</td><td>Rollout: agent attempts tasks using the current skill</td></tr>
+    <tr><td>Loss / gradient</td><td>Scored trajectories + optimizer-model reflection</td></tr>
+    <tr><td>Gradient step</td><td>Bounded add/delete/replace edits to the document</td></tr>
+    <tr><td>Learning rate</td><td>Textual edit budget (how much text may change per step)</td></tr>
+    <tr><td>Validation set</td><td>Held-out tasks — an edit ships only if it <em>strictly improves</em> the score</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">Why the validation gate is the heart of it</div>
+  <p>
+    Most "self-improving prompt" schemes drift: the LLM rewrites its instructions and
+    quietly gets worse. SkillOpt only accepts an edit when it strictly improves a score
+    on tasks it did <em>not</em> train on. This is why it reliably beats its starting
+    point where loosely-controlled self-revision doesn't
+    (<a href="https://arxiv.org/abs/2605.23904">paper</a>).
+  </p>
+  <p>
+    The danger is measured, not hypothetical: a companion MSR study of ungated
+    model-generated skills (<a href="https://arxiv.org/abs/2605.23899">SkillLens</a>,
+    5 domains × 6 targets × 5 extractors) found <strong>negative transfer in 25% of
+    cases</strong> — the extracted skill made the agent <em>worse</em> — rising to 47%
+    on the most fragile domain. The gate is what turns a coin-flip risk into a
+    ratchet.
+  </p>
+</div>
+
+<h2>The training loop — and where the harness sits</h2>
+
+<div class="loop-diagram">
+  <div class="loop-step harness">Rollout<small>run tasks via the harness</small></div>
+  <div class="loop-arrow">→</div>
+  <div class="loop-step">Reflect<small>optimizer reads trajectories</small></div>
+  <div class="loop-arrow">→</div>
+  <div class="loop-step">Aggregate<small>combine lessons across batch</small></div>
+  <div class="loop-arrow">→</div>
+  <div class="loop-step">Select<small>choose candidate edits</small></div>
+  <div class="loop-arrow">→</div>
+  <div class="loop-step">Update<small>apply bounded edits</small></div>
+  <div class="loop-arrow">→</div>
+  <div class="loop-step">Evaluate<small>validation gate</small></div>
+</div>
+
+<p>
+The highlighted box is where <strong>your</strong> mission lives. The
+<strong>harness</strong> (SkillOpt calls it a <em>backend</em>) is the thing that
+actually executes a task with the current skill document and returns a trajectory to
+score. SkillOpt ships three kinds:
+</p>
+
+<table>
+  <thead><tr><th>Harness</th><th>Backend examples</th><th>What a rollout is</th></tr></thead>
+  <tbody>
+    <tr><td>Direct chat</td><td><code>openai_chat</code>, <code>claude_chat</code>, <code>qwen_chat</code></td><td>One API call: skill + task in, answer out</td></tr>
+    <tr><td>Agentic CLI</td><td><code>codex_exec</code>, <code>claude_code_exec</code></td><td>A full agent session: tools, files, multi-turn</td></tr>
+    <tr><td>Yours (later)</td><td>pi, Kiro…</td><td>Same contract — you implement it in Lesson 6</td></tr>
+  </tbody>
+</table>
+
+<p>
+  Because the trained artifact is just markdown, skills <strong>transfer across
+  harnesses</strong>: a skill optimized inside Codex works in Claude Code, and across
+  model scales — one of the paper's headline results. But transfer is not free:
+  <a href="https://arxiv.org/abs/2605.23899">SkillLens</a> showed the <em>same skill text</em>
+  can gain anywhere from +1.8 to +9.5 points depending on which model consumes it —
+  consumption ability is a per-model property. Rule of thumb:
+  <strong>skills transfer; validation doesn't.</strong> Re-run the gate when you change
+  the target.
+</p>
+
+<h2>Two on-ramps (we'll take both)</h2>
+
+<p>
+The repo actually contains two systems that share one philosophy:
+</p>
+
+<ol>
+  <li>
+    <strong>The full training loop</strong> (<code>skillopt/</code>) — benchmark-driven:
+    you give it an <em>env</em> (a dataset + a rollout script + a seed skill) and it
+    trains. Lessons 4–5.
+  </li>
+  <li>
+    <strong>SkillOpt-Sleep</strong> (<code>skillopt_sleep/</code>) — usage-driven: a
+    nightly cycle that harvests your <em>real</em> Claude Code/Codex transcripts, mines
+    recurring tasks, replays them offline, and stages validated skill edits for your
+    review. Zero dependency on the research code. Lessons 2–3 — our fastest path to a
+    real-task win.
+  </li>
+</ol>
+
+<div class="callout warning">
+  <div class="callout-title">Terminology guardrail</div>
+  <p>
+    In this course, <strong>harness/backend</strong> = the execution target that runs
+    rollouts; <strong>env/benchmark</strong> = the task set + scorer;
+    <strong>skill</strong> = the markdown document being trained. Keep these three
+    separate in your head — most confusion about SkillOpt is mixing them up.
+  </p>
+</div>
+
+<h2>Check yourself</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">In SkillOpt, what plays the role that weights play in neural network training?</div>
+  <ul class="quiz-options">
+    <li>The optimizer model's system prompt</li>
+    <li data-correct="true">The markdown skill document itself</li>
+    <li>The frozen target model's adapters</li>
+  </ul>
+  <div class="quiz-feedback correct">Right. The skill document is the trainable state; the target model stays completely frozen, and the optimizer model is just the machinery that proposes edits.</div>
+  <div class="quiz-feedback incorrect">Not quite — the model is frozen and no adapters exist. The <em>markdown skill document</em> is the trainable state; everything else is machinery for editing it.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">A candidate edit to the skill document is accepted only when it…</div>
+  <ul class="quiz-options">
+    <li>reduces the token count of the document</li>
+    <li data-correct="true">strictly improves the held-out validation score</li>
+    <li>is approved by the target model's reflection</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly — the validation gate is what separates SkillOpt from drift-prone self-revision loops. No improvement on unseen tasks, no merge.</div>
+  <div class="quiz-feedback incorrect">The gate is empirical, not stylistic or model-judged: an edit ships only if it <em>strictly improves</em> the score on held-out validation tasks.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">Which piece will you build when you wire pi (or Kiro) into SkillOpt?</div>
+  <ul class="quiz-options">
+    <li>The edit-proposing optimizer model</li>
+    <li>The validation-gate scoring policy</li>
+    <li data-correct="true">The rollout-executing backend (harness)</li>
+  </ul>
+  <div class="quiz-feedback correct">Yes — the backend is the pluggable execution target. The optimizer and gate are SkillOpt's engine; you supply the thing that runs tasks and returns trajectories.</div>
+  <div class="quiz-feedback incorrect">The optimizer and gate come with SkillOpt. Your job is the <em>backend</em>: the execution target that runs a task with the current skill and returns a trajectory.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://github.com/microsoft/SkillOpt#overview">SkillOpt README — Overview section</a> — Microsoft Research. The authors' own 4-paragraph statement of the idea, ~5 minutes. If you want depth, follow it with §1–2 of the <a href="https://arxiv.org/abs/2605.23904">paper</a>.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me anything that's unclear. I'm your teacher — I can explain any of these concepts differently, give more examples, or dive deeper.
+</div>
+
+<div class="lesson-nav">
+  <span></span>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0002-install-and-deterministic-sleep-experiment.html" class="lesson-nav-next" title="Install &amp; the Deterministic Sleep Experiment">Next <span class="arrow">→</span></a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

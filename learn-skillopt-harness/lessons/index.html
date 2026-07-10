@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkillOpt &amp; Agent Harnesses — Learn</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    .course-header { text-align: center; padding: 2.5rem 1rem 1.5rem; }
+    .course-header h1 { font-size: 1.8rem; margin: 0 0 0.5rem; }
+    .course-header p { color: var(--color-muted); font-size: 0.95rem; margin: 0 auto; max-width: 560px; }
+    .section-label {
+      font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--color-muted); padding: 1.5rem 1rem 0.5rem;
+    }
+    .lesson-list { list-style: none; padding: 0; margin: 0 auto; max-width: 640px; }
+    .lesson-list li { border-bottom: 1px solid var(--color-border); }
+    .lesson-list li:last-child { border-bottom: none; }
+    .lesson-card {
+      display: grid; grid-template-columns: 2.5rem 1fr auto; align-items: center;
+      gap: 1rem; padding: 1rem; text-decoration: none; color: inherit;
+      border-radius: 0.5rem; transition: background 0.15s;
+    }
+    .lesson-card:hover { background: var(--color-card-bg); }
+    .lesson-card.planned { opacity: 0.55; pointer-events: none; }
+    .lesson-num { font-size: 0.85rem; font-weight: 700; color: var(--color-muted); text-align: center; }
+    .lesson-info { min-width: 0; }
+    .lesson-title { font-weight: 600; font-size: 0.95rem; margin: 0 0 0.2rem; }
+    .lesson-desc { font-size: 0.82rem; color: var(--color-muted); margin: 0; }
+    .lesson-time { font-size: 0.78rem; color: var(--color-muted); white-space: nowrap; }
+    .resources-link { text-align: center; padding: 2rem 1rem; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <a href="../../" class="lesson-back-top" title="All Courses">
+    <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> All Courses
+  </a>
+  <span></span>
+  <span></span>
+</nav>
+
+<div class="course-header">
+  <h1>SkillOpt &amp; Agent Harnesses</h1>
+  <p>Train reusable skills for your frozen coding agent — pi, Claude Code, Codex, or Kiro — on real software development tasks, without touching model weights.</p>
+</div>
+
+<div class="section-label">Foundations</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0001-the-skillopt-mental-model.html">
+      <span class="lesson-num">01</span>
+      <span class="lesson-info">
+        <span class="lesson-title">The SkillOpt Mental Model</span>
+        <span class="lesson-desc">The skill document as trainable state, the training loop, and where the harness sits.</span>
+      </span>
+      <span class="lesson-time">~10 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Hands-On: SkillOpt-Sleep</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0002-install-and-deterministic-sleep-experiment.html">
+      <span class="lesson-num">02</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Install &amp; the Deterministic Sleep Experiment</span>
+        <span class="lesson-desc">pip install skillopt; prove the loop improves a skill — no API key required.</span>
+      </span>
+      <span class="lesson-time">~15 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0003-sleep-cycle-on-real-sessions.html">
+      <span class="lesson-num">03</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Sleep Cycle on Your Real Sessions</span>
+        <span class="lesson-desc">skillopt-sleep dry-run against your Claude Code / Codex transcripts; review a staged proposal.</span>
+      </span>
+      <span class="lesson-time">~20 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Hands-On: The Full Training Loop</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0004-a-full-training-run.html">
+      <span class="lesson-num">04</span>
+      <span class="lesson-info">
+        <span class="lesson-title">A Full Training Run</span>
+        <span class="lesson-desc">Shipped benchmark + claude_code_exec backend, end to end, producing a best_skill.md.</span>
+      </span>
+      <span class="lesson-time">~25 min</span>
+    </a>
+  </li>
+  <li>
+    <a class="lesson-card" href="0005-a-custom-env-for-your-real-task.html">
+      <span class="lesson-num">05</span>
+      <span class="lesson-info">
+        <span class="lesson-title">A Custom Env for Your Real Task</span>
+        <span class="lesson-desc">dataloader.py + rollout.py + initial.md for one of your own software-dev workflows.</span>
+      </span>
+      <span class="lesson-time">~30 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="section-label">Capstone</div>
+<ul class="lesson-list">
+  <li>
+    <a class="lesson-card" href="0006-wire-in-your-own-harness.html">
+      <span class="lesson-num">06</span>
+      <span class="lesson-info">
+        <span class="lesson-title">Wire In Your Own Harness (pi or Kiro)</span>
+        <span class="lesson-desc">Implement the backend contract using codex_exec as a template; or a Kiro MCP shell for Sleep.</span>
+      </span>
+      <span class="lesson-time">~40 min</span>
+    </a>
+  </li>
+</ul>
+
+<div class="resources-link">
+  <a href="../../">← All Courses</a>
+</div>
+
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

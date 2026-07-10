@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4: A Full Training Run</title>
+  <link rel="stylesheet" href="../assets/style.css?v=2">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <a href="0003-sleep-cycle-on-real-sessions.html" class="lesson-back-top" title="Sleep Cycle on Your Real Sessions">
+    <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev
+  </a>
+  <a href="index.html" class="lesson-home-top" title="All Lessons">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0005-a-custom-env-for-your-real-task.html" class="lesson-next-top" title="A Custom Env for Your Real Task">
+    Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg>
+  </a>
+</nav>
+
+<h1>A Full Training Run</h1>
+
+<div class="lesson-meta">
+  Lesson 4 · SkillOpt &amp; Agent Harnesses · ~25 minutes · hands-on
+</div>
+
+<h2>Warm-up: the backend boundary</h2>
+
+<p>From <a href="0001-the-skillopt-mental-model.html">Lesson 1</a>, you learned that when wiring pi or Kiro into SkillOpt, the piece <em>you</em> build is the <strong>backend</strong>. Let's make sure that boundary is sharp before you use a real one:</p>
+
+<div class="quiz" id="quiz-warmup">
+  <div class="quiz-question">What does a SkillOpt model backend take in and return?</div>
+  <ul class="quiz-options">
+    <li>A task description in; a score out</li>
+    <li data-correct="true">Chat messages in; a ModelResponse (content + usage) out</li>
+    <li>A skill document in; an edited skill document out</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly. The backend is the <em>model interface</em> — it takes chat messages and returns generated text + token usage. The <em>env adapter</em> is what handles tasks and scoring. Two distinct roles. Today you'll use the shipped <code>claude_code_exec</code> backend, which wraps Claude Code as the target model.</div>
+  <div class="quiz-feedback incorrect">The backend is simpler than that — it's the model interface. It takes chat messages (list of role/content dicts) and returns a <code>ModelResponse</code> with content and usage. Scoring and task handling live in the <em>env adapter</em>, a separate component. Re-read the <a href="https://github.com/microsoft/SkillOpt/blob/main/docs/guide/new-backend.md">new-backend guide</a> — it's only 130 lines.</div>
+</div>
+
+<h2>What you'll do</h2>
+
+<p>
+Run SkillOpt's full training loop — the paper's actual optimization algorithm — against
+a <strong>shipped benchmark</strong> using the <code>claude_code_exec</code> backend. This
+produces a real <code>best_skill.md</code> artifact: a learned skill document trained on
+actual tasks with the validation gate enforcing quality.
+</p>
+
+<p>
+This is different from SkillOpt-Sleep (Lesson 3): Sleep harvests <em>your past usage</em>
+and consolidates. The full training loop actively <em>runs new rollouts</em> on a defined
+task set, reflects on failures, proposes edits, and gates them — the full SkillOpt paper
+algorithm with train/val/test splits.
+</p>
+
+<h2>Step 1 — Pick a benchmark</h2>
+
+<p>SkillOpt ships six benchmarks. For this lesson, use <strong>SearchQA</strong> — it's
+well-documented, fast to run with small batch sizes, and the scoring is deterministic
+(exact-match on extracted answers):</p>
+
+<pre><code># Check the shipped envs
+ls $(python -c "import skillopt; print(skillopt.__path__[0])")/envs/</code></pre>
+
+<p>You should see: <code>searchqa</code>, <code>officeqa</code>, <code>swebench</code>, <code>spreadsheetbench</code>, and others.</p>
+
+<h2>Step 2 — Configure and run</h2>
+
+<p>
+The shipped configs live in the SkillOpt repo. Clone it for configs (you already have
+the package installed via pip):
+</p>
+
+<pre><code># Get the configs and data scripts
+git clone https://github.com/microsoft/SkillOpt.git ~/skillopt-repo
+cd ~/skillopt-repo
+
+# Download the SearchQA data split
+python scripts/download_data.py --env searchqa</code></pre>
+
+<p>Now run with a small batch to keep costs manageable:</p>
+
+<pre><code># Set your API key (the optimizer model)
+export OPENAI_API_KEY="your-key"
+
+# Run training — small batch, 2 epochs
+python scripts/train.py \
+  --config configs/searchqa/default.yaml \
+  --train.batch_size 8 \
+  --train.num_epochs 2 \
+  --gradient.minibatch_size 4</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Cost control</div>
+  <p>
+    With <code>batch_size=8</code> and 2 epochs, expect ~$1–3 total spend (optimizer +
+    target). The optimizer proposes edits; the target (Claude Code in exec mode) runs
+    tasks. You can further reduce cost by setting
+    <code>--model.reasoning_effort low</code>.
+  </p>
+</div>
+
+<h2>Step 3 — Read the training log</h2>
+
+<p>As training runs, watch for:</p>
+
+<ul>
+  <li><strong>Epoch/batch progress:</strong> Each batch triggers: rollout → reflect → propose edit → gate check</li>
+  <li><strong>Gate decisions:</strong> <code>ACCEPTED</code> or <code>REJECTED</code> for each proposed edit. Count the ratio — a healthy run accepts 30–60% of proposals.</li>
+  <li><strong>Val scores:</strong> The held-out validation score should trend upward epoch-over-epoch. If it's flat, the gate is correctly rejecting unhelpful proposals.</li>
+  <li><strong>The learning rate:</strong> <code>optimizer.learning_rate: 4</code> means the edit can change at most 4 "lines" of the skill per proposal. This bounds drift.</li>
+</ul>
+
+<h2>Step 4 — Inspect the artifact</h2>
+
+<p>After training completes, find your best skill:</p>
+
+<pre><code># The output directory (check the config or the last log line)
+ls outputs/searchqa/skills/
+
+# Read the trained skill
+cat outputs/searchqa/skills/best_skill.md</code></pre>
+
+<p>
+This is the core output — a text document the gate validated improves held-out accuracy.
+Apply the <a href="../reference/what-makes-a-good-skill.html">rubric</a>: does each learned rule
+encode a failure mechanism with a remedy? Is it step-level specific?
+</p>
+
+<h2>Step 5 — Evaluate on test</h2>
+
+<p>Run the final evaluation on the held-out test split to confirm the gain is real:</p>
+
+<pre><code>python scripts/evaluate.py \
+  --config configs/searchqa/default.yaml \
+  --skill outputs/searchqa/skills/best_skill.md \
+  --split test</code></pre>
+
+<p>Compare this score to the baseline (empty skill). The difference is your trained lift — the empirical proof that the optimization worked.</p>
+
+<div class="callout warning">
+  <div class="callout-title">What if the gain is small?</div>
+  <p>
+    With only 2 epochs and batch_size=8, expect modest gains (2–5 percentage points).
+    The paper runs 4 epochs with batch_size=16 for full results. Small gains are normal
+    for a first run — the point is proving the <em>pipeline works end-to-end</em>, not
+    maximizing accuracy today.
+  </p>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">The training run accepted 2 of 6 proposed edits. The val score went from 0.72 to 0.76. What does this tell you?</div>
+  <ul class="quiz-options">
+    <li>The optimizer is too weak — it should accept more edits</li>
+    <li>The gate is too strict — you should lower the threshold</li>
+    <li data-correct="true">The system is working as designed — most proposals don't help, but the ones that pass the gate deliver real lift</li>
+  </ul>
+  <div class="quiz-feedback correct">Yes. A 33% acceptance rate with +4pp lift is textbook SkillOpt. The gate's job is to reject the ~67% of proposals that look plausible but don't actually improve held-out performance. Quality over quantity — every accepted edit is empirically validated.</div>
+  <div class="quiz-feedback incorrect">The gate isn't "too strict" — it's doing its job. Accepting 2/6 with a +4pp gain means the 4 rejected proposals would have been neutral or harmful. The validation gate prevents the 25% negative transfer documented in <a href="https://arxiv.org/abs/2605.23899">SkillLens</a>. You don't want to accept more — you want the right ones accepted.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://microsoft.github.io/SkillOpt/docs/guideline.html">SkillOpt Documentation &amp; Reproduction Guide</a> — Microsoft Research. Full config reference, all training commands, and reproduction instructions for the paper's results. ~15 minutes for the training section.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> If your training run threw errors, got stuck, or produced a skill you're skeptical about — paste the output and I'll help debug. The most common issues are API key configuration and data path mismatches.
+</div>
+
+<div class="lesson-nav">
+  <a href="0003-sleep-cycle-on-real-sessions.html" class="lesson-nav-prev" title="Sleep Cycle on Your Real Sessions"><span class="arrow">←</span> Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0005-a-custom-env-for-your-real-task.html" class="lesson-nav-next" title="A Custom Env for Your Real Task">Next <span class="arrow">→</span></a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

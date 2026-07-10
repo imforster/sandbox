@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 2: Install &amp; the Deterministic Sleep Experiment</title>
+  <link rel="stylesheet" href="../assets/style.css?v=2">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+  <style>
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li { padding-left: 1.8rem; position: relative; margin-bottom: 0.5rem; }
+    .checklist li::before {
+      content: "☐"; position: absolute; left: 0.2rem; color: var(--color-accent);
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <a href="0001-the-skillopt-mental-model.html" class="lesson-back-top" title="The SkillOpt Mental Model">
+    <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev
+  </a>
+  <a href="index.html" class="lesson-home-top" title="All Lessons">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <span></span>
+</nav>
+
+<h1>Install &amp; the Deterministic Sleep Experiment</h1>
+
+<div class="lesson-meta">
+  Lesson 2 · SkillOpt &amp; Agent Harnesses · ~15 minutes · hands-on
+</div>
+
+<h2>Warm-up: retrieve before you build</h2>
+
+<p>Answer these from memory — no peeking at <a href="0001-the-skillopt-mental-model.html">Lesson 1</a>. Say your answers out loud (or to me) <em>before</em> clicking.</p>
+
+<div class="quiz" id="quiz-warmup">
+  <div class="quiz-question">From Lesson 1: what condition must a candidate skill edit meet before SkillOpt accepts it?</div>
+  <ul class="quiz-options">
+    <li>The optimizer model rates it above a threshold</li>
+    <li data-correct="true">It strictly improves the score on held-out tasks</li>
+    <li>It stays inside the textual learning-rate budget</li>
+  </ul>
+  <div class="quiz-feedback correct">Storage strength building nicely. The gate is empirical: no improvement on unseen tasks, no merge. You'll <em>watch this happen live</em> in about ten minutes.</div>
+  <div class="quiz-feedback incorrect">The budget bounds edit <em>size</em>, and the optimizer only <em>proposes</em> — acceptance is decided by the validation gate: strict improvement on held-out tasks. Re-skim Lesson 1's callout before continuing.</div>
+</div>
+
+<h2>What you'll do</h2>
+
+<p>
+Install SkillOpt and run its <strong>deterministic validation experiment</strong> — the
+acceptance test the authors ship for the whole sleep-cycle idea. It uses a
+<code>MockBackend</code>: no API key, no cost, fully reproducible. According to the
+<a href="https://github.com/microsoft/SkillOpt/blob/main/skillopt_sleep/experiments/run_experiment.py">experiment source</a>,
+one run proves three things:
+</p>
+
+<ol>
+  <li><strong>Monotonic lift</strong> — over N sleep "nights", the held-out score climbs from a baseline (empty skill) toward 1.0 as the gate accepts the rules the tasks require.</li>
+  <li><strong>Gate safety</strong> — an injected <em>harmful</em> edit is rejected, proving a bad nightly proposal can never be adopted.</li>
+  <li><strong>Plumbing</strong> — harvest → mine → replay → consolidate → stage → adopt all run, and the adopted artifact retains the lift when re-scored.</li>
+</ol>
+
+<h2>Step 1 — Install</h2>
+
+<p>Create a clean virtualenv in the workspace (SkillOpt needs Python ≥ 3.10):</p>
+
+<pre><code>cd ~/learn-skillopt-harness
+python3 -m venv .venv
+source .venv/bin/activate
+pip install skillopt
+skillopt-sleep --help</code></pre>
+
+<p>If <code>skillopt-sleep --help</code> prints a usage banner, you're installed.</p>
+
+<h2>Step 2 — Run the experiment</h2>
+
+<p>
+There are two built-in personas — a <code>researcher</code> (wants arXiv ids in
+<code>&lt;answer&gt;</code> tags) and a <code>programmer</code> (wants imperative-mood
+commit subjects). Given your mission, run the programmer:
+</p>
+
+<pre><code>python -m skillopt_sleep.experiments.run_experiment --persona programmer --assert-improves</code></pre>
+
+<p>
+The <code>--assert-improves</code> flag makes it exit non-zero if the lift doesn't
+materialize — so a clean exit <em>is</em> the proof.
+</p>
+
+<h2>Step 3 — Read the trace like an optimizer</h2>
+
+<p>Don't just check the exit code. In the output, find and note down:</p>
+
+<ul class="checklist">
+  <li><strong>Night 0 baseline</strong> — the held-out score with an <em>empty</em> skill. This is your "no-skill accuracy".</li>
+  <li><strong>Per-night trace</strong> — each night shows a <code>holdout_score</code>, a gate <code>action</code>, whether the proposal was <code>accepted</code>, and the actual text of applied <code>edits</code>. Read the edits: they are the rules being learned.</li>
+  <li><strong>Judge the edits like a researcher</strong> — score each learned rule against the three properties that actually predict skill utility (<a href="../reference/what-makes-a-good-skill.html">reference: What Makes a Good Skill</a>): does it encode a failure <em>mechanism</em> with a remedy? Is it step-level specific? Does it forbid a specific harmful pattern? The mock persona's rules are simple, but the habit is the point — you'll use this rubric on every real staged proposal from Lesson 3 on.</li>
+  <li><strong>Rejected edits</strong> — nights where <code>n_rejected &gt; 0</code>. The gate at work.</li>
+  <li><strong>The harmful-edit probe</strong> — confirm the known-bad rule was <strong>REJECTED</strong>. This is proof #2. It matters because ungated skill extraction degrades the agent in <a href="https://arxiv.org/abs/2605.23899">25% of measured cases</a> — the gate is your only defense.</li>
+</ul>
+
+<div class="callout tip">
+  <div class="callout-title">Connect it back to the mental model</div>
+  <p>
+    Everything in this trace maps to Lesson 1: the mock backend is the
+    <strong>harness</strong>, the persona's task list is the <strong>env</strong>, and
+    the document being grown night-by-night is the <strong>skill</strong>. Same three
+    roles, all the way up to the paper's 52-cell benchmark grid.
+  </p>
+</div>
+
+<h2>Step 4 — One experiment of your own</h2>
+
+<p>Change one variable and predict the outcome <em>before</em> running:</p>
+
+<pre><code>python -m skillopt_sleep.experiments.run_experiment --persona programmer --nights 1</code></pre>
+
+<p>
+<strong>Prediction first:</strong> with only one night, will the held-out score reach
+the same level as the multi-night run? Why or why not? (Hint: think about the edit
+budget per night — the textual learning rate.) Run it, then check.
+</p>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">The experiment runs with no API key. What replaces the real LLM during replay and consolidation?</div>
+  <ul class="quiz-options">
+    <li data-correct="true">A deterministic mock backend with known rules</li>
+    <li>A cached transcript of prior GPT-5.5 rollouts</li>
+    <li>A tiny local model downloaded on first run</li>
+  </ul>
+  <div class="quiz-feedback correct">Right — <code>MockBackend</code> responds deterministically and carries a known-bad rule specifically so the gate-safety probe can prove rejection. Reproducible science, zero spend.</div>
+  <div class="quiz-feedback incorrect">No cache and no local model — it's a deterministic <code>MockBackend</code> with known rules (including one known-bad rule for the gate-safety probe). That's what makes the run reproducible and free.</div>
+</div>
+
+<div class="callout warning">
+  <div class="callout-title">Next lesson needs raw material</div>
+  <p>
+    Lesson 3 harvests your <em>real</em> Claude Code / Codex session transcripts. The
+    more sessions you have between now and then, the better the mining. Just use your
+    agents normally — that <em>is</em> the homework.
+  </p>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://github.com/microsoft/SkillOpt/blob/main/docs/sleep/README.md">SkillOpt-Sleep README</a> — Microsoft Research. How one "night" works, the dream-train / real-val / real-test split, and honest scope notes on when gains appear (~10 minutes). Skip the results tables for now.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me anything that's unclear. I'm your teacher — paste any confusing output from the experiment and I'll walk you through it line by line.
+</div>
+
+<div class="lesson-nav">
+  <a href="0001-the-skillopt-mental-model.html" class="lesson-nav-prev" title="The SkillOpt Mental Model"><span class="arrow">←</span> Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <span></span>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5: A Custom Env for Your Real Task</title>
+  <link rel="stylesheet" href="../assets/style.css?v=2">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <a href="0004-a-full-training-run.html" class="lesson-back-top" title="A Full Training Run">
+    <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev
+  </a>
+  <a href="index.html" class="lesson-home-top" title="All Lessons">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0006-wire-in-your-own-harness.html" class="lesson-next-top" title="Wire In Your Own Harness (pi or Kiro)">
+    Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg>
+  </a>
+</nav>
+
+<h1>A Custom Env for Your Real Task</h1>
+
+<div class="lesson-meta">
+  Lesson 5 · SkillOpt &amp; Agent Harnesses · ~30 minutes · hands-on
+</div>
+
+<h2>Warm-up: the env contract</h2>
+
+<div class="quiz" id="quiz-warmup">
+  <div class="quiz-question">From Lesson 4: what three files define a new SkillOpt benchmark environment?</div>
+  <ul class="quiz-options">
+    <li><code>config.yaml</code> + <code>scorer.py</code> + <code>seed_skill.md</code></li>
+    <li data-correct="true"><code>dataloader.py</code> + <code>rollout.py</code> + <code>initial.md</code></li>
+    <li><code>backend.py</code> + <code>tasks.json</code> + <code>prompts.yaml</code></li>
+  </ul>
+  <div class="quiz-feedback correct">That's the env contract. The dataloader loads task items with train/val/test splits. The rollout helper runs the target model on items and scores them. The initial.md is the seed skill (can be empty). Everything else is inherited from <code>EnvAdapter</code>.</div>
+  <div class="quiz-feedback incorrect">The env contract is: <code>dataloader.py</code> (loads items with splits), <code>rollout.py</code> (runs target + scores), and <code>initial.md</code> (seed skill). The backend is separate (model interface), and configs reference your env by name. See the <a href="https://github.com/microsoft/SkillOpt/blob/main/docs/guide/new-benchmark.md">new-benchmark guide</a>.</div>
+</div>
+
+<h2>What you'll do</h2>
+
+<p>
+Build a custom environment for one of <em>your own</em> software development workflows.
+Instead of training on SearchQA's trivia questions, you'll define tasks that match what
+your agent actually does — and produce a skill that makes <em>your daily work</em> better.
+</p>
+
+<p>
+The <a href="https://github.com/microsoft/SkillOpt/tree/main/skillopt/envs/officeqa">officeqa env</a>
+is the simplest reference to copy from. We'll follow the same pattern, adapted to your domain.
+</p>
+
+<h2>Step 1 — Define your task domain</h2>
+
+<p>Pick a recurring workflow where your agent has a <strong>checkable correctness signal</strong>. Good candidates:</p>
+
+<table>
+  <thead>
+    <tr><th>Domain</th><th>Task shape</th><th>Scoring signal</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Code review</td><td>Given a diff, produce review comments</td><td>Match against known issues (precision/recall)</td></tr>
+    <tr><td>Test generation</td><td>Given a function, produce tests that pass</td><td>pytest exit code (binary)</td></tr>
+    <tr><td>Commit messages</td><td>Given a diff, produce a conventional commit</td><td>Format regex + semantic match</td></tr>
+    <tr><td>Bug fix</td><td>Given a failing test, produce a fix</td><td>Test passes after patch (binary)</td></tr>
+    <tr><td>Documentation</td><td>Given a function, produce docstring</td><td>Coverage of params/returns/raises</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">The scoring function matters most</div>
+  <p>
+    Per <a href="https://github.com/microsoft/SkillOpt/blob/main/docs/guide/new-benchmark.md">the guide</a>:
+    "Noisy scoring kills the optimizer. Spend time on <code>run_batch</code>'s scoring
+    before you spend time on prompts." Pick a domain where you can score
+    deterministically — binary (pass/fail) is ideal for your first custom env.
+  </p>
+</div>
+
+<h2>Step 2 — Create the data</h2>
+
+<p>You need 20–50 task items split into train/val/test. Each item is a dict with at minimum:</p>
+
+<pre><code># Each item needs:
+{
+    "id": "unique_string",
+    "task_type": "your_domain",
+    # ... your domain-specific fields:
+    "input": "...",       # what the agent receives
+    "ground_truth": "..." # what correct looks like
+}</code></pre>
+
+<p>Create the split directories:</p>
+
+<pre><code>mkdir -p ~/skillopt-repo/data/my_env_split/{train,val,test}
+
+# Write your items as JSON — split ratio ~2:1:7 (train:val:test)
+# train: items the optimizer sees during reflection
+# val: the gate scores against these (NEVER trained on)
+# test: final evaluation only</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">Experience pool design matters</div>
+  <p>
+    From <a href="https://arxiv.org/abs/2605.23899">SkillLens</a>: all-failure experience
+    pools produce the worst skills. Your train split should include <strong>mostly
+    successful</strong> trajectories — the optimizer learns <em>what to replicate</em>, not
+    just what to avoid. For coding tasks, this means including examples where the agent
+    got it right, not just cases where it failed.
+  </p>
+</div>
+
+<h2>Step 3 — Implement the three files</h2>
+
+<h3>dataloader.py</h3>
+
+<pre><code>from skillopt.datasets.base import SplitDataLoader
+from pathlib import Path
+import json
+
+
+class MyEnvDataLoader(SplitDataLoader):
+    """Load items from JSON files in each split directory."""
+
+    def load_split_items(self, split_path: str) -> list[dict]:
+        json_files = sorted(Path(split_path).glob("*.json"))
+        if not json_files:
+            raise FileNotFoundError(f"No .json in {split_path}")
+        with json_files[0].open() as f:
+            return json.load(f)</code></pre>
+
+<h3>rollout.py</h3>
+
+<pre><code>from skillopt.model import chat_target
+import os, json
+from pathlib import Path
+
+
+def _score(prediction: str, ground_truth: str) -> tuple[int, float]:
+    """Your scoring function. Binary is simplest."""
+    # Example: exact match (replace with your domain logic)
+    match = prediction.strip() == ground_truth.strip()
+    return (1 if match else 0), (1.0 if match else 0.0)
+
+
+def run_batch(*, items, skill_content, out_root,
+              workers=4, max_completion_tokens=4096) -> list[dict]:
+    os.makedirs(out_root, exist_ok=True)
+    results = []
+    for item in items:
+        prediction, _usage = chat_target(
+            system=skill_content,
+            user=item["input"],
+            max_completion_tokens=max_completion_tokens,
+        )
+        hard, soft = _score(prediction, item["ground_truth"])
+        results.append({
+            "id": item["id"],
+            "hard": hard,
+            "soft": soft,
+            "predicted_answer": prediction,
+            "task_type": item.get("task_type", "my_env"),
+        })
+    Path(out_root, "rollouts.json").write_text(json.dumps(results, indent=2))
+    return results</code></pre>
+
+<h3>initial.md (seed skill)</h3>
+
+<pre><code># My Task Skill
+
+You are a software development assistant. When given a task:
+1. Read the input carefully
+2. Produce the requested output
+3. Follow the project's conventions</code></pre>
+
+<p>The seed skill can be minimal — the optimizer will grow it. But giving it a reasonable starting point (rather than empty) helps the first epoch.</p>
+
+<h2>Step 4 — Wire it up</h2>
+
+<p>Create the adapter (copy from <code>officeqa/adapter.py</code> and change the class names and dataloader import), then register it in <code>scripts/train.py</code>:</p>
+
+<pre><code># In scripts/train.py → _register_builtins()
+try:
+    from skillopt.envs.my_env.adapter import MyEnvAdapter
+    _ENV_REGISTRY["my_env"] = MyEnvAdapter
+except ImportError:
+    pass</code></pre>
+
+<p>Create a config at <code>configs/my_env/default.yaml</code>:</p>
+
+<pre><code>_base_: ../_base_/default.yaml
+
+train:
+  batch_size: 8
+  num_epochs: 2
+
+env:
+  name: my_env
+  skill_init: skillopt/envs/my_env/skills/initial.md
+  split_mode: split_dir
+  split_dir: data/my_env_split
+  workers: 4
+  max_completion_tokens: 4096</code></pre>
+
+<h2>Step 5 — Train and evaluate</h2>
+
+<pre><code># Train
+python scripts/train.py --config configs/my_env/default.yaml
+
+# Evaluate the produced skill on held-out test
+python scripts/evaluate.py \
+  --config configs/my_env/default.yaml \
+  --skill outputs/my_env/skills/best_skill.md \
+  --split test</code></pre>
+
+<p>
+The <code>best_skill.md</code> that comes out is trained on <em>your tasks</em>. Read it
+with the rubric — and compare it to the generic seed skill you started with. The
+difference is what SkillOpt learned about your specific workflow.
+</p>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">Your custom env scores predictions with a noisy LLM judge (agreement ~70%). What's the likely outcome?</div>
+  <ul class="quiz-options">
+    <li data-correct="true">The optimizer can't distinguish good from bad edits — training stalls or regresses</li>
+    <li>The gate compensates by requiring larger improvements to accept</li>
+    <li>Training works but takes more epochs to converge</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly — "noisy scoring kills the optimizer." If your score function has 30% noise, a +3pp improvement is indistinguishable from random variance. The gate can't compensate because <em>it uses the same scorer</em>. Deterministic or near-deterministic scoring is essential for the first custom env.</div>
+  <div class="quiz-feedback incorrect">The gate doesn't auto-adjust its threshold — it uses the same scorer. With 70% agreement, a +3pp improvement is noise. The optimizer will thrash: accepting harmful edits and rejecting good ones randomly. Use deterministic scoring (binary pass/fail, regex match, exact string) for your first custom env.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://github.com/microsoft/SkillOpt/blob/main/docs/guide/new-benchmark.md">Add a New Benchmark</a> — Microsoft Research. The full walkthrough with a worked <code>docfaithful</code> example, explaining every method on the <code>EnvAdapter</code> ABC. ~15 minutes. Copy <code>skillopt/envs/_template/</code> for a skeleton.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> If you're stuck picking a domain, designing a scoring function, or wiring the adapter — describe your workflow and I'll help you design the env contract for it.
+</div>
+
+<div class="lesson-nav">
+  <a href="0004-a-full-training-run.html" class="lesson-nav-prev" title="A Full Training Run"><span class="arrow">←</span> Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0006-wire-in-your-own-harness.html" class="lesson-nav-next" title="Wire In Your Own Harness (pi or Kiro)">Next <span class="arrow">→</span></a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

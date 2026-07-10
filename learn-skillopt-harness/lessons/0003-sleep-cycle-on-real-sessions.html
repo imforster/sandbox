@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3: Sleep Cycle on Your Real Sessions</title>
+  <link rel="stylesheet" href="../assets/style.css?v=2">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+  <style>
+    .stage-flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+      justify-content: center;
+      margin: 1.5rem 0;
+    }
+    .stage-box {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 0.5rem 0.8rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: var(--shadow-card);
+    }
+    .stage-box.active { border-color: var(--color-accent); background: var(--color-accent-light); }
+    .stage-arrow { color: var(--color-muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <a href="0002-install-and-deterministic-sleep-experiment.html" class="lesson-back-top" title="Install &amp; the Deterministic Sleep Experiment">
+    <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev
+  </a>
+  <a href="index.html" class="lesson-home-top" title="All Lessons">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0004-a-full-training-run.html" class="lesson-next-top" title="A Full Training Run">
+    Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg>
+  </a>
+</nav>
+
+<h1>Sleep Cycle on Your Real Sessions</h1>
+
+<div class="lesson-meta">
+  Lesson 3 · SkillOpt &amp; Agent Harnesses · ~20 minutes · hands-on
+</div>
+
+<h2>Warm-up: retrieve before you build</h2>
+
+<div class="quiz" id="quiz-warmup">
+  <div class="quiz-question">From Lesson 2: the experiment injected a known-bad edit. What proved the gate was working?</div>
+  <ul class="quiz-options">
+    <li>The bad edit was included but scored lowest</li>
+    <li data-correct="true">The bad edit was rejected — never merged into the skill</li>
+    <li>The bad edit was accepted then auto-reverted next night</li>
+  </ul>
+  <div class="quiz-feedback correct">Right. The gate is a hard boundary: reject and discard. No "accept then undo" — that would mean live regression. The 25% negative transfer rate from <a href="https://arxiv.org/abs/2605.23899">SkillLens</a> is what happens <em>without</em> a gate.</div>
+  <div class="quiz-feedback incorrect">The gate doesn't rank — it's binary. A bad edit is rejected outright (never merged). There's no rollback mechanism because the edit never ships. That's the whole safety argument.</div>
+</div>
+
+<h2>What you'll do</h2>
+
+<p>
+Run <code>skillopt-sleep dry-run</code> against your <em>actual</em> Claude Code or Codex
+transcripts. A dry-run harvests your sessions, mines recurring tasks from them, replays
+offline, and reports what it <em>would</em> propose — without changing anything. You'll
+then evaluate the staged proposal using the
+<a href="../reference/what-makes-a-good-skill.html">What Makes a Good Skill</a> rubric.
+</p>
+
+<div class="stage-flow">
+  <span class="stage-box active">harvest</span>
+  <span class="stage-arrow">→</span>
+  <span class="stage-box active">mine</span>
+  <span class="stage-arrow">→</span>
+  <span class="stage-box active">replay</span>
+  <span class="stage-arrow">→</span>
+  <span class="stage-box">consolidate</span>
+  <span class="stage-arrow">→</span>
+  <span class="stage-box">stage</span>
+  <span class="stage-arrow">→</span>
+  <span class="stage-box">adopt</span>
+</div>
+
+<p>
+The <code>dry-run</code> stops after replay — it consolidates and shows you the proposal
+but doesn't persist it. This is the safe exploration mode.
+</p>
+
+<h2>Prerequisites</h2>
+
+<p>You need <strong>at least 3–5 real agent sessions</strong> from the past week. SkillOpt-Sleep
+harvests transcripts from your agent's session store:</p>
+
+<ul>
+  <li><strong>Claude Code:</strong> <code>~/.claude/projects/</code> — each project folder has session JSONs</li>
+  <li><strong>Codex:</strong> <code>~/.codex/sessions/</code></li>
+</ul>
+
+<p>If you don't have enough sessions yet, go use your agent normally for a day and come back. The more varied the tasks, the more interesting the mining phase.</p>
+
+<h2>Step 1 — Dry run</h2>
+
+<pre><code>cd ~/learn-skillopt-harness
+source .venv/bin/activate
+
+# Dry run harvests, mines, replays — then reports without changing anything
+skillopt-sleep dry-run</code></pre>
+
+<p>
+This will take 1–3 minutes depending on how many transcripts you have. Watch the
+output for each stage completing.
+</p>
+
+<div class="callout tip">
+  <div class="callout-title">API cost note</div>
+  <p>
+    <code>dry-run</code> uses your configured model (default: the optimizer model from
+    <code>~/.skillopt/config.yaml</code>) for mining and replay. Typical cost for 5
+    sessions is ~$0.10–$0.30. If you want to control spend, set
+    <code>SKILLOPT_OPTIMIZER_MODEL=gpt-4o-mini</code> in your environment.
+  </p>
+</div>
+
+<h2>Step 2 — Read the harvest report</h2>
+
+<p>The dry-run output shows what was harvested. Look for:</p>
+
+<ul>
+  <li><strong>Sessions found:</strong> How many transcripts were discovered</li>
+  <li><strong>Tasks mined:</strong> The recurring patterns SkillOpt extracted — these are your <em>task types</em></li>
+  <li><strong>Replay results:</strong> For each task, how the current (empty or existing) skill performed</li>
+</ul>
+
+<p>Note which task types it found. These are what SkillOpt thinks you do repeatedly. Do they match your actual workflow patterns?</p>
+
+<h2>Step 3 — Evaluate the staged proposal</h2>
+
+<p>
+The dry-run ends with a <strong>proposal</strong> — the text edit it would apply to your skill
+document. This is the moment to apply the rubric from
+<a href="../reference/what-makes-a-good-skill.html">What Makes a Good Skill</a>. For each
+rule in the proposal, ask:
+</p>
+
+<table>
+  <thead>
+    <tr><th>Dimension</th><th>Question</th><th>Red flag if…</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Failure Mechanism</td>
+      <td>Does it name a specific failure mode and its remedy?</td>
+      <td>It's generic advice ("be careful with X")</td>
+    </tr>
+    <tr>
+      <td>Actionable Specificity</td>
+      <td>Is it step-level specific? Could the agent follow it mechanically?</td>
+      <td>It's vague or aspirational</td>
+    </tr>
+    <tr>
+      <td>High-Risk Blacklist</td>
+      <td>Does it forbid a specific harmful pattern?</td>
+      <td>Not every rule needs this — but the strongest ones do</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+<strong>Your judgment call:</strong> Would you adopt this proposal into your agent's system
+prompt? If not, why not? Write down your reasoning — you'll compare this to the gate's
+judgment in the full run (Lesson 4).
+</p>
+
+<h2>Step 4 — Check status and run a full cycle</h2>
+
+<p>If the proposal looks promising, try a full (non-dry) run:</p>
+
+<pre><code># Full cycle — stages the proposal for review
+skillopt-sleep run
+
+# See what was staged
+skillopt-sleep status</code></pre>
+
+<p>
+The <code>status</code> command shows the staged proposal and its held-out score. The gate
+decided: did the proposal <em>strictly improve</em> held-out accuracy? If yes, it's staged.
+If no, it's rejected — and the status tells you why.
+</p>
+
+<h2>Step 5 — Adopt or reject</h2>
+
+<p>
+If the gate accepted the proposal and you agree with it (your rubric check from Step 3), adopt it:
+</p>
+
+<pre><code># Apply the staged proposal to your skill document
+skillopt-sleep adopt</code></pre>
+
+<p>
+This writes the learned rules into your agent's skill file. From now on, every session
+with that agent benefits from what was learned — at <strong>zero inference-time cost</strong>
+(it's just a better system prompt).
+</p>
+
+<div class="callout warning">
+  <div class="callout-title">The gate can reject good-looking proposals</div>
+  <p>
+    The gate only cares about empirical improvement on held-out tasks. A proposal that
+    reads beautifully but doesn't improve accuracy gets rejected. This is by design —
+    <a href="https://arxiv.org/abs/2605.23899">format and plausibility don't predict
+    utility</a>. Trust the gate over your gut on this one.
+  </p>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">Your dry-run proposes: "Always check file existence before reading." Does this pass the rubric?</div>
+  <ul class="quiz-options">
+    <li>Yes — it prevents a clear failure mode</li>
+    <li data-correct="true">Weak — no specific failure mechanism or remedy named</li>
+    <li>No — it's a blacklist rule and those are always bad</li>
+  </ul>
+  <div class="quiz-feedback correct">Right. "Always check file existence" is generic advice — it doesn't name <em>when</em> this fails (which command? what error?), doesn't give a specific remedy (check how? with what tool call?), and doesn't identify the failure pattern. A strong rule would be: "Before <code>cat</code>-ing a path from user input, call <code>test -f</code>; if missing, ask the user to confirm the path rather than erroring."</div>
+  <div class="quiz-feedback incorrect">Blacklist rules aren't inherently bad — "never run rm -rf on paths containing variables without prior ls confirmation" is a strong blacklist. The issue here is specificity: "always check file existence" fails the Failure Mechanism dimension because it doesn't identify when/why this matters or what the specific remedy is.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://github.com/microsoft/SkillOpt/blob/main/docs/sleep/README.md">SkillOpt-Sleep README — "How it works" section</a> — Microsoft Research. The full nightly pipeline (harvest → mine → replay → consolidate → gate → stage → adopt), plus the experience-replay knobs. ~10 minutes.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me anything — especially if your dry-run produced surprising task types or a proposal you're unsure about. Paste the proposal and I'll rubric-check it with you.
+</div>
+
+<div class="lesson-nav">
+  <a href="0002-install-and-deterministic-sleep-experiment.html" class="lesson-nav-prev" title="Install &amp; the Deterministic Sleep Experiment"><span class="arrow">←</span> Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0004-a-full-training-run.html" class="lesson-nav-next" title="A Full Training Run">Next <span class="arrow">→</span></a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
