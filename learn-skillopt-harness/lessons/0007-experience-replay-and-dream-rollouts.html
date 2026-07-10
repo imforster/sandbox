@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 7: Experience Replay &amp; Dream Rollouts</title>
+  <link rel="stylesheet" href="../assets/style.css?v=2">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <a href="0006-wire-in-your-own-harness.html" class="lesson-back-top" title="Wire In Your Own Harness (pi or Kiro)">
+    <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev
+  </a>
+  <a href="index.html" class="lesson-home-top" title="All Lessons">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0008-measuring-skill-impact.html" class="lesson-next-top" title="Measuring Skill Impact">
+    Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg>
+  </a>
+</nav>
+
+<h1>Experience Replay &amp; Dream Rollouts</h1>
+
+<div class="lesson-meta">
+  Lesson 7 · SkillOpt &amp; Agent Harnesses · ~20 minutes
+</div>
+
+<h2>Warm-up: retrieve</h2>
+
+<div class="quiz" id="quiz-warmup">
+  <div class="quiz-question">From Lesson 6: what is the single required method on a SkillOpt ModelBackend?</div>
+  <ul class="quiz-options">
+    <li><code>rollout(task, skill) → trajectory</code></li>
+    <li><code>reflect(failures) → proposed_edit</code></li>
+    <li data-correct="true"><code>generate(messages, temperature, max_tokens) → ModelResponse</code></li>
+  </ul>
+  <div class="quiz-feedback correct">Solid. The backend is just the model interface — everything else (rollout, reflection, gating) is the engine's job. Now we'll tune the engine's consolidation phase.</div>
+  <div class="quiz-feedback incorrect">The backend contract is minimal: <code>generate()</code> only. Rollout and reflection live in the env adapter and the engine respectively. Review <a href="0006-wire-in-your-own-harness.html">Lesson 6</a>'s architecture diagram.</div>
+</div>
+
+<h2>What you'll learn</h2>
+
+<p>
+SkillOpt-Sleep has three opt-in knobs that strengthen the nightly consolidation by
+drawing on past experience. They're all off by default — the basic cycle works without
+them. But turning them on is where the gains compound: the
+<a href="https://github.com/microsoft/SkillOpt/blob/main/docs/sleep/README.md">Sleep README</a>
+shows <strong>+3–5 percentage points</strong> on SearchQA from replay scaling alone.
+</p>
+
+<table>
+  <thead>
+    <tr><th>Knob</th><th>Default</th><th>What it does</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>dream_rollouts</code></td>
+      <td>1</td>
+      <td>Run each task K times → learn from good-vs-bad contrast (contrastive reflection)</td>
+    </tr>
+    <tr>
+      <td><code>recall_k</code></td>
+      <td>0</td>
+      <td>Pull the K most-similar past tasks from a persisted archive into tonight's dream</td>
+    </tr>
+    <tr>
+      <td><code>dream_factor</code></td>
+      <td>0</td>
+      <td>Generate N lightweight synthetic variants of each task</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Step 1 — Understand the mechanism</h2>
+
+<p>
+Without replay, each night only sees <em>today's</em> tasks. The optimizer reflects on
+failures from those tasks alone. With replay enabled:
+</p>
+
+<ol>
+  <li><strong>Associative recall</strong> (<code>recall_k</code>) — searches the archive for past tasks similar to tonight's, pulling them into the dream batch. More relevant context → better reflection.</li>
+  <li><strong>Contrastive dreaming</strong> (<code>dream_rollouts</code>) — runs each task multiple times. Some runs succeed, some fail. The contrast between good and bad trajectories gives the optimizer a clearer signal about <em>what specifically</em> made the difference.</li>
+  <li><strong>Synthetic augmentation</strong> (<code>dream_factor</code>) — generates variations of each task (different inputs, same shape). Prevents overfitting to specific examples.</li>
+</ol>
+
+<div class="callout tip">
+  <div class="callout-title">The data from the paper</div>
+  <p>
+    SearchQA with <code>dream_rollouts=5</code> and <code>recall_k=20</code>:
+    baseline 0.803 → 0.848 (<strong>+4.5pp</strong>). The gain rises monotonically with
+    recall depth. Without replay: +1–2pp. With full-history replay: +5.6pp. The
+    validation gate keeps everything safe regardless.
+  </p>
+</div>
+
+<h2>Step 2 — Configure replay</h2>
+
+<p>Edit your <code>~/.skillopt/config.yaml</code> (or pass as CLI flags):</p>
+
+<pre><code># Start conservative — recall from recent history, moderate dreaming
+skillopt-sleep run \
+  --dream-rollouts 3 \
+  --recall-k 10
+
+# More aggressive — deeper recall, more contrast
+skillopt-sleep run \
+  --dream-rollouts 5 \
+  --recall-k 20</code></pre>
+
+<p>
+<strong>Cost note:</strong> Each dream rollout calls your target model once per task.
+With <code>dream_rollouts=5</code> and 10 tasks, that's 50 target-model calls per night.
+Budget accordingly — or use a cheaper model for dreaming.
+</p>
+
+<h2>Step 3 — Watch the archive grow</h2>
+
+<p>
+The experience archive persists between nights. After a few cycles with
+<code>recall_k > 0</code>, check it:
+</p>
+
+<pre><code>skillopt-sleep status --show-archive</code></pre>
+
+<p>
+You should see tasks accumulating over time. The recall mechanism uses embedding
+similarity — tonight's tasks pull in their most relevant ancestors. This is why more
+nights = better skills: the archive becomes a richer source of contrastive experience.
+</p>
+
+<h2>Step 4 — Compare with and without</h2>
+
+<p>Run two cycles and compare the proposals:</p>
+
+<pre><code># Night 1: baseline (no replay)
+skillopt-sleep run
+skillopt-sleep status  # note the proposal quality + held-out score
+
+# Night 2: with replay
+skillopt-sleep run --dream-rollouts 5 --recall-k 10
+skillopt-sleep status  # compare</code></pre>
+
+<p>
+Apply the <a href="../reference/what-makes-a-good-skill.html">rubric</a> to both proposals.
+The replay version should produce more specific rules — because the optimizer has more
+contrastive signal to work with.
+</p>
+
+<div class="callout warning">
+  <div class="callout-title">Don't set dream_factor high yet</div>
+  <p>
+    Synthetic augmentation (<code>dream_factor</code>) generates tasks that don't exist
+    in your real usage. Start with <code>dream_factor=0</code> until you've validated
+    that your real tasks produce good proposals. Synthetic variants help generalization
+    but can dilute signal if your scoring function doesn't transfer well to generated tasks.
+  </p>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">You set <code>recall_k=10</code> but only have 3 nights of history. What happens?</div>
+  <ul class="quiz-options">
+    <li>SkillOpt errors because the archive is too small</li>
+    <li data-correct="true">It recalls whatever is available (fewer than 10) — graceful degradation</li>
+    <li>It generates synthetic tasks to fill the gap</li>
+  </ul>
+  <div class="quiz-feedback correct">Right — the recall is best-effort. If the archive has fewer items than K, it uses what's there. The gains scale with archive depth, which is why the system improves the more you use it. No error, no synthetic backfill from recall_k alone.</div>
+  <div class="quiz-feedback incorrect">Recall is best-effort — it won't error on a small archive, and it won't synthesize to fill the gap (that's <code>dream_factor</code>'s job). It just uses whatever history is available. The system gets stronger as the archive grows naturally through daily use.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://github.com/microsoft/SkillOpt/blob/main/docs/sleep/RESULTS.md">SkillOpt-Sleep RESULTS.md</a> — Microsoft Research. The gate-safety stress test, experience-replay scaling curves, and dream-diversity ablation. ~10 minutes. The SearchQA replay table is the key evidence.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> If you're unsure what recall depth to start with for your task domain, or whether contrastive dreaming is worth the API cost for your use case — ask and I'll help you size it.
+</div>
+
+<div class="lesson-nav">
+  <a href="0006-wire-in-your-own-harness.html" class="lesson-nav-prev" title="Wire In Your Own Harness (pi or Kiro)"><span class="arrow">←</span> Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0008-measuring-skill-impact.html" class="lesson-nav-next" title="Measuring Skill Impact">Next <span class="arrow">→</span></a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) { feedbackCorrect.classList.add('show'); }
+      else { feedbackIncorrect.classList.add('show'); options.forEach(o => { if (o.dataset.correct === 'true') o.classList.add('correct'); }); }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

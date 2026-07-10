@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 9: Automate: Schedule &amp; Monitor</title>
+  <link rel="stylesheet" href="../assets/style.css?v=2">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <a href="0008-measuring-skill-impact.html" class="lesson-back-top" title="Measuring Skill Impact">
+    <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev
+  </a>
+  <a href="index.html" class="lesson-home-top" title="All Lessons">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0010-multi-task-skills-and-saturation.html" class="lesson-next-top" title="Multi-Task Skills &amp; Saturation">
+    Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg>
+  </a>
+</nav>
+
+<h1>Automate: Schedule &amp; Monitor</h1>
+
+<div class="lesson-meta">
+  Lesson 9 · SkillOpt &amp; Agent Harnesses · ~15 minutes
+</div>
+
+<h2>Warm-up: retrieve</h2>
+
+<div class="quiz" id="quiz-warmup">
+  <div class="quiz-question">From Lesson 8: your skill shows +5pp on the test split but feels neutral in daily use. What's the most likely cause?</div>
+  <ul class="quiz-options">
+    <li>The skill document is too long for the context window</li>
+    <li data-correct="true">The test split doesn't represent your actual daily task distribution</li>
+    <li>The gate accepted a harmful edit by mistake</li>
+  </ul>
+  <div class="quiz-feedback correct">Distribution gap. Now let's make the system run itself — so your skill stays aligned with your <em>evolving</em> task distribution over time.</div>
+  <div class="quiz-feedback incorrect">The gate can't make mistakes (strict empirical check), and context isn't the issue. It's a distribution gap: test split ≠ real usage. Automation (this lesson) keeps the system aligned by continuously harvesting real sessions.</div>
+</div>
+
+<h2>What you'll learn</h2>
+
+<p>
+You've run manual sleep cycles. Now automate them: install a nightly cron, monitor
+skill evolution over weeks, and know when to intervene (reset, prune, or retrain).
+The goal is zero-maintenance skill improvement — the agent gets better while you sleep.
+</p>
+
+<h2>Step 1 — Schedule the nightly cycle</h2>
+
+<p>SkillOpt-Sleep ships a scheduler:</p>
+
+<pre><code># Install a nightly cron entry for this project
+skillopt-sleep schedule
+
+# Verify it was installed
+crontab -l | grep skillopt</code></pre>
+
+<p>
+By default this runs at 2:00 AM local time. The cycle harvests today's sessions, runs
+the consolidation pipeline, and stages a proposal. It does <strong>not</strong> auto-adopt —
+you still review and explicitly run <code>skillopt-sleep adopt</code>.
+</p>
+
+<div class="callout tip">
+  <div class="callout-title">Auto-adopt mode</div>
+  <p>
+    If you trust the gate fully, you can enable auto-adopt:
+    <code>skillopt-sleep schedule --auto-adopt</code>. The gate is your safety net — if
+    a proposal doesn't improve held-out accuracy, it's rejected regardless. Auto-adopt
+    just means you skip the manual review step for proposals that pass the gate.
+  </p>
+</div>
+
+<h2>Step 2 — Monitor skill evolution</h2>
+
+<p>After a week of nightly runs, check the history:</p>
+
+<pre><code># See the full history of proposals, acceptances, and rejections
+skillopt-sleep status --history
+
+# See held-out score over time
+skillopt-sleep status --scores</code></pre>
+
+<p>What to look for:</p>
+
+<table>
+  <thead>
+    <tr><th>Pattern</th><th>Meaning</th><th>Action</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Scores climbing steadily</td>
+      <td>The system is working — skill is improving</td>
+      <td>Keep running, maybe increase <code>recall_k</code></td>
+    </tr>
+    <tr>
+      <td>Scores flat for 5+ nights</td>
+      <td>Plateau — the current task set is saturated</td>
+      <td>Add new tasks to your data, or increase edit budget</td>
+    </tr>
+    <tr>
+      <td>All proposals rejected for 5+ nights</td>
+      <td>The optimizer can't find improvements</td>
+      <td>You may be at ceiling for this task domain</td>
+    </tr>
+    <tr>
+      <td>Score dropped after an adopt</td>
+      <td>Should be impossible if gate is on — investigate</td>
+      <td>Check if your test split changed, or rollback the adopt</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Step 3 — Skill lifecycle management</h2>
+
+<p>Over weeks, your skill will grow. Here's when to intervene:</p>
+
+<h3>When to prune</h3>
+<p>
+If the skill exceeds ~2000 words, older rules may be obsolete (your workflow changed,
+tools updated). Review the oldest rules — do they still apply? Remove ones that don't.
+The gate will re-learn anything still relevant on the next cycle.
+</p>
+
+<h3>When to reset</h3>
+<p>
+If your task domain fundamentally changes (new language, new project, new tools), the
+accumulated skill may be counterproductive. Reset to a minimal seed and let the system
+retrain from scratch:
+</p>
+
+<pre><code># Archive the current skill
+cp ~/.pi/skills/best_skill.md ~/.pi/skills/best_skill_$(date +%Y%m%d).bak
+
+# Reset to minimal seed
+echo "# Coding Skill\nFollow project conventions." > ~/.pi/skills/best_skill.md</code></pre>
+
+<h3>When to accumulate</h3>
+<p>
+If your domain is stable and scores are still climbing (even slowly), let it run. The
+validation gate prevents degradation — accumulation is safe as long as the gate is on.
+</p>
+
+<h2>Step 4 — Notifications (optional)</h2>
+
+<p>Get notified when a proposal is staged for review:</p>
+
+<pre><code># Add to your cron entry or a wrapper script:
+skillopt-sleep run && \
+  skillopt-sleep status --latest | \
+  mail -s "SkillOpt: proposal staged" you@example.com</code></pre>
+
+<p>Or pipe to a Slack webhook, desktop notification, or whatever fits your workflow.</p>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">Your nightly cycle has been running for 2 weeks. The last 7 nights all show "REJECTED" proposals. What's the best interpretation?</div>
+  <ul class="quiz-options">
+    <li>The optimizer is broken — switch to a different model</li>
+    <li>The gate threshold is too strict — lower it</li>
+    <li data-correct="true">The skill has saturated on the current task distribution — you've reached ceiling</li>
+  </ul>
+  <div class="quiz-feedback correct">Seven consecutive rejections means the optimizer can't find edits that improve held-out performance. The skill is at ceiling for <em>these tasks</em>. Next moves: add harder tasks, expand to new task types (Lesson 10), or increase the edit budget to allow larger changes.</div>
+  <div class="quiz-feedback incorrect">The gate can't be "too strict" — it's a binary check (did the score improve? yes/no). And the optimizer isn't broken; it's proposing edits that don't help because the skill is saturated on the current task set. Next: add harder tasks or expand domains (Lesson 10).</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://github.com/microsoft/SkillOpt/blob/main/docs/sleep/README.md">SkillOpt-Sleep README — "How to use it" section</a> — the <code>schedule</code> command, auto-adopt, and the per-agent plugin shells. ~5 minutes.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> If your cron isn't firing, your skill is growing too fast, or you're not sure whether to prune or reset — describe what you're seeing and I'll help diagnose.
+</div>
+
+<div class="lesson-nav">
+  <a href="0008-measuring-skill-impact.html" class="lesson-nav-prev" title="Measuring Skill Impact"><span class="arrow">←</span> Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0010-multi-task-skills-and-saturation.html" class="lesson-nav-next" title="Multi-Task Skills &amp; Saturation">Next <span class="arrow">→</span></a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) { feedbackCorrect.classList.add('show'); }
+      else { feedbackIncorrect.classList.add('show'); options.forEach(o => { if (o.dataset.correct === 'true') o.classList.add('correct'); }); }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

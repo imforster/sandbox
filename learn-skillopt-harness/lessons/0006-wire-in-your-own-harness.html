@@ -8,16 +8,112 @@
   <link rel="stylesheet" href="../assets/copy-button.css?v=2">
   <style>
     .arch-diagram {
-      font-family: var(--font-mono);
-      font-size: 0.78rem;
-      line-height: 1.45;
-      background: var(--color-card-bg);
-      border: 1px solid var(--color-border);
+      margin: 2rem 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+    .arch-engine {
+      border: 2px solid var(--color-border);
       border-radius: var(--radius);
       padding: 1.5rem;
-      margin: 1.5rem 0;
-      overflow-x: auto;
-      white-space: pre;
+      width: 100%;
+      max-width: 560px;
+      background: var(--color-card-bg);
+    }
+    .arch-engine-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-muted);
+      margin-bottom: 1rem;
+    }
+    .arch-top-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.5fr;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .arch-box {
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 0.75rem;
+      text-align: center;
+      background: var(--color-bg);
+    }
+    .arch-box-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+    .arch-box-desc {
+      font-size: 0.72rem;
+      color: var(--color-muted);
+    }
+    .arch-box-highlight {
+      border-color: var(--color-accent);
+      background: var(--color-accent-light);
+    }
+    .arch-box-you {
+      border: 2px solid var(--color-accent);
+      background: var(--color-accent-light);
+    }
+    .arch-box-you .arch-box-title {
+      color: var(--color-accent);
+    }
+    .arch-tag {
+      font-size: 0.65rem;
+      font-weight: 500;
+      background: var(--color-accent);
+      color: #fff;
+      padding: 0.1em 0.4em;
+      border-radius: 4px;
+      vertical-align: middle;
+      margin-left: 0.3rem;
+    }
+    .arch-box-agent {
+      border: 1px solid var(--color-border);
+      background: var(--color-code-bg);
+      max-width: 220px;
+    }
+    .arch-connector, .arch-external-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      padding: 0.25rem 0;
+    }
+    .arch-connector-label {
+      font-size: 0.7rem;
+      color: var(--color-muted);
+      font-weight: 500;
+      padding: 0.2rem 0;
+    }
+    .arch-line {
+      width: 2px;
+      height: 16px;
+      background: var(--color-border);
+    }
+    .arch-arrow-down {
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid var(--color-muted);
+    }
+    .arch-backend {
+      display: flex;
+      justify-content: center;
+    }
+    .arch-agent {
+      display: flex;
+      justify-content: center;
+    }
+    @media (max-width: 600px) {
+      .arch-top-row { grid-template-columns: 1fr; }
+      .arch-engine { padding: 1rem; }
     }
   </style>
 </head>
@@ -30,7 +126,9 @@
   <a href="index.html" class="lesson-home-top" title="All Lessons">
     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
   </a>
-  <span></span>
+  <a href="0007-experience-replay-and-dream-rollouts.html" class="lesson-next-top" title="Experience Replay &amp; Dream Rollouts">
+    Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg>
+  </a>
 </nav>
 
 <h1>Wire In Your Own Harness (pi or Kiro)</h1>
@@ -63,28 +161,47 @@ template, implement the contract, register it, and run a training loop through y
 agent.
 </p>
 
-<div class="arch-diagram">┌─────────────────────────────────────────────────────┐
-│  SkillOpt Engine                                    │
-│  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
-│  │ Optimizer │  │   Gate   │  │   Env Adapter    │  │
-│  │ (proposes │  │ (val     │  │ (tasks, scoring) │  │
-│  │  edits)   │  │  check)  │  │                  │  │
-│  └──────────┘  └──────────┘  └────────┬─────────┘  │
-│                                        │            │
-│                              calls generate()       │
-│                                        │            │
-│  ┌─────────────────────────────────────▼─────────┐  │
-│  │  YOUR BACKEND (ModelBackend)                   │  │
-│  │  generate(messages) → ModelResponse            │  │
-│  └─────────────────────────────────────┬─────────┘  │
-└────────────────────────────────────────┼────────────┘
-                                         │
-                              subprocess / API call
-                                         │
-                              ┌──────────▼──────────┐
-                              │  Your Agent (pi /   │
-                              │  Kiro / Claude Code)│
-                              └─────────────────────┘</div>
+<div class="arch-diagram">
+  <div class="arch-engine">
+    <div class="arch-engine-label">SkillOpt Engine</div>
+    <div class="arch-top-row">
+      <div class="arch-box">
+        <div class="arch-box-title">Optimizer</div>
+        <div class="arch-box-desc">proposes edits</div>
+      </div>
+      <div class="arch-box">
+        <div class="arch-box-title">Gate</div>
+        <div class="arch-box-desc">val check</div>
+      </div>
+      <div class="arch-box arch-box-highlight">
+        <div class="arch-box-title">Env Adapter</div>
+        <div class="arch-box-desc">tasks, scoring</div>
+      </div>
+    </div>
+    <div class="arch-connector">
+      <div class="arch-line"></div>
+      <div class="arch-connector-label">calls generate()</div>
+      <div class="arch-arrow-down"></div>
+    </div>
+    <div class="arch-backend">
+      <div class="arch-box arch-box-you">
+        <div class="arch-box-title">YOUR BACKEND <span class="arch-tag">ModelBackend</span></div>
+        <div class="arch-box-desc">generate(messages) → ModelResponse</div>
+      </div>
+    </div>
+  </div>
+  <div class="arch-external-connector">
+    <div class="arch-line"></div>
+    <div class="arch-connector-label">subprocess / API call</div>
+    <div class="arch-arrow-down"></div>
+  </div>
+  <div class="arch-agent">
+    <div class="arch-box arch-box-agent">
+      <div class="arch-box-title">Your Agent</div>
+      <div class="arch-box-desc">pi / Kiro / Claude Code</div>
+    </div>
+  </div>
+</div>
 
 <h2>Step 1 — Read the template</h2>
 
@@ -310,7 +427,7 @@ Then schedule nightly sleep cycles to keep improving it:
   <a href="index.html" class="lesson-nav-home" title="All Lessons">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
   </a>
-  <span></span>
+  <a href="0007-experience-replay-and-dream-rollouts.html" class="lesson-nav-next" title="Experience Replay &amp; Dream Rollouts">Next <span class="arrow">→</span></a>
 </div>
 
 <script>

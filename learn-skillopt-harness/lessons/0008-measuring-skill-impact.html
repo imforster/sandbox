@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 8: Measuring Skill Impact</title>
+  <link rel="stylesheet" href="../assets/style.css?v=2">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <a href="0007-experience-replay-and-dream-rollouts.html" class="lesson-back-top" title="Experience Replay &amp; Dream Rollouts">
+    <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev
+  </a>
+  <a href="index.html" class="lesson-home-top" title="All Lessons">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0009-automate-schedule-and-monitor.html" class="lesson-next-top" title="Automate: Schedule &amp; Monitor">
+    Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg>
+  </a>
+</nav>
+
+<h1>Measuring Skill Impact</h1>
+
+<div class="lesson-meta">
+  Lesson 8 · SkillOpt &amp; Agent Harnesses · ~20 minutes
+</div>
+
+<h2>Warm-up: retrieve</h2>
+
+<div class="quiz" id="quiz-warmup">
+  <div class="quiz-question">From Lesson 7: what does <code>recall_k=20</code> do during a sleep cycle?</div>
+  <ul class="quiz-options">
+    <li>Generates 20 synthetic task variants for augmentation</li>
+    <li>Runs each task 20 times for contrastive signal</li>
+    <li data-correct="true">Pulls the 20 most-similar past tasks from the archive into tonight's dream</li>
+  </ul>
+  <div class="quiz-feedback correct">Associative recall — enriching tonight's batch with relevant history. Now let's measure whether all this consolidation actually helps in practice.</div>
+  <div class="quiz-feedback incorrect">That's <code>dream_factor</code> (synthetic variants) or <code>dream_rollouts</code> (repeated runs). <code>recall_k</code> is associative recall: pull K similar past tasks from the archive into the current dream batch.</div>
+</div>
+
+<h2>What you'll learn</h2>
+
+<p>
+The gate tells you whether an edit improves held-out accuracy. But does the <em>deployed</em>
+skill actually make your daily agent better? Gates operate on synthetic benchmarks — your
+real workflow is noisier, more varied, and harder to measure. This lesson covers how to
+confirm your skill is delivering value in the real world.
+</p>
+
+<h2>The measurement problem</h2>
+
+<p>
+From <a href="https://arxiv.org/abs/2605.23899">SkillLens</a>: format and plausibility
+don't predict utility. A skill that <em>reads well</em> can be neutral or harmful. The
+only reliable signal is empirical: does the agent produce better outputs with the skill
+than without? This applies after deployment too — not just during training.
+</p>
+
+<div class="callout warning">
+  <div class="callout-title">The 25% negative transfer problem</div>
+  <p>
+    Without a gate, 25% of extracted skills <em>degrade</em> performance. Even with a
+    gate, you should verify post-deployment — the gate validates on a held-out split that
+    may not perfectly represent your daily tasks.
+  </p>
+</div>
+
+<h2>Step 1 — Baseline evaluation</h2>
+
+<p>Before deploying a new skill, capture a baseline on your real tasks:</p>
+
+<pre><code># Evaluate with NO skill (empty system prompt)
+python scripts/evaluate.py \
+  --config configs/my_env/default.yaml \
+  --skill /dev/null \
+  --split test
+
+# Evaluate with your trained skill
+python scripts/evaluate.py \
+  --config configs/my_env/default.yaml \
+  --skill outputs/my_env/skills/best_skill.md \
+  --split test</code></pre>
+
+<p>Record both scores. The delta is your <strong>measured lift</strong>.</p>
+
+<h2>Step 2 — The noise floor</h2>
+
+<p>
+Run the same evaluation 3 times (same skill, same test split). The variance between runs
+is your noise floor. If your measured lift is smaller than 2× the noise floor, you can't
+confidently distinguish signal from random variation.
+</p>
+
+<pre><code># Run 3 times, record scores
+for i in 1 2 3; do
+  python scripts/evaluate.py \
+    --config configs/my_env/default.yaml \
+    --skill outputs/my_env/skills/best_skill.md \
+    --split test 2>&1 | grep "score"
+done</code></pre>
+
+<p>
+From the Sleep README: "single-seed baseline variance is ±1–2 pts, so treat sub-~1.5pt
+differences as noise." If your lift is +4pp with ±1pp variance, you have real signal.
+</p>
+
+<h2>Step 3 — A/B in daily use</h2>
+
+<p>For real-world measurement, alternate days:</p>
+
+<table>
+  <thead>
+    <tr><th>Day</th><th>Skill</th><th>Track</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Monday</td><td>Deployed skill</td><td>Task success rate, time to completion</td></tr>
+    <tr><td>Tuesday</td><td>No skill (empty)</td><td>Same metrics</td></tr>
+    <tr><td>Wednesday</td><td>Deployed skill</td><td>Same metrics</td></tr>
+    <tr><td>Thursday</td><td>No skill</td><td>Same metrics</td></tr>
+  </tbody>
+</table>
+
+<p>
+After a week, compare. This is crude but catches the big signal: is the skill helping
+with <em>your actual daily tasks</em>, not just the held-out benchmark?
+</p>
+
+<div class="callout tip">
+  <div class="callout-title">Quick toggle for A/B</div>
+  <p>
+    For pi: rename <code>~/.pi/skills/best_skill.md</code> to <code>.bak</code> on
+    off-days. For Kiro: move the steering file out of <code>.kiro/steering/</code>. For
+    Claude Code: comment out the skill section in <code>CLAUDE.md</code>. No restart needed.
+  </p>
+</div>
+
+<h2>Step 4 — The meta-skill boost</h2>
+
+<p>
+From SkillLens: embedding the quality rubric <em>into the extractor prompt</em> itself
+yields +1.55pp on average — the optimizer produces better proposals when it knows what
+"good" looks like. This is the meta-skill idea:
+</p>
+
+<pre><code># Add to your skillopt config or system prompt for the optimizer:
+# "A good skill rule must:
+#  1. Name a specific failure mechanism and its remedy
+#  2. Be step-level specific (the agent can follow it mechanically)
+#  3. Forbid a specific harmful pattern when applicable
+# Only propose rules that pass all three criteria."</code></pre>
+
+<p>
+Try this for a few nights and measure whether the gate acceptance rate improves. Higher
+acceptance rate with maintained or improved held-out scores = the meta-skill is working.
+</p>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">Your skill shows +5pp on the held-out test split but you subjectively feel the agent isn't better in daily use. What's the most likely explanation?</div>
+  <ul class="quiz-options">
+    <li>The gate is miscalibrated and accepting bad edits</li>
+    <li data-correct="true">The test split doesn't represent your actual daily task distribution</li>
+    <li>The skill is too long and the agent ignores it</li>
+  </ul>
+  <div class="quiz-feedback correct">This is the distribution gap. Your held-out test split is a sample — if it doesn't match what you actually do day-to-day, the measured lift won't transfer. The fix: update your data splits (Lesson 5) to better reflect real usage, or add more items from recent sessions. The A/B approach from Step 3 catches this gap directly.</div>
+  <div class="quiz-feedback incorrect">Context window isn't the issue for skills under ~2000 words, and the gate can't be "miscalibrated" — it's a strict improvement check. The real issue is distribution mismatch: the test split doesn't represent your actual daily tasks. Update your data (Lesson 5) or use real-world A/B (Step 3) to measure what matters.</div>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://arxiv.org/abs/2605.23899">From Raw Experience to Skill Consumption (SkillLens) — §5.3 "Meta-Skill"</a> — Microsoft Research. The finding that rubric-aware extraction yields +1.55pp, and the full analysis of why format doesn't predict utility. ~10 minutes for §5.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> If your skill shows zero lift, or you're seeing variance that makes it hard to tell — describe your setup and I'll help diagnose whether it's a scoring problem, a distribution gap, or just insufficient training data.
+</div>
+
+<div class="lesson-nav">
+  <a href="0007-experience-replay-and-dream-rollouts.html" class="lesson-nav-prev" title="Experience Replay &amp; Dream Rollouts"><span class="arrow">←</span> Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0009-automate-schedule-and-monitor.html" class="lesson-nav-next" title="Automate: Schedule &amp; Monitor">Next <span class="arrow">→</span></a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) { feedbackCorrect.classList.add('show'); }
+      else { feedbackIncorrect.classList.add('show'); options.forEach(o => { if (o.dataset.correct === 'true') o.classList.add('correct'); }); }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
