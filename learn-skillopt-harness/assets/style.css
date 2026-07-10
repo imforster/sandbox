@@ -4,8 +4,8 @@
   --font-mono: 'SF Mono', 'Fira Code', 'Consolas', 'Menlo', monospace;
   --color-text: #1d1d1f;
   --color-muted: #6e6e73;
-  --color-accent: #f6821f;
-  --color-accent-light: #fdf0e3;
+  --color-accent: #0078d4;
+  --color-accent-light: #e8f4fd;
   --color-bg: #fff;
   --color-code-bg: #f5f5f7;
   --color-border: #d2d2d7;
@@ -252,7 +252,7 @@ td {
   transition: color 0.2s;
 }
 .lesson-back-top:hover,
-.lesson-next-top:hover { text-decoration: underline; color: #e06b10; }
+.lesson-next-top:hover { text-decoration: underline; color: #005a9e; }
 .lesson-top-nav svg { transition: transform 0.2s; }
 /* chevrons slide toward their travel direction on hover */
 .lesson-back-top:hover svg { transform: translateX(-2px); }
@@ -281,7 +281,7 @@ td {
   text-decoration: none;
   transition: color 0.2s;
 }
-.lesson-nav a:hover { text-decoration: underline; color: #e06b10; }
+.lesson-nav a:hover { text-decoration: underline; color: #005a9e; }
 /* only the arrow glyph slides on hover — no button styling */
 .lesson-nav-next, .lesson-nav-prev { display: inline-flex; align-items: center; gap: 0.3rem; }
 .lesson-nav-prev .arrow, .lesson-nav-next .arrow { transition: transform 0.2s; display: inline-block; }
