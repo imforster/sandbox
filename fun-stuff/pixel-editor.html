@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge — Pixel Art Editor</title>
+<style>
+  :root {
+    --bg: #1e1f26;
+    --panel: #2a2b34;
+    --panel-2: #33343f;
+    --border: #3d3f4b;
+    --text: #d8d9e0;
+    --muted: #8b8d9a;
+    --accent: #4c8bf5;
+    --accent-2: #f5a54c;
+    --danger: #e5534b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    overflow: hidden;
+    user-select: none;
+  }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  /* Top bar */
+  #topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  #topbar .logo { font-weight: 700; font-size: 15px; color: var(--accent); margin-right: 8px; }
+  .group { display: flex; align-items: center; gap: 6px; padding: 0 8px; border-right: 1px solid var(--border); }
+  .group:last-child { border-right: none; }
+  label.inline { color: var(--muted); font-size: 12px; }
+
+  button, .btn {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 9px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background .12s, border-color .12s;
+  }
+  button:hover, .btn:hover { background: #3f414d; }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #3d7de0; }
+  button.danger { color: var(--danger); }
+
+  input[type="number"] {
+    width: 54px;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+  input[type="range"] { width: 100px; }
+
+  /* Main layout */
+  #main { display: flex; flex: 1; min-height: 0; }
+
+  /* Left toolbar */
+  #tools {
+    width: 56px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 10px 0; gap: 6px;
+  }
+  .tool {
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; border-radius: 6px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .tool:hover { background: #3f414d; }
+  .tool.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Canvas area */
+  #canvas-area {
+    flex: 1; position: relative; overflow: hidden;
+    background:
+      repeating-conic-gradient(#26272e 0% 25%, #21222a 0% 50%) 50% / 24px 24px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #canvas-wrap { position: relative; box-shadow: 0 0 0 1px var(--border), 0 8px 30px rgba(0,0,0,.4); }
+  #canvas-wrap canvas { position: absolute; top: 0; left: 0; image-rendering: pixelated; }
+  #base-canvas { position: relative; display: block; }
+  #onion-canvas, #grid-canvas { pointer-events: none; }
+  #overlay-canvas { pointer-events: auto; cursor: crosshair; }
+
+  /* Right panels */
+  #right {
+    width: 250px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .panel { border-bottom: 1px solid var(--border); padding: 10px 12px; }
+  .panel h3 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+    color: var(--muted); margin-bottom: 8px; display: flex;
+    justify-content: space-between; align-items: center;
+  }
+  .panel h3 .actions { display: flex; gap: 4px; }
+  .mini-btn {
+    width: 22px; height: 22px; padding: 0; font-size: 13px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* Color */
+  #color-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  #current-color {
+    width: 40px; height: 40px; border-radius: 6px; border: 2px solid var(--border);
+    cursor: pointer;
+  }
+  #palette { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+  .swatch { width: 100%; aspect-ratio: 1; border-radius: 4px; cursor: pointer; border: 1px solid rgba(0,0,0,.3); position: relative; }
+  .swatch.active { outline: 2px solid #fff; outline-offset: -1px; }
+
+  /* Layers */
+  #layer-list, #frame-list { display: flex; flex-direction: column; gap: 4px; }
+  .layer {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 5px; padding: 5px 7px; cursor: pointer;
+  }
+  .layer.active { border-color: var(--accent); background: #313a4d; }
+  .layer .vis { cursor: pointer; width: 18px; text-align: center; }
+  .layer .name { flex: 1; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .layer .name input { width: 100%; background: #222; border: 1px solid var(--accent); color: #fff; border-radius: 3px; font-size:12px; padding:2px; }
+  .layer .reorder { display: flex; flex-direction: column; }
+  .layer .reorder span { font-size: 9px; line-height: 8px; color: var(--muted); cursor: pointer; }
+  .layer .reorder span:hover { color: #fff; }
+
+  /* Frames (bottom) */
+  #timeline {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 8px 12px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  #timeline .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #frame-strip { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+  .frame-thumb {
+    position: relative; flex: 0 0 auto;
+    border: 2px solid var(--border); border-radius: 5px;
+    background: repeating-conic-gradient(#3a3b44 0% 25%, #303139 0% 50%) 50% / 10px 10px;
+    cursor: pointer;
+  }
+  .frame-thumb.active { border-color: var(--accent); }
+  .frame-thumb canvas { display: block; image-rendering: pixelated; border-radius: 3px; }
+  .frame-thumb .fnum {
+    position: absolute; top: 1px; left: 3px; font-size: 9px; color: #fff;
+    text-shadow: 0 0 2px #000; pointer-events: none;
+  }
+  .frame-thumb .del {
+    position: absolute; top: 0; right: 1px; font-size: 10px; color: #fff;
+    text-shadow: 0 0 2px #000; opacity: 0; cursor: pointer;
+  }
+  .frame-thumb:hover .del { opacity: 1; }
+
+  #preview-box { display: flex; align-items: center; gap: 8px; }
+  #preview-canvas {
+    image-rendering: pixelated; border: 1px solid var(--border); border-radius: 4px;
+    background: repeating-conic-gradient(#3a3b44 0% 25%, #303139 0% 50%) 50% / 10px 10px;
+  }
+  .spacer { flex: 1; }
+  .val { color: var(--muted); min-width: 34px; display: inline-block; font-variant-numeric: tabular-nums; }
+  input[type="checkbox"] { accent-color: var(--accent); }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <span class="logo">PixelForge</span>
+    <div class="group">
+      <label class="inline">W</label><input type="number" id="doc-w" value="32" min="1" max="256">
+      <label class="inline">H</label><input type="number" id="doc-h" value="32" min="1" max="256">
+      <button id="resize-btn">New / Resize</button>
+    </div>
+    <div class="group">
+      <button id="zoom-out">−</button>
+      <span class="val" id="zoom-label">1200%</span>
+      <button id="zoom-in">+</button>
+      <label class="inline"><input type="checkbox" id="grid-toggle" checked> Grid</label>
+    </div>
+    <div class="group">
+      <button id="undo-btn">↶ Undo</button>
+      <button id="redo-btn">↷ Redo</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="group">
+      <button id="export-png">Export PNG</button>
+      <button id="export-gif" class="primary">Export GIF</button>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="tools">
+      <div class="tool active" data-tool="pencil" title="Pencil (B)">✏️</div>
+      <div class="tool" data-tool="eraser" title="Eraser (E)">🧽</div>
+      <div class="tool" data-tool="fill" title="Fill (G)">🪣</div>
+      <div class="tool" data-tool="eyedropper" title="Eyedropper (I)">💧</div>
+    </div>
+
+    <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+      <div id="canvas-area">
+        <div id="canvas-wrap">
+          <canvas id="base-canvas"></canvas>
+          <canvas id="onion-canvas"></canvas>
+          <canvas id="grid-canvas"></canvas>
+          <canvas id="overlay-canvas"></canvas>
+        </div>
+      </div>
+
+      <div id="timeline">
+        <div class="row">
+          <button id="add-frame" class="mini-btn" title="Add frame">＋</button>
+          <button id="dup-frame" class="mini-btn" title="Duplicate frame">⧉</button>
+          <div id="preview-box">
+            <canvas id="preview-canvas" width="64" height="64"></canvas>
+            <button id="play-btn" class="primary">▶ Play</button>
+          </div>
+          <label class="inline">FPS</label>
+          <input type="range" id="fps" min="1" max="30" value="8">
+          <span class="val" id="fps-label">8</span>
+          <label class="inline"><input type="checkbox" id="onion-toggle"> Onion skin</label>
+          <div class="spacer"></div>
+        </div>
+        <div id="frame-strip"></div>
+      </div>
+    </div>
+
+    <div id="right">
+      <div class="panel">
+        <h3>Color</h3>
+        <div id="color-row">
+          <input type="color" id="current-color" value="#000000">
+          <div style="flex:1;">
+            <button id="add-swatch" class="mini-btn" title="Add current color to palette">＋</button>
+          </div>
+        </div>
+        <div id="palette"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Layers <span class="actions">
+          <button class="mini-btn" id="add-layer" title="Add layer">＋</button>
+          <button class="mini-btn danger" id="del-layer" title="Delete layer">🗑</button>
+        </span></h3>
+        <div id="layer-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   PixelForge — data model
+   - doc: width, height in pixels
+   - layers: [{name, visible}]  (shared across all frames)
+   - frames: N
+   - cels[frame][layer] = Uint8ClampedArray(w*h*4)  RGBA
+   ============================================================ */
+const State = {
+  w: 32, h: 32,
+  zoom: 12,
+  layers: [],        // {name, visible}
+  frameCount: 0,
+  cels: [],          // cels[f][l] = Uint8ClampedArray
+  curFrame: 0,
+  curLayer: 0,
+  tool: 'pencil',
+  color: '#000000',
+  palette: [],
+  showGrid: true,
+  onion: false,
+  fps: 8,
+  playing: false,
+};
+
+const els = {
+  base: document.getElementById('base-canvas'),
+  onion: document.getElementById('onion-canvas'),
+  grid: document.getElementById('grid-canvas'),
+  overlay: document.getElementById('overlay-canvas'),
+  wrap: document.getElementById('canvas-wrap'),
+  area: document.getElementById('canvas-area'),
+  zoomLabel: document.getElementById('zoom-label'),
+  layerList: document.getElementById('layer-list'),
+  frameStrip: document.getElementById('frame-strip'),
+  palette: document.getElementById('palette'),
+  curColor: document.getElementById('current-color'),
+  preview: document.getElementById('preview-canvas'),
+  fpsLabel: document.getElementById('fps-label'),
+};
+
+const ctx = {
+  base: els.base.getContext('2d'),
+  onion: els.onion.getContext('2d'),
+  grid: els.grid.getContext('2d'),
+  overlay: els.overlay.getContext('2d'),
+  preview: els.preview.getContext('2d'),
+};
+Object.values(ctx).forEach(c => c.imageSmoothingEnabled = false);
+
+/* ---------- helpers ---------- */
+function newCel() { return new Uint8ClampedArray(State.w * State.h * 4); }
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+/* ============================================================
+   History (undo / redo) — snapshots of all cel data
+   ============================================================ */
+const History = {
+  stack: [], index: -1, limit: 60,
+  snapshot() {
+    return {
+      w: State.w, h: State.h,
+      layers: JSON.parse(JSON.stringify(State.layers)),
+      frameCount: State.frameCount,
+      curFrame: State.curFrame, curLayer: State.curLayer,
+      cels: State.cels.map(frame => frame.map(cel => cel.slice())),
+    };
+  },
+  push() {
+    this.stack = this.stack.slice(0, this.index + 1);
+    this.stack.push(this.snapshot());
+    if (this.stack.length > this.limit) this.stack.shift();
+    this.index = this.stack.length - 1;
+  },
+  restore(s) {
+    State.w = s.w; State.h = s.h;
+    State.layers = JSON.parse(JSON.stringify(s.layers));
+    State.frameCount = s.frameCount;
+    State.curFrame = Math.min(s.curFrame, s.frameCount - 1);
+    State.curLayer = Math.min(s.curLayer, s.layers.length - 1);
+    State.cels = s.cels.map(frame => frame.map(cel => cel.slice()));
+    resizeCanvases();
+    renderAll();
+  },
+  undo() { if (this.index > 0) { this.index--; this.restore(this.stack[this.index]); } },
+  redo() { if (this.index < this.stack.length - 1) { this.index++; this.restore(this.stack[this.index]); } },
+};
+
+/* ============================================================
+   Document setup
+   ============================================================ */
+function initDocument(w, h) {
+  State.w = w; State.h = h;
+  State.layers = [{ name: 'Layer 1', visible: true }];
+  State.frameCount = 1;
+  State.cels = [[newCel()]];
+  State.curFrame = 0; State.curLayer = 0;
+  fitZoom();
+  resizeCanvases();
+  History.stack = []; History.index = -1;
+  History.push();
+  renderAll();
+}
+
+function fitZoom() {
+  const availW = els.area.clientWidth - 40;
+  const availH = els.area.clientHeight - 40;
+  const z = Math.floor(Math.min(availW / State.w, availH / State.h));
+  State.zoom = Math.max(1, Math.min(40, z || 1));
+}
+
+function resizeCanvases() {
+  const pw = State.w * State.zoom, ph = State.h * State.zoom;
+  [els.base, els.onion, els.grid, els.overlay].forEach(c => {
+    c.width = pw; c.height = ph;
+    c.style.width = pw + 'px'; c.style.height = ph + 'px';
+  });
+  els.wrap.style.width = pw + 'px';
+  els.wrap.style.height = ph + 'px';
+  els.zoomLabel.textContent = Math.round(State.zoom * 100) + '%';
+  Object.values(ctx).forEach(c => c.imageSmoothingEnabled = false);
+  drawGrid();
+}
+/* ============================================================
+   Compositing & rendering
+   ============================================================ */
+// Composite one frame's visible layers into an ImageData (w x h, 1x scale).
+function compositeFrame(frameIdx, opts = {}) {
+  const { ignoreVisibility = false } = opts;
+  const out = new Uint8ClampedArray(State.w * State.h * 4);
+  const frame = State.cels[frameIdx];
+  for (let l = 0; l < State.layers.length; l++) {
+    if (!ignoreVisibility && !State.layers[l].visible) continue;
+    const cel = frame[l];
+    for (let i = 0; i < out.length; i += 4) {
+      const a = cel[i + 3];
+      if (a === 0) continue;
+      const sa = a / 255, da = out[i + 3] / 255;
+      const oa = sa + da * (1 - sa);
+      if (oa === 0) continue;
+      out[i]     = (cel[i]     * sa + out[i]     * da * (1 - sa)) / oa;
+      out[i + 1] = (cel[i + 1] * sa + out[i + 1] * da * (1 - sa)) / oa;
+      out[i + 2] = (cel[i + 2] * sa + out[i + 2] * da * (1 - sa)) / oa;
+      out[i + 3] = oa * 255;
+    }
+  }
+  return new ImageData(out, State.w, State.h);
+}
+
+const scratch = document.createElement('canvas');
+const scratchCtx = scratch.getContext('2d');
+function imageDataToScaled(imgData, targetCtx, scale) {
+  scratch.width = State.w; scratch.height = State.h;
+  scratchCtx.putImageData(imgData, 0, 0);
+  targetCtx.imageSmoothingEnabled = false;
+  targetCtx.clearRect(0, 0, targetCtx.canvas.width, targetCtx.canvas.height);
+  targetCtx.drawImage(scratch, 0, 0, State.w * scale, State.h * scale);
+}
+
+function renderCanvas() {
+  const img = compositeFrame(State.curFrame);
+  imageDataToScaled(img, ctx.base, State.zoom);
+}
+
+function drawOnion() {
+  ctx.onion.clearRect(0, 0, els.onion.width, els.onion.height);
+  if (!State.onion) return;
+  const draw = (idx, tint, alpha) => {
+    if (idx < 0 || idx >= State.frameCount) return;
+    const img = compositeFrame(idx);
+    const tmp = document.createElement('canvas');
+    tmp.width = State.w; tmp.height = State.h;
+    const tc = tmp.getContext('2d');
+    tc.putImageData(img, 0, 0);
+    // tint the frame
+    tc.globalCompositeOperation = 'source-atop';
+    tc.fillStyle = tint;
+    tc.globalAlpha = 0.55;
+    tc.fillRect(0, 0, State.w, State.h);
+    ctx.onion.globalAlpha = alpha;
+    ctx.onion.imageSmoothingEnabled = false;
+    ctx.onion.drawImage(tmp, 0, 0, State.w * State.zoom, State.h * State.zoom);
+    ctx.onion.globalAlpha = 1;
+  };
+  draw(State.curFrame - 1, '#e5534b', 0.4);
+  draw(State.curFrame + 1, '#4c8bf5', 0.4);
+}
+
+function drawGrid() {
+  const g = ctx.grid;
+  g.clearRect(0, 0, els.grid.width, els.grid.height);
+  if (!State.showGrid || State.zoom < 4) return;
+  g.strokeStyle = 'rgba(255,255,255,0.12)';
+  g.lineWidth = 1;
+  g.beginPath();
+  for (let x = 0; x <= State.w; x++) {
+    g.moveTo(x * State.zoom + 0.5, 0);
+    g.lineTo(x * State.zoom + 0.5, State.h * State.zoom);
+  }
+  for (let y = 0; y <= State.h; y++) {
+    g.moveTo(0, y * State.zoom + 0.5);
+    g.lineTo(State.w * State.zoom, y * State.zoom + 0.5);
+  }
+  g.stroke();
+}
+
+function renderAll() {
+  renderCanvas();
+  drawOnion();
+  drawGrid();
+  renderLayers();
+  renderFrames();
+  renderPalette();
+  updatePreviewSize();
+  renderPreviewFrame(State.curFrame);
+}
+
+/* ============================================================
+   Layers UI
+   ============================================================ */
+function renderLayers() {
+  els.layerList.innerHTML = '';
+  // display top layer first (reverse order)
+  for (let l = State.layers.length - 1; l >= 0; l--) {
+    const layer = State.layers[l];
+    const row = document.createElement('div');
+    row.className = 'layer' + (l === State.curLayer ? ' active' : '');
+    row.innerHTML = `
+      <span class="vis" title="Toggle visibility">${layer.visible ? '👁' : '🚫'}</span>
+      <span class="name">${escapeHtml(layer.name)}</span>
+      <span class="reorder"><span class="up">▲</span><span class="down">▼</span></span>`;
+    row.addEventListener('click', () => { State.curLayer = l; renderLayers(); });
+    row.querySelector('.vis').addEventListener('click', (e) => {
+      e.stopPropagation(); layer.visible = !layer.visible; History.push(); renderAll();
+    });
+    row.querySelector('.name').addEventListener('dblclick', (e) => {
+      e.stopPropagation(); startRenameLayer(l, row.querySelector('.name'));
+    });
+    row.querySelector('.up').addEventListener('click', (e) => { e.stopPropagation(); moveLayer(l, +1); });
+    row.querySelector('.down').addEventListener('click', (e) => { e.stopPropagation(); moveLayer(l, -1); });
+    els.layerList.appendChild(row);
+  }
+}
+function escapeHtml(s) { return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function startRenameLayer(l, nameEl) {
+  const input = document.createElement('input');
+  input.value = State.layers[l].name;
+  nameEl.innerHTML = ''; nameEl.appendChild(input); input.focus(); input.select();
+  const commit = () => { State.layers[l].name = input.value || State.layers[l].name; History.push(); renderLayers(); };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+}
+
+function moveLayer(l, dir) {
+  const to = l + dir;
+  if (to < 0 || to >= State.layers.length) return;
+  [State.layers[l], State.layers[to]] = [State.layers[to], State.layers[l]];
+  for (let f = 0; f < State.frameCount; f++) {
+    [State.cels[f][l], State.cels[f][to]] = [State.cels[f][to], State.cels[f][l]];
+  }
+  State.curLayer = to;
+  History.push(); renderAll();
+}
+
+function addLayer() {
+  const idx = State.curLayer + 1;
+  State.layers.splice(idx, 0, { name: 'Layer ' + (State.layers.length + 1), visible: true });
+  for (let f = 0; f < State.frameCount; f++) State.cels[f].splice(idx, 0, newCel());
+  State.curLayer = idx;
+  History.push(); renderAll();
+}
+
+function deleteLayer() {
+  if (State.layers.length <= 1) return;
+  const l = State.curLayer;
+  State.layers.splice(l, 1);
+  for (let f = 0; f < State.frameCount; f++) State.cels[f].splice(l, 1);
+  State.curLayer = Math.max(0, l - 1);
+  History.push(); renderAll();
+}
+
+/* ============================================================
+   Frames UI + preview
+   ============================================================ */
+function renderFrames() {
+  els.frameStrip.innerHTML = '';
+  const thumbScale = Math.max(1, Math.floor(48 / Math.max(State.w, State.h)));
+  for (let f = 0; f < State.frameCount; f++) {
+    const thumb = document.createElement('div');
+    thumb.className = 'frame-thumb' + (f === State.curFrame ? ' active' : '');
+    const c = document.createElement('canvas');
+    c.width = State.w * thumbScale; c.height = State.h * thumbScale;
+    const cc = c.getContext('2d');
+    cc.imageSmoothingEnabled = false;
+    const img = compositeFrame(f);
+    scratch.width = State.w; scratch.height = State.h;
+    scratchCtx.putImageData(img, 0, 0);
+    cc.drawImage(scratch, 0, 0, c.width, c.height);
+    thumb.appendChild(c);
+    const num = document.createElement('span');
+    num.className = 'fnum'; num.textContent = f + 1; thumb.appendChild(num);
+    const del = document.createElement('span');
+    del.className = 'del'; del.textContent = '✕';
+    del.addEventListener('click', (e) => { e.stopPropagation(); deleteFrame(f); });
+    thumb.appendChild(del);
+    thumb.addEventListener('click', () => { State.curFrame = f; renderAll(); });
+    els.frameStrip.appendChild(thumb);
+  }
+}
+
+function addFrame(duplicate) {
+  const idx = State.curFrame + 1;
+  const newFrame = State.layers.map((_, l) =>
+    duplicate ? State.cels[State.curFrame][l].slice() : newCel());
+  State.cels.splice(idx, 0, newFrame);
+  State.frameCount++;
+  State.curFrame = idx;
+  History.push(); renderAll();
+}
+
+function deleteFrame(f) {
+  if (State.frameCount <= 1) return;
+  State.cels.splice(f, 1);
+  State.frameCount--;
+  State.curFrame = Math.min(State.curFrame, State.frameCount - 1);
+  History.push(); renderAll();
+}
+
+function updatePreviewSize() {
+  const scale = Math.max(1, Math.floor(64 / Math.max(State.w, State.h)));
+  els.preview.width = State.w * scale;
+  els.preview.height = State.h * scale;
+  ctx.preview.imageSmoothingEnabled = false;
+}
+
+function renderPreviewFrame(f) {
+  const img = compositeFrame(f);
+  scratch.width = State.w; scratch.height = State.h;
+  scratchCtx.putImageData(img, 0, 0);
+  ctx.preview.clearRect(0, 0, els.preview.width, els.preview.height);
+  ctx.preview.drawImage(scratch, 0, 0, els.preview.width, els.preview.height);
+}
+
+/* ---------- playback ---------- */
+let playTimer = null, playIdx = 0;
+function togglePlay() {
+  State.playing = !State.playing;
+  const btn = document.getElementById('play-btn');
+  if (State.playing) {
+    btn.textContent = '⏸ Stop';
+    playIdx = State.curFrame;
+    const tick = () => {
+      renderPreviewFrame(playIdx);
+      playIdx = (playIdx + 1) % State.frameCount;
+      playTimer = setTimeout(tick, 1000 / State.fps);
+    };
+    tick();
+  } else {
+    btn.textContent = '▶ Play';
+    clearTimeout(playTimer);
+    renderPreviewFrame(State.curFrame);
+  }
+}
+
+/* ============================================================
+   Palette
+   ============================================================ */
+const DEFAULT_PALETTE = [
+  '#000000','#ffffff','#e5534b','#f5a54c','#f7d154','#8bc34a',
+  '#4caf50','#4c8bf5','#3f51b5','#9c27b0','#795548','#607d8b',
+  '#ffcdb2','#ffb4a2','#e5989b','#b5838d','#6d6875','#22223b',
+  '#f2e9e4','#c9ada7','#9a8c98','#4a4e69'
+];
+function renderPalette() {
+  els.palette.innerHTML = '';
+  State.palette.forEach((hex, i) => {
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (hex.toLowerCase() === State.color.toLowerCase() ? ' active' : '');
+    sw.style.background = hex;
+    sw.title = hex + '  (right-click to remove)';
+    sw.addEventListener('click', () => setColor(hex));
+    sw.addEventListener('contextmenu', (e) => {
+      e.preventDefault(); State.palette.splice(i, 1); renderPalette();
+    });
+    els.palette.appendChild(sw);
+  });
+}
+function setColor(hex) {
+  State.color = hex;
+  els.curColor.value = hex;
+  renderPalette();
+}
+function addSwatch() {
+  if (!State.palette.includes(State.color)) { State.palette.push(State.color); renderPalette(); }
+}
+
+/* ============================================================
+   Drawing tools
+   ============================================================ */
+function activeCel() { return State.cels[State.curFrame][State.curLayer]; }
+function idx(x, y) { return (y * State.w + x) * 4; }
+
+function setPixel(cel, x, y, rgb, alpha) {
+  if (x < 0 || y < 0 || x >= State.w || y >= State.h) return;
+  const i = idx(x, y);
+  cel[i] = rgb[0]; cel[i + 1] = rgb[1]; cel[i + 2] = rgb[2]; cel[i + 3] = alpha;
+}
+function getPixel(cel, x, y) {
+  const i = idx(x, y);
+  return [cel[i], cel[i + 1], cel[i + 2], cel[i + 3]];
+}
+
+function floodFill(cel, x, y, rgb) {
+  const target = getPixel(cel, x, y);
+  const repl = [rgb[0], rgb[1], rgb[2], 255];
+  if (target[0] === repl[0] && target[1] === repl[1] && target[2] === repl[2] && target[3] === repl[3]) return;
+  const stack = [[x, y]];
+  const match = (px) => px[0] === target[0] && px[1] === target[1] && px[2] === target[2] && px[3] === target[3];
+  while (stack.length) {
+    const [cx, cy] = stack.pop();
+    if (cx < 0 || cy < 0 || cx >= State.w || cy >= State.h) continue;
+    if (!match(getPixel(cel, cx, cy))) continue;
+    setPixel(cel, cx, cy, repl, 255);
+    stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+  }
+}
+
+let drawing = false, lastX = null, lastY = null;
+
+function canvasToPixel(e) {
+  const rect = els.overlay.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) / State.zoom);
+  const y = Math.floor((e.clientY - rect.top) / State.zoom);
+  return [x, y];
+}
+
+// Bresenham line so fast drags don't leave gaps
+function lineTo(x0, y0, x1, y1, fn) {
+  const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+  while (true) {
+    fn(x0, y0);
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  }
+}
+
+function applyToolAt(x, y) {
+  const cel = activeCel();
+  if (State.tool === 'pencil') {
+    setPixel(cel, x, y, hexToRgb(State.color), 255);
+  } else if (State.tool === 'eraser') {
+    setPixel(cel, x, y, [0, 0, 0], 0);
+  } else if (State.tool === 'fill') {
+    floodFill(cel, x, y, hexToRgb(State.color));
+  } else if (State.tool === 'eyedropper') {
+    const p = getPixel(compositeArr(State.curFrame), x, y);
+    if (p[3] > 0) setColor(rgbToHex(p[0], p[1], p[2]));
+  }
+}
+function compositeArr(f) { return compositeFrame(f).data; }
+
+function onPointerDown(e) {
+  if (e.button !== 0) return;
+  const [x, y] = canvasToPixel(e);
+  if (x < 0 || y < 0 || x >= State.w || y >= State.h) return;
+  drawing = true; lastX = x; lastY = y;
+  if (!State.layers[State.curLayer].visible) State.layers[State.curLayer].visible = true;
+  applyToolAt(x, y);
+  renderCanvas(); renderPreviewFrame(State.curFrame);
+  drawCursor(x, y);
+}
+function onPointerMove(e) {
+  const [x, y] = canvasToPixel(e);
+  drawCursor(x, y);
+  if (!drawing) return;
+  if (State.tool === 'pencil' || State.tool === 'eraser') {
+    lineTo(lastX, lastY, x, y, (px, py) => applyToolAt(px, py));
+    lastX = x; lastY = y;
+    renderCanvas(); renderPreviewFrame(State.curFrame);
+  }
+}
+function onPointerUp() {
+  if (!drawing) return;
+  drawing = false;
+  History.push();
+  renderFrames();
+}
+
+function drawCursor(x, y) {
+  ctx.overlay.clearRect(0, 0, els.overlay.width, els.overlay.height);
+  if (x < 0 || y < 0 || x >= State.w || y >= State.h) return;
+  ctx.overlay.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.overlay.lineWidth = 1;
+  ctx.overlay.strokeRect(x * State.zoom + 0.5, y * State.zoom + 0.5, State.zoom - 1, State.zoom - 1);
+  ctx.overlay.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.overlay.strokeRect(x * State.zoom + 1.5, y * State.zoom + 1.5, State.zoom - 3, State.zoom - 3);
+}
+
+/* ============================================================
+   Export: PNG
+   ============================================================ */
+function exportPNG() {
+  const c = document.createElement('canvas');
+  c.width = State.w; c.height = State.h;
+  c.getContext('2d').putImageData(compositeFrame(State.curFrame), 0, 0);
+  const a = document.createElement('a');
+  a.download = `pixelforge_frame${State.curFrame + 1}.png`;
+  a.href = c.toDataURL('image/png');
+  a.click();
+}
+
+/* ============================================================
+   Export: animated GIF (self-contained encoder below)
+   ============================================================ */
+function exportGIF() {
+  const frames = [];
+  for (let f = 0; f < State.frameCount; f++) frames.push(compositeFrame(f).data);
+  const delay = Math.round(100 / State.fps); // in 1/100 s
+  const bytes = encodeGIF(frames, State.w, State.h, delay);
+  const blob = new Blob([bytes], { type: 'image/gif' });
+  const a = document.createElement('a');
+  a.download = 'pixelforge_animation.gif';
+  a.href = URL.createObjectURL(blob);
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+/* ---- GIF89a encoder (global palette, transparency, looping) ---- */
+function buildPalette(frames, w, h, quantBits) {
+  const map = new Map();
+  const palette = [[0, 0, 0]]; // index 0 reserved for transparency
+  const mask = quantBits ? ((0xff << quantBits) & 0xff) : 0xff;
+  const indexedFrames = [];
+  for (const data of frames) {
+    const arr = new Uint8Array(w * h);
+    for (let p = 0; p < w * h; p++) {
+      const a = data[p * 4 + 3];
+      if (a < 128) { arr[p] = 0; continue; }
+      let r = data[p * 4], g = data[p * 4 + 1], b = data[p * 4 + 2];
+      if (quantBits) { r &= mask; g &= mask; b &= mask; }
+      const key = (r << 16) | (g << 8) | b;
+      let ci = map.get(key);
+      if (ci === undefined) {
+        if (palette.length >= 256) return null; // overflow, need to quantize
+        ci = palette.length;
+        palette.push([r, g, b]);
+        map.set(key, ci);
+      }
+      arr[p] = ci;
+    }
+    indexedFrames.push(arr);
+  }
+  return { indexed: indexedFrames, palette };
+}
+
+function lzwEncode(minCodeSize, indices) {
+  const clearCode = 1 << minCodeSize;
+  const eoiCode = clearCode + 1;
+  let codeSize = minCodeSize + 1;
+  let dict, nextCode;
+  const out = [];
+  let bitBuf = 0, bitCnt = 0;
+  const emit = (code) => {
+    bitBuf |= code << bitCnt;
+    bitCnt += codeSize;
+    while (bitCnt >= 8) { out.push(bitBuf & 0xff); bitBuf >>= 8; bitCnt -= 8; }
+  };
+  const initDict = () => {
+    dict = new Map();
+    for (let i = 0; i < clearCode; i++) dict.set(String.fromCharCode(i), i);
+    nextCode = eoiCode + 1;
+    codeSize = minCodeSize + 1;
+  };
+  initDict();
+  emit(clearCode);
+  let phrase = String.fromCharCode(indices[0]);
+  for (let i = 1; i < indices.length; i++) {
+    const c = String.fromCharCode(indices[i]);
+    if (dict.has(phrase + c)) {
+      phrase += c;
+    } else {
+      emit(dict.get(phrase));
+      if (nextCode < 4096) {
+        dict.set(phrase + c, nextCode++);
+        // GIF: decoder lags one code behind, so widen one code late.
+        if (nextCode === (1 << codeSize) + 1 && codeSize < 12) codeSize++;
+      } else {
+        emit(clearCode);
+        initDict();
+      }
+      phrase = c;
+    }
+  }
+  emit(dict.get(phrase));
+  emit(eoiCode);
+  if (bitCnt > 0) out.push(bitBuf & 0xff);
+  return out;
+}
+
+function encodeGIF(frames, w, h, delay) {
+  // Build a palette that fits 256 colors, quantizing if needed.
+  let built = null, quant = 0;
+  // Progressively coarsen colors until they fit in 255 slots. At quant=6 each
+  // channel keeps 2 bits (64 colors max), so this always terminates.
+  while (!built && quant <= 6) { built = buildPalette(frames, w, h, quant); if (!built) quant++; }
+  if (!built) throw new Error('Cannot build GIF palette');
+  const { indexed, palette } = built;
+
+  // pad palette to power-of-two size (min 4, max 256)
+  let size = 4;
+  while (size < palette.length) size <<= 1;
+  const minCodeSize = Math.log2(size); // >= 2
+  const gctSizeField = minCodeSize - 1;
+
+  const bytes = [];
+  const push = (...b) => bytes.push(...b);
+  const pushStr = (s) => { for (let i = 0; i < s.length; i++) bytes.push(s.charCodeAt(i)); };
+  const pushU16 = (n) => { bytes.push(n & 0xff, (n >> 8) & 0xff); };
+
+  // Header + Logical Screen Descriptor
+  pushStr('GIF89a');
+  pushU16(w); pushU16(h);
+  push(0x80 | (7 << 4) | gctSizeField); // GCT flag, color res, sort=0, GCT size
+  push(0); // background color index
+  push(0); // pixel aspect ratio
+
+  // Global Color Table
+  for (let i = 0; i < size; i++) {
+    const c = palette[i] || [0, 0, 0];
+    push(c[0], c[1], c[2]);
+  }
+
+  // NETSCAPE looping extension
+  push(0x21, 0xff, 0x0b);
+  pushStr('NETSCAPE2.0');
+  push(0x03, 0x01);
+  pushU16(0); // loop forever
+  push(0x00);
+
+  // Each frame
+  for (const arr of indexed) {
+    // Graphic Control Extension
+    push(0x21, 0xf9, 0x04);
+    push(0x08 | 0x01); // disposal=2 (restore bg) | transparent color flag
+    pushU16(delay);
+    push(0x00); // transparent color index
+    push(0x00);
+    // Image Descriptor
+    push(0x2c);
+    pushU16(0); pushU16(0); pushU16(w); pushU16(h);
+    push(0x00); // no local color table
+    // LZW image data
+    push(minCodeSize);
+    const lzw = lzwEncode(minCodeSize, arr);
+    for (let i = 0; i < lzw.length; i += 255) {
+      const chunk = lzw.slice(i, i + 255);
+      push(chunk.length);
+      for (const b of chunk) push(b);
+    }
+    push(0x00); // block terminator
+  }
+
+  push(0x3b); // trailer
+  return new Uint8Array(bytes);
+}
+
+/* ============================================================
+   Event wiring
+   ============================================================ */
+// Tools
+document.querySelectorAll('.tool').forEach(t => {
+  t.addEventListener('click', () => selectTool(t.dataset.tool));
+});
+function selectTool(tool) {
+  State.tool = tool;
+  document.querySelectorAll('.tool').forEach(el =>
+    el.classList.toggle('active', el.dataset.tool === tool));
+}
+
+// Canvas pointer events
+els.overlay.addEventListener('mousedown', onPointerDown);
+window.addEventListener('mousemove', onPointerMove);
+window.addEventListener('mouseup', onPointerUp);
+els.overlay.addEventListener('mouseleave', () => ctx.overlay.clearRect(0, 0, els.overlay.width, els.overlay.height));
+els.overlay.addEventListener('contextmenu', e => e.preventDefault());
+
+// Zoom
+document.getElementById('zoom-in').addEventListener('click', () => setZoom(State.zoom + 1));
+document.getElementById('zoom-out').addEventListener('click', () => setZoom(State.zoom - 1));
+function setZoom(z) {
+  State.zoom = Math.max(1, Math.min(40, z));
+  resizeCanvases(); renderAll();
+}
+els.area.addEventListener('wheel', (e) => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  setZoom(State.zoom + (e.deltaY < 0 ? 1 : -1));
+}, { passive: false });
+
+// Grid toggle
+document.getElementById('grid-toggle').addEventListener('change', (e) => {
+  State.showGrid = e.target.checked; drawGrid();
+});
+
+// New / resize
+document.getElementById('resize-btn').addEventListener('click', () => {
+  const w = Math.max(1, Math.min(256, parseInt(document.getElementById('doc-w').value) || 32));
+  const h = Math.max(1, Math.min(256, parseInt(document.getElementById('doc-h').value) || 32));
+  if (confirm('Start a new ' + w + '×' + h + ' document? Current work will be cleared.')) {
+    initDocument(w, h);
+  }
+});
+
+// Undo / redo
+document.getElementById('undo-btn').addEventListener('click', () => History.undo());
+document.getElementById('redo-btn').addEventListener('click', () => History.redo());
+
+// Color
+els.curColor.addEventListener('input', (e) => setColor(e.target.value));
+document.getElementById('add-swatch').addEventListener('click', addSwatch);
+
+// Layers
+document.getElementById('add-layer').addEventListener('click', addLayer);
+document.getElementById('del-layer').addEventListener('click', deleteLayer);
+
+// Frames
+document.getElementById('add-frame').addEventListener('click', () => addFrame(false));
+document.getElementById('dup-frame').addEventListener('click', () => addFrame(true));
+
+// Playback
+document.getElementById('play-btn').addEventListener('click', togglePlay);
+const fpsSlider = document.getElementById('fps');
+fpsSlider.addEventListener('input', (e) => {
+  State.fps = parseInt(e.target.value);
+  els.fpsLabel.textContent = State.fps;
+});
+
+// Onion skin
+document.getElementById('onion-toggle').addEventListener('change', (e) => {
+  State.onion = e.target.checked; drawOnion();
+});
+
+// Export
+document.getElementById('export-png').addEventListener('click', exportPNG);
+document.getElementById('export-gif').addEventListener('click', exportGIF);
+
+// Keyboard shortcuts
+window.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); History.undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); History.redo(); return; }
+  const map = { b: 'pencil', e: 'eraser', g: 'fill', i: 'eyedropper' };
+  if (map[e.key.toLowerCase()]) selectTool(map[e.key.toLowerCase()]);
+  if (e.key === '+' || e.key === '=') setZoom(State.zoom + 1);
+  if (e.key === '-') setZoom(State.zoom - 1);
+  if (e.key === ',') { State.curFrame = (State.curFrame - 1 + State.frameCount) % State.frameCount; renderAll(); }
+  if (e.key === '.') { State.curFrame = (State.curFrame + 1) % State.frameCount; renderAll(); }
+});
+
+window.addEventListener('resize', () => { /* keep current zoom */ drawGrid(); });
+
+/* ============================================================
+   Boot
+   ============================================================ */
+State.palette = DEFAULT_PALETTE.slice();
+State.color = '#000000';
+els.curColor.value = '#000000';
+initDocument(32, 32);
+
+</script>
+
+</body>
+</html>

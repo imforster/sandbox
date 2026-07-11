@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kiro Platformer</title>
+<style>
+  html, body {
+    margin: 0; height: 100%;
+    background: #1a1a2e;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+  }
+  #wrap { position: relative; }
+  canvas {
+    display: block;
+    background: #6ec0ff;
+    image-rendering: pixelated;
+    border: 4px solid #0f3460;
+    border-radius: 6px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5);
+  }
+  #hud {
+    position: absolute; top: 12px; left: 16px; right: 16px;
+    display: flex; justify-content: space-between;
+    color: #fff; font-size: 20px; font-weight: bold;
+    text-shadow: 2px 2px 0 #0f3460;
+    pointer-events: none; letter-spacing: 1px;
+  }
+  #overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: #fff; text-align: center;
+    background: rgba(15,52,96,.82);
+    border-radius: 4px;
+  }
+  #overlay h1 { font-size: 42px; margin: 0 0 8px; text-shadow: 3px 3px 0 #e94560; }
+  #overlay p  { font-size: 16px; margin: 6px 0; opacity: .9; }
+  #overlay .key { color: #ffd23f; }
+  button {
+    margin-top: 18px; padding: 12px 28px; font-size: 18px; font-weight: bold;
+    font-family: inherit; cursor: pointer; color: #0f3460;
+    background: #ffd23f; border: none; border-radius: 6px;
+    box-shadow: 0 4px 0 #c99e1a;
+  }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 #c99e1a; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="800" height="450"></canvas>
+  <div id="hud">
+    <div>SCORE <span id="score">0</span></div>
+    <div>COINS <span id="coins">0</span>/<span id="coinTotal">0</span></div>
+    <div>LIVES <span id="lives">3</span></div>
+  </div>
+  <div id="overlay">
+    <h1>KIRO PLATFORMER</h1>
+    <p><span class="key">← →</span> move &nbsp; <span class="key">SPACE / ↑ / Z</span> jump (hold for higher)</p>
+    <p>Stomp red enemies. Avoid spiky purple ones. Grab coins. Reach the flag.</p>
+    <button id="startBtn">START</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // ---------- HUD ----------
+  const hud = {
+    score: document.getElementById('score'),
+    coins: document.getElementById('coins'),
+    coinTotal: document.getElementById('coinTotal'),
+    lives: document.getElementById('lives'),
+  };
+  const overlay = document.getElementById('overlay');
+  const startBtn = document.getElementById('startBtn');
+
+  // ---------- Sound (Web Audio, no assets needed) ----------
+  let actx = null;
+  function initAudio() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  function beep(freq, dur, type = 'square', vol = 0.15, slideTo = null) {
+    if (!actx) return;
+    const t = actx.currentTime;
+    const osc = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    if (slideTo) osc.frequency.linearRampToValueAtTime(slideTo, t + dur);
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(gain).connect(actx.destination);
+    osc.start(t); osc.stop(t + dur);
+  }
+  const sfx = {
+    jump:  () => beep(420, 0.15, 'square', 0.12, 720),
+    coin:  () => { beep(880, 0.08, 'square', 0.12); setTimeout(() => beep(1320, 0.10, 'square', 0.12), 70); },
+    stomp: () => beep(200, 0.12, 'sawtooth', 0.15, 90),
+    hurt:  () => beep(300, 0.4, 'sawtooth', 0.18, 60),
+    win:   () => { [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,0.18,'triangle',0.16),i*140)); },
+  };
+
+  // ---------- Physics constants ----------
+  const GRAVITY = 0.6;
+  const MOVE_ACCEL = 0.7;
+  const MAX_RUN = 4.2;
+  const FRICTION = 0.78;
+  const AIR_FRICTION = 0.92;
+  const JUMP_VEL = -12.2;
+  const JUMP_CUT = 0.45;      // variable jump: cut upward velocity on release
+  const MAX_FALL = 14;
+  const COYOTE_TIME = 6;      // frames of grace after leaving ledge
+  const JUMP_BUFFER = 6;      // frames to buffer a jump press
+
+  // ---------- Input ----------
+  const keys = {};
+  const pressed = {};
+  window.addEventListener('keydown', e => {
+    if (['ArrowLeft','ArrowRight','ArrowUp','Space'].includes(e.code)) e.preventDefault();
+    if (!keys[e.code]) pressed[e.code] = true;
+    keys[e.code] = true;
+  });
+  window.addEventListener('keyup', e => { keys[e.code] = false; });
+  const jumpHeld = () => keys['Space'] || keys['ArrowUp'] || keys['KeyZ'] || keys['KeyW'];
+  const jumpPressed = () => pressed['Space'] || pressed['ArrowUp'] || pressed['KeyZ'] || pressed['KeyW'];
+
+  // ---------- Level definition ----------
+  // Ground is a long strip with gaps. Platforms float. Enemies, coins, moving platforms, flag.
+  const LEVEL_W = 3600;
+  const GROUND_Y = 400;
+
+  function buildLevel() {
+    const platforms = [
+      // ground segments (with gaps between)
+      { x: 0,    y: GROUND_Y, w: 640,  h: 50 },
+      { x: 740,  y: GROUND_Y, w: 520,  h: 50 },
+      { x: 1360, y: GROUND_Y, w: 380,  h: 50 },
+      { x: 1860, y: GROUND_Y, w: 700,  h: 50 },
+      { x: 2680, y: GROUND_Y, w: 920,  h: 50 },
+      // floating platforms
+      { x: 300,  y: 300, w: 120, h: 20 },
+      { x: 520,  y: 240, w: 120, h: 20 },
+      { x: 900,  y: 290, w: 140, h: 20 },
+      { x: 1180, y: 230, w: 120, h: 20 },
+      { x: 1480, y: 300, w: 120, h: 20 },
+      { x: 2050, y: 300, w: 150, h: 20 },
+      { x: 2260, y: 230, w: 150, h: 20 },
+      { x: 2900, y: 300, w: 130, h: 20 },
+      { x: 3120, y: 240, w: 130, h: 20 },
+    ];
+    const movers = [
+      { x: 640,  y: 340, w: 100, h: 18, axis: 'x', min: 640,  max: 740,  speed: 1.4, dir: 1, vx: 0, vy: 0 },
+      { x: 1260, y: 340, w: 100, h: 18, axis: 'x', min: 1260, max: 1360, speed: 1.6, dir: 1, vx: 0, vy: 0 },
+      { x: 1720, y: 320, w: 110, h: 18, axis: 'y', min: 240,  max: 360,  speed: 1.3, dir: 1, vx: 0, vy: 0 },
+      { x: 2560, y: 340, w: 110, h: 18, axis: 'x', min: 2560, max: 2680, speed: 1.7, dir: 1, vx: 0, vy: 0 },
+    ];
+    const coins = [];
+    const coinSpots = [
+      [340,260],[380,260],[560,200],[600,200],[940,250],[1210,190],
+      [1000,360],[1040,360],[1520,260],[1760,270],[2090,260],[2130,260],
+      [2300,190],[2340,190],[2400,360],[2440,360],[2940,260],[3160,200],
+      [3200,200],[3300,360],
+    ];
+    coinSpots.forEach(([x,y]) => coins.push({ x, y, r: 9, got: false, t: Math.random()*6 }));
+
+    const enemies = [
+      // type 'goomba' = stompable, 'spiky' = hurts even from top
+      { type:'goomba', x:420, y:GROUND_Y-26, w:26, h:26, vx:-0.9, alive:true, min:300, max:620 },
+      { type:'goomba', x:980, y:GROUND_Y-26, w:26, h:26, vx:1.0,  alive:true, min:760, max:1240 },
+      { type:'goomba', x:2000,y:GROUND_Y-26, w:26, h:26, vx:-1.1, alive:true, min:1880,max:2540 },
+      { type:'spiky',  x:1550,y:GROUND_Y-28, w:28, h:28, vx:1.0,  alive:true, min:1380,max:1720 },
+      { type:'spiky',  x:2760,y:GROUND_Y-28, w:28, h:28, vx:-1.2, alive:true, min:2700,max:3100 },
+      { type:'goomba', x:3000,y:GROUND_Y-26, w:26, h:26, vx:0.9,  alive:true, min:2700,max:3560 },
+    ];
+
+    const flag = { x: 3480, y: GROUND_Y - 180, w: 12, h: 180 };
+
+    return { platforms, movers, coins, enemies, flag };
+  }
+
+  // ---------- Player ----------
+  function makePlayer() {
+    return {
+      x: 60, y: GROUND_Y - 40, w: 26, h: 38,
+      vx: 0, vy: 0, onGround: false, facing: 1,
+      coyote: 0, buffer: 0, jumping: false,
+      invuln: 0, animT: 0,
+    };
+  }
+
+  // ---------- Game state ----------
+  let state, player, level, cam, score, coinCount, lives, gameState;
+  // gameState: 'menu' | 'play' | 'dead' | 'win'
+
+  function resetLevel(fullReset) {
+    level = buildLevel();
+    player = makePlayer();
+    cam = { x: 0 };
+    if (fullReset) { score = 0; lives = 3; }
+    coinCount = 0;
+    hud.coinTotal.textContent = level.coins.length;
+    updateHud();
+  }
+
+  function updateHud() {
+    hud.score.textContent = score;
+    hud.coins.textContent = coinCount;
+    hud.lives.textContent = lives;
+  }
+
+  function startGame() {
+    initAudio();
+    resetLevel(true);
+    gameState = 'play';
+    overlay.classList.add('hidden');
+  }
+
+  function showOverlay(title, sub, btn) {
+    overlay.querySelector('h1').textContent = title;
+    overlay.querySelectorAll('p')[0].innerHTML = sub;
+    overlay.querySelectorAll('p')[1].innerHTML = '';
+    startBtn.textContent = btn;
+    overlay.classList.remove('hidden');
+  }
+
+  // ---------- Collision helper (AABB) ----------
+  function overlaps(ax, ay, aw, ah, bx, by, bw, bh) {
+    return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+  }
+
+  // ---------- Update ----------
+  function update() {
+    if (gameState !== 'play') return;
+    player.animT++;
+
+    // --- horizontal input ---
+    const left = keys['ArrowLeft'] || keys['KeyA'];
+    const right = keys['ArrowRight'] || keys['KeyD'];
+    if (left && !right)  { player.vx -= MOVE_ACCEL; player.facing = -1; }
+    if (right && !left)  { player.vx += MOVE_ACCEL; player.facing = 1; }
+    if (!(left ^ right)) player.vx *= (player.onGround ? FRICTION : AIR_FRICTION);
+    player.vx = Math.max(-MAX_RUN, Math.min(MAX_RUN, player.vx));
+
+    // --- jump: coyote time + buffering + variable height ---
+    if (jumpPressed()) player.buffer = JUMP_BUFFER;
+    if (player.buffer > 0) player.buffer--;
+    if (player.coyote > 0) player.coyote--;
+
+    if (player.buffer > 0 && player.coyote > 0) {
+      player.vy = JUMP_VEL;
+      player.onGround = false;
+      player.jumping = true;
+      player.buffer = 0; player.coyote = 0;
+      sfx.jump();
+    }
+    // variable jump height: releasing early cuts the rise
+    if (player.jumping && !jumpHeld() && player.vy < 0) {
+      player.vy *= JUMP_CUT;
+      player.jumping = false;
+    }
+    if (player.vy >= 0) player.jumping = false;
+
+    // --- gravity ---
+    player.vy = Math.min(player.vy + GRAVITY, MAX_FALL);
+
+    // --- move moving platforms first ---
+    level.movers.forEach(m => {
+      const before = m.axis === 'x' ? m.x : m.y;
+      if (m.axis === 'x') {
+        m.x += m.speed * m.dir;
+        if (m.x <= m.min || m.x >= m.max) m.dir *= -1;
+        m.vx = m.x - before; m.vy = 0;
+      } else {
+        m.y += m.speed * m.dir;
+        if (m.y <= m.min || m.y >= m.max) m.dir *= -1;
+        m.vy = m.y - before; m.vx = 0;
+      }
+    });
+
+    // --- horizontal movement + collision ---
+    player.x += player.vx;
+    const solids = level.platforms.concat(level.movers);
+    for (const s of solids) {
+      if (overlaps(player.x, player.y, player.w, player.h, s.x, s.y, s.w, s.h)) {
+        if (player.vx > 0) player.x = s.x - player.w;
+        else if (player.vx < 0) player.x = s.x + s.w;
+        player.vx = 0;
+      }
+    }
+    // world bounds
+    if (player.x < 0) { player.x = 0; player.vx = 0; }
+    if (player.x + player.w > LEVEL_W) { player.x = LEVEL_W - player.w; player.vx = 0; }
+
+    // --- vertical movement + collision ---
+    player.onGround = false;
+    player.y += player.vy;
+    for (const s of solids) {
+      if (overlaps(player.x, player.y, player.w, player.h, s.x, s.y, s.w, s.h)) {
+        if (player.vy > 0) {           // landing on top
+          player.y = s.y - player.h;
+          player.vy = 0;
+          player.onGround = true;
+          player.coyote = COYOTE_TIME;
+          // ride moving platforms
+          if (s.vx) player.x += s.vx;
+        } else if (player.vy < 0) {     // bonk head
+          player.y = s.y + s.h;
+          player.vy = 0;
+        }
+      }
+    }
+    if (player.onGround) player.coyote = COYOTE_TIME;
+
+    // --- fell in a gap ---
+    if (player.y > H + 60) return loseLife();
+
+    // --- coins ---
+    level.coins.forEach(c => {
+      c.t += 0.12;
+      if (!c.got && overlaps(player.x, player.y, player.w, player.h, c.x - c.r, c.y - c.r, c.r*2, c.r*2)) {
+        c.got = true; coinCount++; score += 100; sfx.coin(); updateHud();
+      }
+    });
+
+    // --- enemies ---
+    if (player.invuln > 0) player.invuln--;
+    level.enemies.forEach(e => {
+      if (!e.alive) return;
+      e.x += e.vx;
+      if (e.x <= e.min || e.x + e.w >= e.max) e.vx *= -1;
+
+      if (overlaps(player.x, player.y, player.w, player.h, e.x, e.y, e.w, e.h)) {
+        const stomping = player.vy > 0 && (player.y + player.h) - e.y < 18;
+        if (stomping && e.type === 'goomba') {
+          e.alive = false;
+          player.vy = JUMP_VEL * 0.6;   // bounce
+          player.jumping = true;
+          score += 200; sfx.stomp(); updateHud();
+        } else if (player.invuln === 0) {
+          hurt();
+        }
+      }
+    });
+
+    // --- flag / goal ---
+    const f = level.flag;
+    if (overlaps(player.x, player.y, player.w, player.h, f.x, f.y, f.w, f.h)) {
+      return winLevel();
+    }
+
+    // --- camera follows player ---
+    const target = player.x - W * 0.4;
+    cam.x += (target - cam.x) * 0.12;
+    cam.x = Math.max(0, Math.min(cam.x, LEVEL_W - W));
+  }
+
+  function hurt() {
+    sfx.hurt();
+    player.invuln = 90;
+    // knock back
+    player.vy = -6;
+    player.vx = -player.facing * 5;
+    lives--;
+    updateHud();
+    if (lives <= 0) {
+      gameState = 'dead';
+      showOverlay('GAME OVER', 'Final score: <span class="key">' + score + '</span>', 'TRY AGAIN');
+    }
+  }
+
+  function loseLife() {
+    sfx.hurt();
+    lives--;
+    updateHud();
+    if (lives <= 0) {
+      gameState = 'dead';
+      showOverlay('GAME OVER', 'Final score: <span class="key">' + score + '</span>', 'TRY AGAIN');
+    } else {
+      // respawn at start of level, keep score
+      const s = score, l = lives;
+      resetLevel(false);
+      score = s; lives = l; updateHud();
+    }
+  }
+
+  function winLevel() {
+    gameState = 'win';
+    score += 1000 + lives * 200;
+    updateHud();
+    sfx.win();
+    showOverlay('YOU WIN!', 'Score: <span class="key">' + score + '</span> &nbsp; (+1000 goal, +200/life)', 'PLAY AGAIN');
+  }
+
+  // ---------- Render ----------
+  function drawBackground() {
+    // sky gradient
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#6ec0ff');
+    g.addColorStop(1, '#bfe9ff');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    // parallax hills
+    ctx.fillStyle = '#7ec850';
+    for (let i = -1; i < 6; i++) {
+      const bx = i * 400 - (cam.x * 0.3) % 400;
+      ctx.beginPath();
+      ctx.arc(bx + 200, H, 180, Math.PI, 0);
+      ctx.fill();
+    }
+    // clouds (parallax)
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    for (let i = 0; i < 8; i++) {
+      const cx = (i * 520 - (cam.x * 0.5)) % (LEVEL_W) ;
+      const px = ((cx % (W + 200)) + (W + 200)) % (W + 200) - 100;
+      const cy = 60 + (i % 3) * 40;
+      cloud(px, cy);
+    }
+  }
+  function cloud(x, y) {
+    ctx.beginPath();
+    ctx.arc(x, y, 20, 0, 7); ctx.arc(x+22, y+6, 26, 0, 7);
+    ctx.arc(x+50, y, 20, 0, 7); ctx.arc(x+26, y-10, 20, 0, 7);
+    ctx.fill();
+  }
+
+  function drawPlatform(p, moving) {
+    const x = p.x - cam.x;
+    if (x + p.w < 0 || x > W) return;
+    if (p.h >= 40) {
+      // ground: dirt + grass top
+      ctx.fillStyle = '#7a4a1e';
+      ctx.fillRect(x, p.y, p.w, p.h);
+      ctx.fillStyle = '#4caf50';
+      ctx.fillRect(x, p.y, p.w, 10);
+      ctx.fillStyle = 'rgba(0,0,0,.12)';
+      for (let i = 0; i < p.w; i += 16) ctx.fillRect(x + i, p.y + 12, 2, p.h - 12);
+    } else {
+      ctx.fillStyle = moving ? '#e0873a' : '#c56b1f';
+      ctx.fillRect(x, p.y, p.w, p.h);
+      ctx.fillStyle = moving ? '#ffcf8a' : '#f0a355';
+      ctx.fillRect(x, p.y, p.w, 5);
+    }
+  }
+
+  function drawCoin(c) {
+    if (c.got) return;
+    const x = c.x - cam.x;
+    if (x < -20 || x > W + 20) return;
+    const sq = Math.abs(Math.cos(c.t)); // spin
+    ctx.save();
+    ctx.translate(x, c.y + Math.sin(c.t) * 2);
+    ctx.fillStyle = '#ffd23f';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, c.r * (0.35 + 0.65*sq), c.r, 0, 0, 7);
+    ctx.fill();
+    ctx.strokeStyle = '#e0a41f'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawEnemy(e) {
+    if (!e.alive) return;
+    const x = e.x - cam.x;
+    if (x < -40 || x > W + 40) return;
+    if (e.type === 'goomba') {
+      ctx.fillStyle = '#d64541';
+      ctx.fillRect(x, e.y, e.w, e.h);
+      ctx.fillStyle = '#7a1f1c';
+      ctx.fillRect(x, e.y + e.h - 6, e.w, 6);
+      // eyes
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(x+5, e.y+7, 6, 7); ctx.fillRect(x+e.w-11, e.y+7, 6, 7);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(x+7, e.y+9, 3, 4); ctx.fillRect(x+e.w-9, e.y+9, 3, 4);
+    } else {
+      // spiky
+      ctx.fillStyle = '#8e44ad';
+      ctx.fillRect(x, e.y+6, e.w, e.h-6);
+      ctx.fillStyle = '#5b2c6f';
+      for (let i = 0; i < e.w; i += 7) {
+        ctx.beginPath();
+        ctx.moveTo(x+i, e.y+8); ctx.lineTo(x+i+3.5, e.y-2); ctx.lineTo(x+i+7, e.y+8);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(x+6, e.y+12, 5, 5); ctx.fillRect(x+e.w-11, e.y+12, 5, 5);
+    }
+  }
+
+  function drawFlag() {
+    const f = level.flag;
+    const x = f.x - cam.x;
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(x, f.y, f.w, f.h);
+    ctx.fillStyle = '#e94560';
+    ctx.beginPath();
+    ctx.moveTo(x + f.w, f.y + 8);
+    ctx.lineTo(x + f.w + 46, f.y + 22);
+    ctx.lineTo(x + f.w, f.y + 36);
+    ctx.fill();
+    ctx.fillStyle = '#ffd23f';
+    ctx.beginPath(); ctx.arc(x + f.w/2, f.y, 8, 0, 7); ctx.fill();
+  }
+
+  function drawPlayer() {
+    if (player.invuln > 0 && Math.floor(player.animT/4) % 2) return; // blink
+    const x = player.x - cam.x, y = player.y;
+    // body
+    ctx.fillStyle = '#e94560';
+    ctx.fillRect(x, y + 14, player.w, player.h - 14);
+    // head
+    ctx.fillStyle = '#ffcfa8';
+    ctx.fillRect(x + 3, y, player.w - 6, 16);
+    // cap
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(x + 1, y, player.w - 2, 6);
+    ctx.fillRect(x + (player.facing>0? player.w-4 : -2), y+2, 6, 4);
+    // eye
+    ctx.fillStyle = '#000';
+    ctx.fillRect(x + (player.facing>0? player.w-9 : 5), y + 7, 3, 4);
+    // legs (simple run cycle)
+    ctx.fillStyle = '#2c3e50';
+    const step = player.onGround && Math.abs(player.vx) > 0.5 ? Math.sin(player.animT*0.4)*4 : 0;
+    ctx.fillRect(x+2, y+player.h-6, 8, 6 + step);
+    ctx.fillRect(x+player.w-10, y+player.h-6, 8, 6 - step);
+  }
+
+  function render() {
+    drawBackground();
+    level.platforms.forEach(p => drawPlatform(p, false));
+    level.movers.forEach(m => drawPlatform(m, true));
+    level.coins.forEach(drawCoin);
+    drawFlag();
+    level.enemies.forEach(drawEnemy);
+    drawPlayer();
+  }
+
+  // ---------- Main loop ----------
+  function loop() {
+    update();
+    render();
+    // clear one-frame pressed flags
+    for (const k in pressed) pressed[k] = false;
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- Boot ----------
+  startBtn.addEventListener('click', () => {
+    if (gameState === 'menu') startGame();
+    else startGame(); // restart from dead/win
+  });
+  // also allow Enter/Space to start from overlay
+  window.addEventListener('keydown', e => {
+    if (!overlay.classList.contains('hidden') && (e.code === 'Enter')) startGame();
+  });
+
+  gameState = 'menu';
+  resetLevel(true);
+  loop();
+})();
+</script>
+</body>
+</html>
