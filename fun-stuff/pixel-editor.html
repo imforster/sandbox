@@ -100,7 +100,7 @@
   #canvas-wrap canvas { position: absolute; top: 0; left: 0; image-rendering: pixelated; }
   #base-canvas { position: relative; display: block; }
   #onion-canvas, #grid-canvas { pointer-events: none; }
-  #overlay-canvas { pointer-events: auto; cursor: crosshair; }
+  #overlay-canvas { pointer-events: auto; cursor: crosshair; touch-action: none; }
 
   /* Right panels */
   #right {
@@ -747,7 +747,11 @@ function applyToolAt(x, y) {
 function compositeArr(f) { return compositeFrame(f).data; }
 
 function onPointerDown(e) {
-  if (e.button !== 0) return;
+  if (e.button > 0) return; // ignore right/middle mouse; touch & pen report 0
+  e.preventDefault();       // stop touch scroll / page zoom while drawing
+  if (els.overlay.setPointerCapture && e.pointerId != null) {
+    try { els.overlay.setPointerCapture(e.pointerId); } catch (_) {}
+  }
   const [x, y] = canvasToPixel(e);
   if (x < 0 || y < 0 || x >= State.w || y >= State.h) return;
   drawing = true; lastX = x; lastY = y;
@@ -964,11 +968,12 @@ function selectTool(tool) {
     el.classList.toggle('active', el.dataset.tool === tool));
 }
 
-// Canvas pointer events
-els.overlay.addEventListener('mousedown', onPointerDown);
-window.addEventListener('mousemove', onPointerMove);
-window.addEventListener('mouseup', onPointerUp);
-els.overlay.addEventListener('mouseleave', () => ctx.overlay.clearRect(0, 0, els.overlay.width, els.overlay.height));
+// Canvas pointer events (unify mouse, touch, and stylus)
+els.overlay.addEventListener('pointerdown', onPointerDown);
+window.addEventListener('pointermove', onPointerMove);
+window.addEventListener('pointerup', onPointerUp);
+window.addEventListener('pointercancel', onPointerUp);
+els.overlay.addEventListener('pointerleave', () => { if (!drawing) ctx.overlay.clearRect(0, 0, els.overlay.width, els.overlay.height); });
 els.overlay.addEventListener('contextmenu', e => e.preventDefault());
 
 // Zoom
