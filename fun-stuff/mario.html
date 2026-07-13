@@ -96,6 +96,25 @@
   #fsBtn:hover { background: rgba(15,52,96,.75); }
   #fsBtn.hidden { display: none !important; }
 
+  /* Fullscreen help modal (shown on iPhone where the API is unavailable) */
+  #fsHelp {
+    position: absolute; inset: 0; z-index: 30;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,52,96,.92); padding: 16px;
+  }
+  #fsHelp.hidden { display: none !important; }
+  .fsCard {
+    background: #0f3460; color: #fff; text-align: left;
+    padding: 18px 22px; border-radius: 10px;
+    max-width: 460px; width: 90%;
+    border: 2px solid rgba(255,255,255,.25);
+  }
+  .fsCard h2 { margin: 0 0 10px; font-size: 22px; }
+  .fsCard p  { margin: 0 0 8px; font-size: 15px; opacity: .95; }
+  .fsCard ol { margin: 8px 0 0; padding-left: 20px; line-height: 1.7; font-size: 15px; }
+  .fsCard b  { color: #ffd23f; }
+  .fsCard button { margin-top: 16px; }
+
   /* When #wrap is fullscreen it fills the screen; center + letterbox the canvas
      so it fits both landscape and portrait without stretching. */
   #wrap:fullscreen {
@@ -159,6 +178,19 @@
     <button id="startBtn">START</button>
   </div>
   <div id="fsBtn" title="Fullscreen (F)" aria-label="Toggle fullscreen">&#9974;</div>
+  <div id="fsHelp" class="hidden">
+    <div class="fsCard">
+      <h2>Fullscreen on iPhone</h2>
+      <p>iPhone Safari can't make a web page fullscreen directly. To play chrome-free in landscape:</p>
+      <ol>
+        <li>Tap the Safari <b>Share</b> button (the square with an up arrow)</li>
+        <li>Choose <b>Add to Home Screen</b>, then <b>Add</b></li>
+        <li>Open the game from the new home-screen icon &mdash; it launches full screen</li>
+        <li>Rotate to landscape and tap <b>START</b></li>
+      </ol>
+      <button id="fsHelpClose">GOT IT</button>
+    </div>
+  </div>
   <div id="touch">
     <div class="tbtn" id="btnLeft">&#9664;</div>
     <div class="tbtn" id="btnRight">&#9654;</div>
@@ -719,17 +751,22 @@
   }
   function toggleFullscreen() { fsElement() ? exitFullscreen() : enterFullscreen(); }
 
-  if (!fsEnabled()) {
-    // e.g. iPhone Safari: no Fullscreen API. Point users to Add to Home Screen.
-    fsBtn.classList.add('hidden');
-  } else {
-    fsBtn.addEventListener('click', toggleFullscreen);
-    const syncIcon = () => { fsBtn.innerHTML = fsElement() ? '&#10005;' : '&#9974;';
-                             fsBtn.title = fsElement() ? 'Exit fullscreen (F)' : 'Fullscreen (F)'; };
-    document.addEventListener('fullscreenchange', syncIcon);
-    document.addEventListener('webkitfullscreenchange', syncIcon);
-    window.addEventListener('keydown', e => { if (e.code === 'KeyF') toggleFullscreen(); });
+  // Keep the button visible everywhere. Where the Fullscreen API works
+  // (desktop, Android, iPad) it toggles fullscreen; on iPhone Safari it
+  // explains the Add-to-Home-Screen path instead of silently doing nothing.
+  const fsHelp = document.getElementById('fsHelp');
+  document.getElementById('fsHelpClose').addEventListener('click', () => fsHelp.classList.add('hidden'));
+
+  function toggleFullscreen() {
+    if (!fsEnabled()) { fsHelp.classList.remove('hidden'); return; }
+    fsElement() ? exitFullscreen() : enterFullscreen();
   }
+  fsBtn.addEventListener('click', toggleFullscreen);
+  const syncIcon = () => { fsBtn.innerHTML = fsElement() ? '&#10005;' : '&#9974;';
+                           fsBtn.title = fsElement() ? 'Exit fullscreen (F)' : 'Fullscreen (F)'; };
+  document.addEventListener('fullscreenchange', syncIcon);
+  document.addEventListener('webkitfullscreenchange', syncIcon);
+  window.addEventListener('keydown', e => { if (e.code === 'KeyF') toggleFullscreen(); });
 
   gameState = 'menu';
   resetLevel(true);
