@@ -47,15 +47,23 @@
     position: absolute; inset: 0;
     pointer-events: none;           /* container ignores taps; buttons opt back in */
     display: none;
+    /* Sizes scale with the screen's larger side so they stay big & tappable
+       in landscape regardless of device. */
+    --dpad: clamp(78px, 12vmax, 120px);
+    --jump: clamp(96px, 15vmax, 148px);
+    --edge-x: max(4%, env(safe-area-inset-left));
+    --edge-r: max(4%, env(safe-area-inset-right));
+    --edge-b: max(4%, env(safe-area-inset-bottom));
   }
   .tbtn {
     position: absolute;
-    bottom: max(3%, env(safe-area-inset-bottom));
-    width: 60px; height: 60px;
+    bottom: var(--edge-b);
+    width: var(--dpad); height: var(--dpad);
     display: flex; align-items: center; justify-content: center;
-    font-size: 26px; font-weight: bold; color: rgba(255,255,255,.85);
-    background: rgba(15,52,96,.22);
-    border: 2px solid rgba(255,255,255,.35);
+    font-size: calc(var(--dpad) * 0.42); font-weight: bold;
+    color: rgba(255,255,255,.9);
+    background: rgba(15,52,96,.24);
+    border: 2px solid rgba(255,255,255,.4);
     border-radius: 50%;
     pointer-events: auto;
     -webkit-user-select: none; user-select: none;
@@ -63,13 +71,14 @@
     touch-action: none;
     transition: background .08s, transform .08s;
   }
-  .tbtn.active { background: rgba(255,210,63,.8); color: #0f3460; transform: scale(.92); }
-  #btnLeft  { left: max(3%, env(safe-area-inset-left)); }
-  #btnRight { left: calc(max(3%, env(safe-area-inset-left)) + 72px); }
-  #btnJump  { right: max(3%, env(safe-area-inset-right));
-              width: 76px; height: 76px; font-size: 18px;
-              background: rgba(233,69,96,.28); }
-  #btnJump.active { background: rgba(255,210,63,.8); color: #0f3460; }
+  .tbtn.active { background: rgba(255,210,63,.82); color: #0f3460; transform: scale(.94); }
+  #btnLeft  { left: var(--edge-x); }
+  #btnRight { left: calc(var(--edge-x) + var(--dpad) + 18px); }
+  #btnJump  { right: var(--edge-r);
+              width: var(--jump); height: var(--jump);
+              font-size: calc(var(--jump) * 0.22);
+              background: rgba(233,69,96,.3); }
+  #btnJump.active { background: rgba(255,210,63,.82); color: #0f3460; }
   /* Reveal only on devices without a fine pointer (phones/tablets) */
   @media (hover: none) and (pointer: coarse) {
     #touch { display: block; }
