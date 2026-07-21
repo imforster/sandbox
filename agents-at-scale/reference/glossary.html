@@ -4,122 +4,515 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Glossary — Agentic Skills Best Practices</title>
-    <link rel="stylesheet" href="../assets/style.css">
+    <style>
+        :root {
+            --bg: #fbfbfd;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #86868b;
+            --accent: #0071e3;
+            --border: rgba(0, 0, 0, 0.06);
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --search-bg: #f5f5f7;
+            --radius: 12px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000;
+                --text-primary: #f5f5f7;
+                --text-secondary: #a1a1a6;
+                --text-tertiary: #6e6e73;
+                --accent: #64d2ff;
+                --border: rgba(255, 255, 255, 0.08);
+                --card-bg: rgba(28, 28, 30, 0.72);
+                --search-bg: rgba(28, 28, 30, 0.9);
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            line-height: 1.5;
+        }
+
+        .page {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 0 2rem 4rem;
+        }
+
+        /* Back nav */
+        .back-nav {
+            padding: 1.5rem 0;
+        }
+
+        .back-nav a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--accent);
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+
+        .back-nav a:hover { opacity: 0.7; }
+
+        /* Header */
+        .glossary-header {
+            padding: 2rem 0 2.5rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .glossary-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.5rem;
+        }
+
+        .glossary-header p {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            max-width: 540px;
+        }
+
+        /* Search */
+        .search-container {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--bg);
+            padding: 1rem 0;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            font-size: 1rem;
+            font-family: inherit;
+            background: var(--search-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+        }
+
+        .search-input::placeholder { color: var(--text-tertiary); }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            pointer-events: none;
+        }
+
+        .search-count {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            margin-top: 0.5rem;
+            min-height: 1.2em;
+        }
+
+        /* Letter groups */
+        .letter-group {
+            margin-top: 2rem;
+        }
+
+        .letter-heading {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 0;
+            position: sticky;
+            top: 4.5rem;
+            background: var(--bg);
+            z-index: 50;
+        }
+
+        /* Terms */
+        .term-entry {
+            padding: 1.25rem 0;
+            border-bottom: 1px solid var(--border);
+            transition: opacity 0.2s;
+        }
+
+        .term-entry:last-child { border-bottom: none; }
+
+        .term-entry.hidden { display: none; }
+
+        .term-name {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.35rem;
+            letter-spacing: -0.01em;
+        }
+
+        .term-def {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Letter index sidebar */
+        .letter-index {
+            position: fixed;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            z-index: 200;
+        }
+
+        .letter-index a {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-decoration: none;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            text-align: center;
+            transition: color 0.15s, background 0.15s;
+        }
+
+        .letter-index a:hover {
+            color: var(--accent);
+            background: var(--search-bg);
+        }
+
+        /* No results */
+        .no-results {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-tertiary);
+            font-size: 1rem;
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .letter-index { display: none; }
+        }
+
+        @media (max-width: 600px) {
+            .page { padding: 0 1.25rem 3rem; }
+            .glossary-header h1 { font-size: 2rem; }
+            .letter-heading { top: 4rem; }
+        }
+    </style>
 </head>
 <body>
-    <nav class="breadcrumb">
-        <a href="../lessons/index.html">← Back to Lessons</a>
+
+<div class="page">
+    <nav class="back-nav">
+        <a href="../lessons/index.html">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 10 4 6 8 2"/></svg>
+            Lessons
+        </a>
     </nav>
 
-    <main class="lesson-container">
+    <header class="glossary-header">
         <h1>Glossary</h1>
-        <p class="subtitle">Key terms and definitions for the Agentic Skills Best Practices course.</p>
+        <p>Key terms and definitions for agentic skills, governance, and enterprise AI architectures.</p>
+    </header>
 
-        <dl class="glossary">
-            <dt id="agent">Agent</dt>
-            <dd>An autonomous software entity that uses a foundation model to reason, plan, and execute tasks by invoking tools and skills in a loop until a goal is met.</dd>
+    <div class="search-container">
+        <div class="search-wrapper">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg>
+            <input type="text" class="search-input" placeholder="Filter terms…" id="search" autocomplete="off">
+        </div>
+        <div class="search-count" id="count"></div>
+    </div>
 
-            <dt id="agent-registry">Agent Registry</dt>
-            <dd>A centralized or federated catalog where agents and their capabilities are published, discovered, and versioned — enabling reuse and coordination across teams.</dd>
+    <div class="no-results" id="no-results">No matching terms found.</div>
 
-            <dt id="chain-of-thought">Chain of Thought (CoT)</dt>
-            <dd>A prompting technique that instructs the model to produce intermediate reasoning steps before arriving at a final answer, improving accuracy on complex tasks.</dd>
+    <div id="glossary-content">
+        <div class="letter-group" data-letter="A">
+            <div class="letter-heading">A</div>
+            <div class="term-entry" data-term="agent">
+                <div class="term-name">Agent</div>
+                <div class="term-def">An autonomous software entity that uses a foundation model to reason, plan, and execute tasks by invoking tools and skills in a loop until a goal is met.</div>
+            </div>
+            <div class="term-entry" data-term="agent registry">
+                <div class="term-name">Agent Registry</div>
+                <div class="term-def">A centralized or federated catalog where agents and their capabilities are published, discovered, and versioned — enabling reuse and coordination across teams.</div>
+            </div>
+        </div>
 
-            <dt id="citizen-developer">Citizen Developer</dt>
-            <dd>A non-professional developer (e.g., product manager, analyst) who builds automations or skills using low-code tools and agentic frameworks without deep software engineering expertise.</dd>
+        <div class="letter-group" data-letter="C">
+            <div class="letter-heading">C</div>
+            <div class="term-entry" data-term="chain of thought">
+                <div class="term-name">Chain of Thought (CoT)</div>
+                <div class="term-def">A prompting technique that instructs the model to produce intermediate reasoning steps before arriving at a final answer, improving accuracy on complex tasks.</div>
+            </div>
+            <div class="term-entry" data-term="citizen developer">
+                <div class="term-name">Citizen Developer</div>
+                <div class="term-def">A non-professional developer (e.g., product manager, analyst) who builds automations or skills using low-code tools and agentic frameworks without deep software engineering expertise.</div>
+            </div>
+            <div class="term-entry" data-term="composition">
+                <div class="term-name">Composition</div>
+                <div class="term-def">The practice of combining smaller, single-purpose skills or agents into larger workflows — favoring reuse and modularity over monolithic implementations.</div>
+            </div>
+            <div class="term-entry" data-term="configuration">
+                <div class="term-name">Configuration</div>
+                <div class="term-def">External parameters (model choice, temperature, tool allowlists, guardrails) that control agent behavior without modifying core logic or prompt text.</div>
+            </div>
+            <div class="term-entry" data-term="context window">
+                <div class="term-name">Context Window</div>
+                <div class="term-def">The maximum number of tokens a foundation model can process in a single request — encompassing the system prompt, conversation history, tool results, and the generated response.</div>
+            </div>
+            <div class="term-entry" data-term="core logic">
+                <div class="term-name">Core Logic</div>
+                <div class="term-def">The essential reasoning and orchestration code within an agent or skill that determines how inputs are processed and actions are selected — distinct from configuration and tool integrations.</div>
+            </div>
+        </div>
 
-            <dt id="composition">Composition</dt>
-            <dd>The practice of combining smaller, single-purpose skills or agents into larger workflows — favoring reuse and modularity over monolithic implementations.</dd>
+        <div class="letter-group" data-letter="D">
+            <div class="letter-heading">D</div>
+            <div class="term-entry" data-term="dependency injection">
+                <div class="term-name">Dependency Injection</div>
+                <div class="term-def">A design pattern where external services (tools, APIs, data stores) are provided to a skill at runtime rather than hard-coded, improving testability and portability.</div>
+            </div>
+        </div>
 
-            <dt id="configuration">Configuration</dt>
-            <dd>External parameters (model choice, temperature, tool allowlists, guardrails) that control agent behavior without modifying core logic or prompt text.</dd>
+        <div class="letter-group" data-letter="E">
+            <div class="letter-heading">E</div>
+            <div class="term-entry" data-term="evaluation framework">
+                <div class="term-name">Evaluation Framework</div>
+                <div class="term-def">A structured approach for measuring agent or skill quality — including test scenarios, success criteria, latency benchmarks, and regression detection — enabling continuous improvement.</div>
+            </div>
+        </div>
 
-            <dt id="context-window">Context Window</dt>
-            <dd>The maximum number of tokens a foundation model can process in a single request — encompassing the system prompt, conversation history, tool results, and the generated response.</dd>
+        <div class="letter-group" data-letter="F">
+            <div class="letter-heading">F</div>
+            <div class="term-entry" data-term="federated governance">
+                <div class="term-name">Federated Governance</div>
+                <div class="term-def">A governance model where a central team sets standards, guardrails, and review processes while individual teams retain autonomy to build and publish their own skills and agents.</div>
+            </div>
+            <div class="term-entry" data-term="foundation model">
+                <div class="term-name">Foundation Model</div>
+                <div class="term-def">A large language model (LLM) or multimodal model pre-trained on broad data that serves as the reasoning engine for agents — e.g., Claude, GPT, Llama.</div>
+            </div>
+        </div>
 
-            <dt id="core-logic">Core Logic</dt>
-            <dd>The essential reasoning and orchestration code within an agent or skill that determines how inputs are processed and actions are selected — distinct from configuration and tool integrations.</dd>
+        <div class="letter-group" data-letter="G">
+            <div class="letter-heading">G</div>
+            <div class="term-entry" data-term="guardrails">
+                <div class="term-name">Guardrails</div>
+                <div class="term-def">Constraints applied to agent behavior to ensure safety, compliance, and correctness — including input validation, output filtering, tool restrictions, and human-in-the-loop approvals.</div>
+            </div>
+        </div>
 
-            <dt id="dependency-injection">Dependency Injection</dt>
-            <dd>A design pattern where external services (tools, APIs, data stores) are provided to a skill at runtime rather than hard-coded, improving testability and portability.</dd>
+        <div class="letter-group" data-letter="I">
+            <div class="letter-heading">I</div>
+            <div class="term-entry" data-term="include directive">
+                <div class="term-name">Include Directive</div>
+                <div class="term-def">A mechanism in skill or agent configuration files that pulls in external resources (other skills, context documents, tool definitions) by reference rather than inline duplication.</div>
+            </div>
+            <div class="term-entry" data-term="interface schema">
+                <div class="term-name">Interface Schema</div>
+                <div class="term-def">A formal definition of a skill's inputs, outputs, and side effects — enabling type-safe composition, validation, and documentation generation.</div>
+            </div>
+        </div>
 
-            <dt id="evaluation-framework">Evaluation Framework</dt>
-            <dd>A structured approach for measuring agent or skill quality — including test scenarios, success criteria, latency benchmarks, and regression detection — enabling continuous improvement.</dd>
+        <div class="letter-group" data-letter="K">
+            <div class="letter-heading">K</div>
+            <div class="term-entry" data-term="knowledge base">
+                <div class="term-name">Knowledge Base</div>
+                <div class="term-def">A curated collection of documents, facts, or embeddings that an agent can query (via RAG or direct lookup) to ground its responses in verified information.</div>
+            </div>
+        </div>
 
-            <dt id="federated-governance">Federated Governance</dt>
-            <dd>A governance model where a central team sets standards, guardrails, and review processes while individual teams retain autonomy to build and publish their own skills and agents.</dd>
+        <div class="letter-group" data-letter="L">
+            <div class="letter-heading">L</div>
+            <div class="term-entry" data-term="llm gateway">
+                <div class="term-name">LLM Gateway</div>
+                <div class="term-def">A centralized service that routes agent requests to foundation models while enforcing rate limits, access control, logging, cost tracking, and model version management.</div>
+            </div>
+        </div>
 
-            <dt id="foundation-model">Foundation Model</dt>
-            <dd>A large language model (LLM) or multimodal model pre-trained on broad data that serves as the reasoning engine for agents — e.g., Claude, GPT, Llama.</dd>
+        <div class="letter-group" data-letter="M">
+            <div class="letter-heading">M</div>
+            <div class="term-entry" data-term="mcp">
+                <div class="term-name">MCP (Model Context Protocol)</div>
+                <div class="term-def">A standardized protocol for connecting agents to external tools and data sources — providing a uniform interface for tool discovery, invocation, and result handling across heterogeneous backends.</div>
+            </div>
+            <div class="term-entry" data-term="metadata">
+                <div class="term-name">Metadata</div>
+                <div class="term-def">Descriptive information attached to a skill or agent (name, version, author, description, tags, dependencies) that enables discovery, governance, and dependency resolution.</div>
+            </div>
+            <div class="term-entry" data-term="monolithic skill">
+                <div class="term-name">Monolithic Skill</div>
+                <div class="term-def">An anti-pattern where a single skill file handles too many responsibilities — making it hard to test, reuse, or maintain. Contrast with the Single Responsibility Principle.</div>
+            </div>
+            <div class="term-entry" data-term="multi-agent coordination">
+                <div class="term-name">Multi-Agent Coordination</div>
+                <div class="term-def">Patterns for multiple agents to collaborate on a task — including delegation, fan-out/fan-in, pipeline handoffs, and shared context — while avoiding conflicts and duplication.</div>
+            </div>
+        </div>
 
-            <dt id="guardrails">Guardrails</dt>
-            <dd>Constraints applied to agent behavior to ensure safety, compliance, and correctness — including input validation, output filtering, tool restrictions, and human-in-the-loop approvals.</dd>
+        <div class="letter-group" data-letter="P">
+            <div class="letter-heading">P</div>
+            <div class="term-entry" data-term="prompt caching">
+                <div class="term-name">Prompt Caching</div>
+                <div class="term-def">A technique where repeated or static portions of a prompt (system instructions, skill definitions) are cached by the model provider to reduce latency and cost on subsequent calls.</div>
+            </div>
+        </div>
 
-            <dt id="include-directive">Include Directive</dt>
-            <dd>A mechanism in skill or agent configuration files that pulls in external resources (other skills, context documents, tool definitions) by reference rather than inline duplication.</dd>
+        <div class="letter-group" data-letter="R">
+            <div class="letter-heading">R</div>
+            <div class="term-entry" data-term="rag">
+                <div class="term-name">RAG (Retrieval-Augmented Generation)</div>
+                <div class="term-def">A pattern where relevant documents are retrieved from a knowledge base and injected into the model's context before generation — grounding responses in factual, up-to-date information.</div>
+            </div>
+            <div class="term-entry" data-term="react pattern">
+                <div class="term-name">ReAct Pattern</div>
+                <div class="term-def">An agent architecture that interleaves Reasoning (chain-of-thought) with Action (tool calls), observing results before deciding the next step — enabling iterative problem-solving.</div>
+            </div>
+            <div class="term-entry" data-term="reflexion">
+                <div class="term-name">Reflexion</div>
+                <div class="term-def">A self-improvement pattern where an agent reviews its own output, identifies errors or shortcomings, and retries with corrective feedback — closing the loop without human intervention.</div>
+            </div>
+        </div>
 
-            <dt id="interface-schema">Interface Schema</dt>
-            <dd>A formal definition of a skill's inputs, outputs, and side effects — enabling type-safe composition, validation, and documentation generation.</dd>
+        <div class="letter-group" data-letter="S">
+            <div class="letter-heading">S</div>
+            <div class="term-entry" data-term="scope creep">
+                <div class="term-name">Scope Creep</div>
+                <div class="term-def">The gradual expansion of a skill's responsibilities beyond its original purpose — leading to monolithic designs, increased complexity, and reduced reusability.</div>
+            </div>
+            <div class="term-entry" data-term="semantic versioning">
+                <div class="term-name">Semantic Versioning</div>
+                <div class="term-def">A versioning scheme (MAJOR.MINOR.PATCH) applied to skills and agents where breaking changes increment MAJOR, new features increment MINOR, and bug fixes increment PATCH.</div>
+            </div>
+            <div class="term-entry" data-term="shadow ai">
+                <div class="term-name">Shadow AI</div>
+                <div class="term-def">Unsanctioned use of AI tools or agents within an organization — operating outside governance, security review, and compliance controls — creating risk and duplication.</div>
+            </div>
+            <div class="term-entry" data-term="single responsibility principle">
+                <div class="term-name">Single Responsibility Principle</div>
+                <div class="term-def">The design guideline that each skill should do one thing well — with a clear, bounded scope — making it easier to test, version, compose, and replace.</div>
+            </div>
+            <div class="term-entry" data-term="skill file">
+                <div class="term-name">Skill File</div>
+                <div class="term-def">A structured document (typically markdown with front matter) that defines a skill's trigger, steps, rules, and resources — serving as both documentation and executable specification for an agent.</div>
+            </div>
+            <div class="term-entry" data-term="skill library">
+                <div class="term-name">Skill Library</div>
+                <div class="term-def">A shared repository of vetted, versioned skills that teams can discover, import, and compose into their agents — reducing duplication and raising quality through reuse.</div>
+            </div>
+        </div>
 
-            <dt id="knowledge-base">Knowledge Base</dt>
-            <dd>A curated collection of documents, facts, or embeddings that an agent can query (via RAG or direct lookup) to ground its responses in verified information.</dd>
+        <div class="letter-group" data-letter="T">
+            <div class="letter-heading">T</div>
+            <div class="term-entry" data-term="token optimization">
+                <div class="term-name">Token Optimization</div>
+                <div class="term-def">Techniques for reducing token consumption (and thus cost and latency) — including concise prompts, context pruning, caching, summarization, and selective tool-result inclusion.</div>
+            </div>
+            <div class="term-entry" data-term="tool gateway">
+                <div class="term-name">Tool Gateway</div>
+                <div class="term-def">An intermediary layer that brokers agent requests to external tools — handling authentication, rate limiting, error retries, and audit logging in one place.</div>
+            </div>
+        </div>
 
-            <dt id="llm-gateway">LLM Gateway</dt>
-            <dd>A centralized service that routes agent requests to foundation models while enforcing rate limits, access control, logging, cost tracking, and model version management.</dd>
+        <div class="letter-group" data-letter="W">
+            <div class="letter-heading">W</div>
+            <div class="term-entry" data-term="workflow">
+                <div class="term-name">Workflow</div>
+                <div class="term-def">A defined sequence or graph of steps — potentially spanning multiple skills and agents — that accomplishes a complex task, with explicit control flow, error handling, and completion criteria.</div>
+            </div>
+        </div>
+    </div>
+</div>
 
-            <dt id="mcp">MCP (Model Context Protocol)</dt>
-            <dd>A standardized protocol for connecting agents to external tools and data sources — providing a uniform interface for tool discovery, invocation, and result handling across heterogeneous backends.</dd>
+<nav class="letter-index" id="letter-index">
+    <a href="#" data-letter="A">A</a>
+    <a href="#" data-letter="C">C</a>
+    <a href="#" data-letter="D">D</a>
+    <a href="#" data-letter="E">E</a>
+    <a href="#" data-letter="F">F</a>
+    <a href="#" data-letter="G">G</a>
+    <a href="#" data-letter="I">I</a>
+    <a href="#" data-letter="K">K</a>
+    <a href="#" data-letter="L">L</a>
+    <a href="#" data-letter="M">M</a>
+    <a href="#" data-letter="P">P</a>
+    <a href="#" data-letter="R">R</a>
+    <a href="#" data-letter="S">S</a>
+    <a href="#" data-letter="T">T</a>
+    <a href="#" data-letter="W">W</a>
+</nav>
 
-            <dt id="metadata">Metadata</dt>
-            <dd>Descriptive information attached to a skill or agent (name, version, author, description, tags, dependencies) that enables discovery, governance, and dependency resolution.</dd>
+<script>
+(function() {
+    const search = document.getElementById('search');
+    const count = document.getElementById('count');
+    const noResults = document.getElementById('no-results');
+    const entries = document.querySelectorAll('.term-entry');
+    const groups = document.querySelectorAll('.letter-group');
+    const total = entries.length;
 
-            <dt id="monolithic-skill">Monolithic Skill</dt>
-            <dd>An anti-pattern where a single skill file handles too many responsibilities — making it hard to test, reuse, or maintain. Contrast with the Single Responsibility Principle.</dd>
+    // Search filter
+    search.addEventListener('input', function() {
+        const q = this.value.toLowerCase().trim();
+        let visible = 0;
 
-            <dt id="multi-agent-coordination">Multi-Agent Coordination</dt>
-            <dd>Patterns for multiple agents to collaborate on a task — including delegation, fan-out/fan-in, pipeline handoffs, and shared context — while avoiding conflicts and duplication.</dd>
+        entries.forEach(entry => {
+            const term = entry.dataset.term;
+            const def = entry.querySelector('.term-def').textContent.toLowerCase();
+            const match = !q || term.includes(q) || def.includes(q);
+            entry.classList.toggle('hidden', !match);
+            if (match) visible++;
+        });
 
-            <dt id="prompt-caching">Prompt Caching</dt>
-            <dd>A technique where repeated or static portions of a prompt (system instructions, skill definitions) are cached by the model provider to reduce latency and cost on subsequent calls.</dd>
+        // Hide empty letter groups
+        groups.forEach(group => {
+            const hasVisible = group.querySelector('.term-entry:not(.hidden)');
+            group.style.display = hasVisible ? '' : 'none';
+        });
 
-            <dt id="rag">RAG (Retrieval-Augmented Generation)</dt>
-            <dd>A pattern where relevant documents are retrieved from a knowledge base and injected into the model's context before generation — grounding responses in factual, up-to-date information.</dd>
+        count.textContent = q ? `${visible} of ${total} terms` : '';
+        noResults.style.display = visible === 0 ? 'block' : 'none';
+    });
 
-            <dt id="react-pattern">ReAct Pattern</dt>
-            <dd>An agent architecture that interleaves <strong>Re</strong>asoning (chain-of-thought) with <strong>Act</strong>ion (tool calls), observing results before deciding the next step — enabling iterative problem-solving.</dd>
+    // Letter index scroll
+    document.getElementById('letter-index').addEventListener('click', function(e) {
+        if (e.target.tagName === 'A') {
+            e.preventDefault();
+            const letter = e.target.dataset.letter;
+            const group = document.querySelector(`.letter-group[data-letter="${letter}"]`);
+            if (group) {
+                group.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    });
+})();
+</script>
 
-            <dt id="reflexion">Reflexion</dt>
-            <dd>A self-improvement pattern where an agent reviews its own output, identifies errors or shortcomings, and retries with corrective feedback — closing the loop without human intervention.</dd>
-
-            <dt id="scope-creep">Scope Creep</dt>
-            <dd>The gradual expansion of a skill's responsibilities beyond its original purpose — leading to monolithic designs, increased complexity, and reduced reusability.</dd>
-
-            <dt id="semantic-versioning">Semantic Versioning</dt>
-            <dd>A versioning scheme (MAJOR.MINOR.PATCH) applied to skills and agents where breaking changes increment MAJOR, new features increment MINOR, and bug fixes increment PATCH — enabling safe dependency management.</dd>
-
-            <dt id="shadow-ai">Shadow AI</dt>
-            <dd>Unsanctioned use of AI tools or agents within an organization — operating outside governance, security review, and compliance controls — creating risk and duplication.</dd>
-
-            <dt id="single-responsibility-principle">Single Responsibility Principle</dt>
-            <dd>The design guideline that each skill should do one thing well — with a clear, bounded scope — making it easier to test, version, compose, and replace.</dd>
-
-            <dt id="skill-file">Skill File</dt>
-            <dd>A structured document (typically markdown with front matter) that defines a skill's trigger, steps, rules, and resources — serving as both documentation and executable specification for an agent.</dd>
-
-            <dt id="skill-library">Skill Library</dt>
-            <dd>A shared repository of vetted, versioned skills that teams can discover, import, and compose into their agents — reducing duplication and raising quality through reuse.</dd>
-
-            <dt id="token-optimization">Token Optimization</dt>
-            <dd>Techniques for reducing token consumption (and thus cost and latency) — including concise prompts, context pruning, caching, summarization, and selective tool-result inclusion.</dd>
-
-            <dt id="tool-gateway">Tool Gateway</dt>
-            <dd>An intermediary layer that brokers agent requests to external tools — handling authentication, rate limiting, error retries, and audit logging in one place.</dd>
-
-            <dt id="workflow">Workflow</dt>
-            <dd>A defined sequence or graph of steps — potentially spanning multiple skills and agents — that accomplishes a complex task, with explicit control flow, error handling, and completion criteria.</dd>
-        </dl>
-    </main>
-
-    <script src="/sandbox/shared/nav.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
 </body>
 </html>
