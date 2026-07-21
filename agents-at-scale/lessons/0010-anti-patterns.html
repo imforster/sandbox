@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 10: Anti-Patterns and Pitfalls</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0009-performance-optimization.html" class="lesson-back-top" title="Performance Optimization"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span class="lesson-nav-disabled">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></span></nav>
+
+<h1>Anti-Patterns and Pitfalls</h1>
+
+<div class="lesson-meta">
+  Lesson 10 · Agentic Skills Best Practices · ~10 minutes
+</div>
+
+<p>By the end of this lesson, you'll recognize the seven most common anti-patterns in multi-agent system design and know how to refactor each one. These patterns emerge repeatedly in production systems and cause failures that are hard to diagnose after the fact.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you'll have a pattern library of what <em>not</em> to do — each with a concrete fix. Use it as a code review checklist before any agent or skill reaches production.</p>
+</div>
+
+<h2>Why Anti-Patterns Matter</h2>
+
+<p>The AutoGen paper (Wu et al., 2023) demonstrates that multi-agent systems fail not from novel complexity but from well-known software engineering mistakes amplified by non-determinism. A monolithic prompt that works 90% of the time in testing fails 40% of the time in production because the input distribution shifts. A hard-coded endpoint that works for months breaks silently when the service migrates. These are preventable failures.</p>
+
+<p>Each anti-pattern below follows a consistent structure: the Problem (what goes wrong and why), the Solution (the correct pattern), and a code example showing the fix.</p>
+
+<h2>Anti-Pattern 1: Monolithic Skills</h2>
+
+<h3>Problem</h3>
+
+<p>A single skill handles multiple unrelated tasks — code review, deployment, documentation generation, and ticket management all in one file. The prompt becomes a wall of conflicting instructions. The model struggles to determine which behavior applies. Testing becomes impossible because each test case must account for all other behaviors. Changes to one capability break another.</p>
+
+<h3>Solution</h3>
+
+<p>Apply the Single Responsibility Principle. Each skill does one thing well. Compose complex workflows from focused skills via an orchestrator.</p>
+
+<pre><code># ❌ Anti-pattern: Monolithic skill trying to do everything
+class UniversalAgentSkill:
+    """Handles code review, deploys, writes docs, and manages tickets."""
+
+    def execute(self, task):
+        if "review" in task.description:
+            return self._do_code_review(task)
+        elif "deploy" in task.description:
+            return self._do_deployment(task)
+        elif "document" in task.description:
+            return self._do_documentation(task)
+        elif "ticket" in task.description:
+            return self._do_ticket_management(task)
+        else:
+            # Guess what the user wants based on vibes
+            return self._try_everything(task)
+
+# ✅ Solution: Focused, composable skills
+class CodeReviewSkill:
+    """Reviews code changes for correctness, style, and security."""
+
+    def execute(self, diff: str, context: ReviewContext) -> ReviewResult:
+        prompt = self.build_review_prompt(diff, context)
+        return self.model.generate(prompt, schema=ReviewResult)
+
+class DeploymentSkill:
+    """Executes deployment pipelines with safety checks."""
+
+    def execute(self, package: str, environment: str) -> DeployResult:
+        self.validate_environment(environment)
+        return self.pipeline.deploy(package, environment)
+
+class Orchestrator:
+    """Composes focused skills into workflows."""
+
+    def handle_release(self, package: str):
+        review = self.code_review.execute(get_diff(package))
+        if review.approved:
+            return self.deployment.execute(package, "production")</code></pre>
+
+<h2>Anti-Pattern 2: Hard-Coded Configuration</h2>
+
+<h3>Problem</h3>
+
+<p>Endpoints, credentials, model names, and thresholds embedded directly in source code. When the model version changes, you edit code. When an endpoint migrates, you hunt through files. Credentials in source get committed to version control. Different environments (dev, staging, production) require code changes instead of configuration changes.</p>
+
+<h3>Solution</h3>
+
+<p>Externalize all configuration. Use environment variables for secrets, configuration files for tunable parameters, and dependency injection for service endpoints.</p>
+
+<pre><code># ❌ Anti-pattern: Hard-coded everything
+class MyAgent:
+    def __init__(self):
+        self.api_key = "sk-abc123secretkey456"
+        self.endpoint = "https://api.openai.com/v1/chat/completions"
+        self.model = "gpt-4-0125-preview"
+        self.max_tokens = 4096
+        self.temperature = 0.7
+        self.retry_count = 3
+        self.timeout = 30
+
+# ✅ Solution: Externalized, injectable configuration
+from dataclasses import dataclass
+from os import environ
+
+@dataclass(frozen=True)
+class AgentConfig:
+    """All tunable parameters externalized."""
+    api_key: str
+    endpoint: str
+    model: str
+    max_tokens: int = 4096
+    temperature: float = 0.7
+    retry_count: int = 3
+    timeout_seconds: int = 30
+
+    @classmethod
+    def from_environment(cls) -> "AgentConfig":
+        return cls(
+            api_key=environ["AGENT_API_KEY"],
+            endpoint=environ.get("AGENT_ENDPOINT", "https://api.example.com/v1"),
+            model=environ.get("AGENT_MODEL", "claude-sonnet-4-20250514"),
+            max_tokens=int(environ.get("AGENT_MAX_TOKENS", "4096")),
+        )
+
+class MyAgent:
+    def __init__(self, config: AgentConfig):
+        self.config = config  # injected, testable, no secrets in source</code></pre>
+
+<h2>Anti-Pattern 3: Overly Generic Prompts</h2>
+
+<h3>Problem</h3>
+
+<p>Vague system prompts like "You are a helpful assistant" provide no behavioral constraints. The agent's output varies wildly between invocations. It hallucinates tool calls, invents capabilities, and produces inconsistent formatting. Without specific instructions, the model falls back to generic completion behavior rather than task-specific expertise.</p>
+
+<h3>Solution</h3>
+
+<p>Write precise prompts with explicit constraints: define the role, specify the output format, list what the agent must and must not do, and provide examples of correct behavior.</p>
+
+<pre><code># ❌ Anti-pattern: Vague, unconstrained prompt
+SYSTEM_PROMPT = "You are a helpful assistant that reviews code."
+
+# ✅ Solution: Precise, constrained prompt with examples
+SYSTEM_PROMPT = """You are a code review agent for Python backend services.
+
+ROLE: Identify bugs, security issues, and style violations in diffs.
+
+OUTPUT FORMAT: Return a JSON array of findings. Each finding has:
+- file: string (path)
+- line: integer (line number in the diff)
+- severity: "critical" | "warning" | "suggestion"
+- category: "bug" | "security" | "style" | "performance"
+- message: string (one sentence explaining the issue)
+- fix: string (the corrected code, or null if no fix is obvious)
+
+RULES:
+- Only comment on changed lines (+ lines in the diff).
+- Never suggest changes to unchanged code.
+- Flag SQL injection, path traversal, and credential exposure as critical.
+- Limit findings to 10 most important issues.
+- If the diff is clean, return an empty array [].
+
+EXAMPLE INPUT:
++ password = request.args.get("pw")
++ db.execute(f"SELECT * FROM users WHERE pass='{password}'")
+
+EXAMPLE OUTPUT:
+[{"file": "auth.py", "line": 42, "severity": "critical",
+  "category": "security", "message": "SQL injection via string interpolation.",
+  "fix": "db.execute('SELECT * FROM users WHERE pass=?', (password,))"}]
+"""</code></pre>
+
+<h2>Anti-Pattern 4: Missing Error Handling</h2>
+
+<h3>Problem</h3>
+
+<p>Errors are caught and silently swallowed, or not caught at all. The agent continues processing with corrupted state. Downstream consumers receive partial or incorrect results with no indication that something went wrong. Debugging requires reproducing the exact input because no diagnostic information was preserved.</p>
+
+<h3>Solution</h3>
+
+<p>Handle errors explicitly at every boundary. Log diagnostic context. Propagate failures with actionable information. Distinguish between retryable and terminal failures.</p>
+
+<pre><code># ❌ Anti-pattern: Silent failure
+class DataAgent:
+    def fetch_and_analyze(self, query):
+        try:
+            data = self.api.search(query)
+        except Exception:
+            data = []  # silently return empty — caller never knows it failed
+
+        try:
+            analysis = self.model.analyze(data)
+        except Exception:
+            analysis = "No analysis available."  # looks like a valid response
+
+        return analysis  # caller can't distinguish success from total failure
+
+# ✅ Solution: Explicit error handling with context
+from dataclasses import dataclass
+from enum import Enum
+
+class FailureType(Enum):
+    RETRYABLE = "retryable"      # network timeout, rate limit
+    TERMINAL = "terminal"         # invalid input, auth failure
+    DEGRADED = "degraded"         # partial success
+
+@dataclass
+class AgentResult:
+    success: bool
+    data: any = None
+    error: str | None = None
+    failure_type: FailureType | None = None
+    partial_results: list | None = None
+
+class DataAgent:
+    def fetch_and_analyze(self, query: str) -> AgentResult:
+        # Fetch with explicit error classification
+        try:
+            data = self.api.search(query)
+        except TimeoutError:
+            logger.warning("API timeout for query=%s", query)
+            return AgentResult(
+                success=False,
+                error=f"Search timed out after {self.config.timeout_seconds}s",
+                failure_type=FailureType.RETRYABLE,
+            )
+        except AuthenticationError as e:
+            logger.error("Auth failure: %s", e)
+            return AgentResult(
+                success=False,
+                error="Authentication failed — check credentials",
+                failure_type=FailureType.TERMINAL,
+            )
+
+        if not data:
+            return AgentResult(success=True, data="No results found for query.")
+
+        # Analyze with graceful degradation
+        try:
+            analysis = self.model.analyze(data)
+            return AgentResult(success=True, data=analysis)
+        except TokenLimitError:
+            # Partial success: return raw data without analysis
+            logger.warning("Token limit exceeded — returning raw results")
+            return AgentResult(
+                success=True,
+                data="Analysis unavailable (input too large). Raw results attached.",
+                failure_type=FailureType.DEGRADED,
+                partial_results=data[:10],
+            )</code></pre>
+
+<h2>Anti-Pattern 5: Ignoring Token Limits</h2>
+
+<h3>Problem</h3>
+
+<p>Prompts grow unchecked as conversation history accumulates or large documents are injected. The model silently truncates context, losing critical instructions or data. Alternatively, the API returns an error and the task fails completely. Developers don't notice because short test inputs fit within limits — the failure only manifests with production-scale inputs.</p>
+
+<h3>Solution</h3>
+
+<p>Implement token budgeting at the architecture level. Reserve space for system prompts, measure inputs before sending, and use chunking or summarization when inputs exceed limits.</p>
+
+<pre><code># ❌ Anti-pattern: No token awareness
+class NaiveAgent:
+    def run(self, user_input: str, history: list[dict]) -> str:
+        messages = [
+            {"role": "system", "content": self.system_prompt},
+            *history,  # unbounded — grows forever
+            {"role": "user", "content": user_input},  # could be 200k tokens
+        ]
+        return self.model.generate(messages)  # silently truncated or error
+
+# ✅ Solution: Token-budgeted context management
+class TokenBudgetedAgent:
+    MODEL_CONTEXT_WINDOW = 128_000
+    RESPONSE_RESERVE = 4_096  # tokens reserved for model output
+    SYSTEM_PROMPT_BUDGET = 2_000
+
+    def run(self, user_input: str, history: list[dict]) -> str:
+        available = self.MODEL_CONTEXT_WINDOW - self.RESPONSE_RESERVE
+
+        # System prompt gets fixed budget
+        system_tokens = count_tokens(self.system_prompt)
+        if system_tokens > self.SYSTEM_PROMPT_BUDGET:
+            raise ConfigurationError(
+                f"System prompt uses {system_tokens} tokens, "
+                f"budget is {self.SYSTEM_PROMPT_BUDGET}"
+            )
+        available -= system_tokens
+
+        # User input: chunk if too large
+        input_tokens = count_tokens(user_input)
+        if input_tokens > available * 0.6:
+            user_input = self._chunk_and_summarize(user_input, available * 0.6)
+        available -= count_tokens(user_input)
+
+        # History: keep recent messages within remaining budget
+        pruned_history = self._prune_history(history, max_tokens=available)
+
+        messages = [
+            {"role": "system", "content": self.system_prompt},
+            *pruned_history,
+            {"role": "user", "content": user_input},
+        ]
+
+        total = count_tokens(messages)
+        assert total + self.RESPONSE_RESERVE <= self.MODEL_CONTEXT_WINDOW
+        return self.model.generate(messages)
+
+    def _prune_history(self, history: list[dict], max_tokens: int) -> list[dict]:
+        """Keep most recent messages that fit within budget."""
+        result = []
+        used = 0
+        for msg in reversed(history):
+            msg_tokens = count_tokens(msg["content"])
+            if used + msg_tokens > max_tokens:
+                break
+            result.insert(0, msg)
+            used += msg_tokens
+        return result</code></pre>
+
+<h2>Anti-Pattern 6: Poor Tool Integration</h2>
+
+<h3>Problem</h3>
+
+<p>Tools are called without retry logic, timeout handling, or input validation. A single API hiccup crashes the entire agent workflow. Rate limits are hit repeatedly because there's no backoff. Responses aren't validated — malformed JSON from an API silently corrupts downstream processing. Tool failures don't propagate useful diagnostic information.</p>
+
+<h3>Solution</h3>
+
+<p>Wrap every external tool call with retry logic, circuit breakers, input validation, and structured error responses.</p>
+
+<pre><code># ❌ Anti-pattern: Brittle tool integration
+class SearchTool:
+    def search(self, query: str) -> list[dict]:
+        response = requests.get(
+            "https://api.search.com/v1/search",
+            params={"q": query},
+        )
+        return response.json()["results"]  # crashes on non-200, non-JSON, missing key
+
+# ✅ Solution: Resilient tool wrapper
+import time
+from functools import wraps
+
+class ResilientSearchTool:
+    MAX_RETRIES = 3
+    BACKOFF_BASE = 2  # exponential: 2s, 4s, 8s
+    TIMEOUT_SECONDS = 10
+
+    def search(self, query: str) -> ToolResult:
+        # Input validation
+        if not query or not query.strip():
+            return ToolResult(success=False, error="Empty search query")
+        if len(query) > 1000:
+            query = query[:1000]  # truncate, don't crash
+
+        # Retry with exponential backoff
+        last_error = None
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                response = requests.get(
+                    self.config.search_endpoint,
+                    params={"q": query},
+                    timeout=self.TIMEOUT_SECONDS,
+                    headers={"Authorization": f"Bearer {self.config.api_key}"},
+                )
+
+                if response.status_code == 429:
+                    retry_after = int(response.headers.get("Retry-After", 60))
+                    time.sleep(retry_after)
+                    continue
+
+                response.raise_for_status()
+
+                # Validate response structure
+                data = response.json()
+                if "results" not in data:
+                    return ToolResult(
+                        success=False,
+                        error=f"Unexpected response structure: {list(data.keys())}",
+                    )
+
+                return ToolResult(success=True, data=data["results"])
+
+            except requests.Timeout:
+                last_error = f"Timeout after {self.TIMEOUT_SECONDS}s"
+            except requests.ConnectionError as e:
+                last_error = f"Connection failed: {e}"
+            except json.JSONDecodeError:
+                last_error = "Response was not valid JSON"
+
+            # Exponential backoff between retries
+            if attempt < self.MAX_RETRIES - 1:
+                sleep_time = self.BACKOFF_BASE ** (attempt + 1)
+                time.sleep(sleep_time)
+
+        return ToolResult(
+            success=False,
+            error=f"All {self.MAX_RETRIES} attempts failed. Last error: {last_error}",
+            retryable=True,
+        )</code></pre>
+
+<h2>Anti-Pattern 7: Lack of Testing</h2>
+
+<h3>Problem</h3>
+
+<p>Agents are deployed based on manual spot-checks. "It worked when I tried it" substitutes for a test suite. Prompt changes go live without regression testing. No one knows the agent's accuracy baseline, so gradual degradation goes undetected. When failures are reported, there's no way to reproduce them because inputs weren't logged and there's no evaluation framework.</p>
+
+<h3>Solution</h3>
+
+<p>Implement a three-layer testing strategy: unit tests for individual components, integration tests for end-to-end workflows, and continuous evaluation that tracks quality metrics over time.</p>
+
+<pre><code># ❌ Anti-pattern: "Testing" by manual trial
+def deploy_agent():
+    # "Tested" by running it once with a sample input
+    agent = build_agent()
+    print(agent.run("test query"))  # looks good? ship it.
+    upload_to_production(agent)
+
+# ✅ Solution: Three-layer testing before any deployment
+import pytest
+from agent.evaluation import EvaluationSuite, QualityGate
+
+# Layer 1: Unit tests — deterministic component checks
+class TestPromptBuilder:
+    def test_system_prompt_under_token_limit(self):
+        prompt = build_system_prompt()
+        assert count_tokens(prompt) < 2000
+
+    def test_output_parser_handles_malformed_json(self):
+        result = parse_agent_output("not json {{{")
+        assert result.status == "parse_error"
+        assert result.raw_output == "not json {{{"
+
+# Layer 2: Integration tests — end-to-end workflows
+class TestAgentWorkflow:
+    @pytest.fixture
+    def agent(self):
+        return build_agent(config=AgentConfig.from_environment())
+
+    def test_complete_task_end_to_end(self, agent):
+        result = agent.run("Summarize the Q3 earnings report")
+        assert result.success
+        assert 100 < len(result.output) < 2000
+        assert result.tokens_used < 5000
+
+    def test_graceful_degradation_on_api_failure(self, agent, mock_api):
+        mock_api.configure(status=503)
+        result = agent.run("Summarize the Q3 earnings report")
+        assert result.success is False
+        assert "unavailable" in result.error.lower()
+
+# Layer 3: Continuous evaluation — quality tracking over time
+def test_quality_gate():
+    suite = EvaluationSuite.load("regression_tests.yaml")
+    results = suite.run(agent)
+
+    gate = QualityGate(
+        min_accuracy=0.92,
+        max_latency_p95_ms=5000,
+        max_error_rate=0.02,
+    )
+
+    violations = gate.check(results)
+    assert not violations, f"Quality gate failed: {violations}"</code></pre>
+
+<h2>Organizational Anti-Pattern: Shadow AI</h2>
+
+<p>The seven patterns above are technical. But the most dangerous anti-pattern is organizational: <strong>Shadow AI</strong> — teams deploying unregistered, ungoverned agents that bypass review processes.</p>
+
+<p>Shadow AI emerges when governance processes are too slow or too burdensome. A developer builds an agent that "just works" for their team, shares it informally, and suddenly it's processing customer data without security review, logging, or access controls. The governance guide identifies this as the primary organizational risk in enterprise AI deployment.</p>
+
+<div class="callout">
+  <div class="callout-title">Shadow AI Risk Factors</div>
+  <p>Shadow AI thrives when: (1) the official platform is too restrictive or slow to onboard, (2) there's no lightweight path for experimental agents, (3) teams aren't educated on why governance exists, or (4) there's no visibility into what agents are running across the organization.</p>
+</div>
+
+<h3>The Fix: Governance That Enables Rather Than Blocks</h3>
+
+<pre><code># Shadow AI prevention through a lightweight registry
+# The registry makes it EASIER to be compliant than non-compliant
+
+@dataclass
+class AgentRegistration:
+    """Minimum metadata required to register any agent."""
+    name: str
+    owner: str                  # team or individual
+    purpose: str                # one-sentence description
+    data_classification: str    # public, internal, confidential, restricted
+    model_provider: str         # which LLM provider
+    tools_used: list[str]       # external integrations
+    review_status: str          # draft, reviewed, approved
+
+class AgentRegistry:
+    """Central registry — the alternative to shadow AI."""
+
+    def register(self, agent: AgentRegistration) -> str:
+        """Register takes < 2 minutes. Returns agent_id."""
+        # Auto-approve low-risk agents (no customer data, no external tools)
+        if self._is_low_risk(agent):
+            agent.review_status = "auto_approved"
+            return self._save(agent)
+
+        # Flag for human review only when genuinely risky
+        agent.review_status = "pending_review"
+        self._notify_reviewers(agent)
+        return self._save(agent)
+
+    def _is_low_risk(self, agent: AgentRegistration) -> bool:
+        return (
+            agent.data_classification in ("public", "internal")
+            and len(agent.tools_used) == 0
+            and agent.model_provider in APPROVED_PROVIDERS
+        )</code></pre>
+
+<p>The principle: make the governed path the path of least resistance. If registration takes two minutes and auto-approves low-risk agents, developers have no incentive to go around it.</p>
+
+<h2>Summary: The Anti-Pattern Checklist</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Anti-Pattern</th>
+      <th>Symptom</th>
+      <th>Fix</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td><strong>Monolithic Skills</strong></td>
+      <td>One skill handles unrelated tasks; changes break unrelated features</td>
+      <td>Single Responsibility + orchestration</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><strong>Hard-Coded Config</strong></td>
+      <td>Secrets in source; environment changes require code edits</td>
+      <td>Environment variables + injectable config</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><strong>Overly Generic Prompts</strong></td>
+      <td>Wildly inconsistent outputs; hallucinated capabilities</td>
+      <td>Precise constraints + output schema + examples</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><strong>Missing Error Handling</strong></td>
+      <td>Silent failures; corrupted downstream state</td>
+      <td>Classify errors (retryable vs terminal) + propagate context</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><strong>Ignoring Token Limits</strong></td>
+      <td>Silent truncation; works in testing, fails on real inputs</td>
+      <td>Token budgeting + chunking + history pruning</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><strong>Poor Tool Integration</strong></td>
+      <td>Single API hiccup crashes workflow; rate limits hammered</td>
+      <td>Retry + backoff + input validation + circuit breakers</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td><strong>Lack of Testing</strong></td>
+      <td>Gradual degradation undetected; can't reproduce failures</td>
+      <td>Unit + integration + continuous evaluation</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td><strong>Shadow AI</strong> (org)</td>
+      <td>Ungoverned agents processing sensitive data</td>
+      <td>Lightweight registry + auto-approval for low-risk</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">An agent works perfectly in development but produces truncated, incoherent responses when processing customer support transcripts in production. Which anti-pattern is the likely cause?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Monolithic Skills — the agent is trying to do too many things</li>
+    <li onclick="checkQuiz(this, false)">Overly Generic Prompts — the instructions aren't specific enough</li>
+    <li onclick="checkQuiz(this, true)">Ignoring Token Limits — production inputs exceed the context window, causing silent truncation</li>
+    <li onclick="checkQuiz(this, false)">Poor Tool Integration — the API calls are failing without retry</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">A team builds a useful internal agent and shares it via Slack. Within a month, 50 people are using it to process customer data, but it was never security-reviewed. What organizational anti-pattern does this represent?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Lack of Testing — the agent wasn't validated before deployment</li>
+    <li onclick="checkQuiz(this, false)">Hard-Coded Configuration — credentials are embedded in the shared code</li>
+    <li onclick="checkQuiz(this, true)">Shadow AI — ungoverned agents bypassing review processes due to friction in the official path</li>
+    <li onclick="checkQuiz(this, false)">Monolithic Skills — the agent handles too many responsibilities</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">An agent's search tool returns an empty result set when the API times out, and downstream processing treats this as "no results found" rather than a failure. Which anti-pattern is this?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Poor Tool Integration — the tool should retry on timeout</li>
+    <li onclick="checkQuiz(this, true)">Missing Error Handling — the timeout is silently swallowed, producing a valid-looking but incorrect result</li>
+    <li onclick="checkQuiz(this, false)">Lack of Testing — a test would have caught this scenario</li>
+    <li onclick="checkQuiz(this, false)">Overly Generic Prompts — the agent doesn't know how to interpret empty results</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Apply It</h2>
+
+<p>Audit one of your existing agents or skills against the anti-pattern checklist above. For each anti-pattern, answer: does this apply to my system? If yes, write a one-line fix description and prioritize by blast radius — which failure would affect the most users or corrupt the most data? Fix the highest-priority item first.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p>Wu et al., <a href="https://arxiv.org/abs/2308.08155">AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation</a> (2023). The paper's multi-agent architecture patterns reveal how compositional design prevents monolithic failures, and how conversation-based orchestration replaces brittle hard-coded workflows.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>🤖 Ask your teacher:</strong> Want me to audit a specific skill file against these anti-patterns? Share it and I'll identify which patterns apply and provide concrete refactoring suggestions.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0009-performance-optimization.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <span class="lesson-nav-disabled">Next →</span>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — review the section above for the right approach.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

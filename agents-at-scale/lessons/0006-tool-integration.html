@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6: Tool Integration Patterns</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0005-prompt-engineering.html" class="lesson-back-top" title="Prompt Engineering Within Skills"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0007-testing-and-validation.html" class="lesson-next-top" title="Testing and Validation">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Tool Integration Patterns</h1>
+
+<div class="lesson-meta">
+  Lesson 6 · Agentic Skills Best Practices · ~12 minutes
+</div>
+
+<p>By the end of this lesson, you'll understand how agents connect to external tools via the Model Context Protocol (MCP), choose the right architecture pattern for your deployment, and apply production-grade best practices for reliability and security.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you'll be able to design tool integrations that are secure, resilient, and appropriately governed — choosing between in-runtime, direct-access, and gateway patterns based on your constraints.</p>
+</div>
+
+<h2>The Model Context Protocol (MCP)</h2>
+
+<p>Anthropic introduced the Model Context Protocol in November 2024 as an open standard for connecting AI models to external data sources and tools. MCP solves the "M×N integration problem" — without it, every model needs a custom connector for every tool. With MCP, tools expose a standard interface that any compliant model can consume.</p>
+
+<p>MCP follows a client-server architecture. The AI application (client) connects to MCP servers, each of which exposes a set of tools. The server declares what it can do, and the model decides when to call each tool based on the user's task.</p>
+
+<h3>Server Pattern: Declaring and Handling Tools</h3>
+
+<p>An MCP server uses two core decorators to expose tools:</p>
+
+<pre><code>from mcp.server import Server
+from mcp.types import Tool, TextContent
+
+server = Server("my-tool-server")
+
+@server.list_tools()
+async def list_tools() -> list[Tool]:
+    """Declare available tools and their input schemas."""
+    return [
+        Tool(
+            name="search_documents",
+            description="Search internal docs by keyword",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max results",
+                        "default": 10
+                    }
+                },
+                "required": ["query"]
+            }
+        )
+    ]
+
+@server.call_tool()
+async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+    """Execute the named tool with provided arguments."""
+    if name == "search_documents":
+        results = await search_index(
+            query=arguments["query"],
+            limit=arguments.get("limit", 10)
+        )
+        return [TextContent(
+            type="text",
+            text=format_results(results)
+        )]
+    raise ValueError(f"Unknown tool: {name}")</code></pre>
+
+<p>The <code>@server.list_tools()</code> decorator registers a function that returns tool definitions — name, description, and JSON Schema for inputs. The model uses these descriptions to decide when a tool is relevant. The <code>@server.call_tool()</code> decorator registers the handler that actually executes tool logic when the model invokes it.</p>
+
+<div class="callout">
+  <div class="callout-title">Key Insight</div>
+  <p>Tool descriptions are prompt engineering. A vague description like "searches stuff" will cause the model to misuse or ignore the tool. Write descriptions as if explaining to a new team member what the tool does, when to use it, and what it returns.</p>
+</div>
+
+<h3>Why MCP Matters at Scale</h3>
+
+<p>Without MCP, integrating 5 tools across 3 agent frameworks requires 15 custom connectors. With MCP, you write 5 servers and every framework connects to all of them. This is the same insight that made USB universal — a standard interface eliminates combinatorial explosion.</p>
+
+<h2>Three Architecture Patterns</h2>
+
+<p>The AWS governance guide identifies three patterns for how agents access tools. Each makes different tradeoffs between latency, governance, and isolation.</p>
+
+<h3>Pattern 1: In-Runtime Tools</h3>
+
+<p>Tools run in the same process as the agent. The agent calls tool functions directly — no network hop, no serialization overhead.</p>
+
+<div class="diagram">
+┌─────────────────────────────────┐
+│         Agent Runtime           │
+│                                 │
+│  ┌─────────┐  ┌─────────────┐  │
+│  │  Agent  │──│  Tool Code  │  │
+│  │  Logic  │  │  (in-proc)  │  │
+│  └─────────┘  └─────────────┘  │
+│                                 │
+└─────────────────────────────────┘
+</div>
+
+<p><strong>When to use:</strong> Prototypes, single-developer tools, latency-critical paths where sub-millisecond tool response matters, tools with no external dependencies.</p>
+
+<p><strong>Example:</strong> A code formatting tool that runs a linter in-process, or a calculator that evaluates expressions locally.</p>
+
+<h3>Pattern 2: Direct Access (Remote Tools)</h3>
+
+<p>The agent calls external services directly — APIs, databases, or MCP servers running on separate infrastructure. Each tool integration is a point-to-point connection.</p>
+
+<div class="diagram">
+┌───────────┐     ┌──────────────┐
+│   Agent   │────▶│  Tool API A  │
+│  Runtime  │     └──────────────┘
+│           │     ┌──────────────┐
+│           │────▶│  Tool API B  │
+│           │     └──────────────┘
+│           │     ┌──────────────┐
+│           │────▶│  MCP Server  │
+└───────────┘     └──────────────┘
+</div>
+
+<p><strong>When to use:</strong> Small teams, moderate tool counts (under 10), tools owned by the same team, environments where centralized governance isn't required.</p>
+
+<p><strong>Example:</strong> An agent that directly calls a Jira API, a GitHub API, and a Slack webhook — each with its own auth credentials configured in the agent.</p>
+
+<h3>Pattern 3: Tools Gateway</h3>
+
+<p>A centralized gateway sits between agents and tools. All tool calls route through it, enabling consistent auth, rate limiting, logging, and policy enforcement across every integration.</p>
+
+<div class="diagram">
+┌───────────┐     ┌──────────────┐     ┌──────────────┐
+│   Agent   │────▶│    Tools     │────▶│  Tool API A  │
+│  Runtime  │     │   Gateway    │     └──────────────┘
+└───────────┘     │              │     ┌──────────────┐
+                  │  • Auth      │────▶│  Tool API B  │
+┌───────────┐     │  • Logging   │     └──────────────┘
+│   Agent   │────▶│  • Rate Lim  │     ┌──────────────┐
+│  Runtime  │     │  • Policy    │────▶│  MCP Server  │
+└───────────┘     └──────────────┘     └──────────────┘
+</div>
+
+<p><strong>When to use:</strong> Enterprise deployments, multi-team environments, regulated industries, any scenario requiring centralized audit trails or credential rotation.</p>
+
+<p><strong>Example:</strong> A platform team runs the gateway. Agent teams register which tools they need. The gateway handles OAuth token refresh, enforces per-team rate limits, and logs every call for compliance.</p>
+
+<h2>Tradeoff Comparison</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Dimension</th>
+      <th>In-Runtime</th>
+      <th>Direct Access</th>
+      <th>Tools Gateway</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Latency</strong></td>
+      <td>Lowest (in-process)</td>
+      <td>Medium (network hop)</td>
+      <td>Highest (extra hop)</td>
+    </tr>
+    <tr>
+      <td><strong>Governance</strong></td>
+      <td>None (trust the code)</td>
+      <td>Per-integration</td>
+      <td>Centralized (best)</td>
+    </tr>
+    <tr>
+      <td><strong>Scalability</strong></td>
+      <td>Limited to process</td>
+      <td>Per-service scaling</td>
+      <td>Independent scaling</td>
+    </tr>
+    <tr>
+      <td><strong>Isolation</strong></td>
+      <td>None (shared memory)</td>
+      <td>Network boundary</td>
+      <td>Full (blast radius contained)</td>
+    </tr>
+    <tr>
+      <td><strong>Credential Mgmt</strong></td>
+      <td>Embedded in code</td>
+      <td>Per-agent config</td>
+      <td>Centralized vault</td>
+    </tr>
+    <tr>
+      <td><strong>Observability</strong></td>
+      <td>Application logs only</td>
+      <td>Distributed tracing</td>
+      <td>Unified audit trail</td>
+    </tr>
+    <tr>
+      <td><strong>Setup Complexity</strong></td>
+      <td>Trivial</td>
+      <td>Moderate</td>
+      <td>High (worth it at scale)</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="callout-title">Key Insight</div>
+  <p>Most teams evolve through these patterns: start with in-runtime for prototyping, move to direct access as tools multiply, then adopt a gateway when governance requirements arrive. Design your tool interfaces to be pattern-agnostic so migration is a deployment change, not a rewrite.</p>
+</div>
+
+<h2>Production Best Practices</h2>
+
+<h3>1. Environment Variables for Secrets</h3>
+
+<p>Never hardcode API keys, tokens, or credentials. Use environment variables or a secrets manager:</p>
+
+<pre><code>import os
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class ToolConfig:
+    api_key: str
+    base_url: str
+    timeout_seconds: int = 30
+
+    @classmethod
+    def from_env(cls) -> "ToolConfig":
+        api_key = os.environ.get("TOOL_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "TOOL_API_KEY not set. "
+                "See docs/setup.md for configuration."
+            )
+        return cls(
+            api_key=api_key,
+            base_url=os.environ.get(
+                "TOOL_BASE_URL",
+                "https://api.example.com"
+            ),
+            timeout_seconds=int(
+                os.environ.get("TOOL_TIMEOUT", "30")
+            )
+        )</code></pre>
+
+<h3>2. Retry with Exponential Backoff</h3>
+
+<p>Network calls fail. Retries with exponential backoff and jitter prevent thundering herds:</p>
+
+<pre><code>import asyncio
+import random
+
+async def call_with_retry(
+    fn,
+    max_attempts: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 30.0
+):
+    """Retry with exponential backoff and jitter."""
+    for attempt in range(max_attempts):
+        try:
+            return await fn()
+        except (TimeoutError, ConnectionError) as e:
+            if attempt == max_attempts - 1:
+                raise
+            delay = min(
+                base_delay * (2 ** attempt),
+                max_delay
+            )
+            # Add jitter: 0.5x to 1.5x the delay
+            jittered = delay * (0.5 + random.random())
+            await asyncio.sleep(jittered)</code></pre>
+
+<p>The jitter prevents synchronized retries when multiple agents hit the same tool simultaneously. Without jitter, all failed requests retry at the same moment, causing repeated failures.</p>
+
+<h3>3. Timeout Handling</h3>
+
+<p>Every external call needs a timeout. An unresponsive tool should not block the agent indefinitely:</p>
+
+<pre><code>import asyncio
+import httpx
+
+async def call_tool_with_timeout(
+    url: str,
+    payload: dict,
+    timeout: float = 10.0
+) -> dict:
+    """Call external tool with strict timeout."""
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(timeout)
+    ) as client:
+        try:
+            response = await client.post(url, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.TimeoutException:
+            return {
+                "error": "Tool timed out",
+                "fallback": "Proceeding without tool result"
+            }
+        except httpx.HTTPStatusError as e:
+            return {
+                "error": f"Tool returned {e.response.status_code}",
+                "retryable": e.response.status_code >= 500
+            }</code></pre>
+
+<h3>4. Input Validation</h3>
+
+<p>Validate tool inputs before sending them to external services. The model can produce malformed arguments:</p>
+
+<pre><code>from pydantic import BaseModel, Field, ValidationError
+
+class SearchInput(BaseModel):
+    query: str = Field(min_length=1, max_length=500)
+    limit: int = Field(default=10, ge=1, le=100)
+    filters: dict = Field(default_factory=dict)
+
+@server.call_tool()
+async def call_tool(name: str, arguments: dict):
+    if name == "search_documents":
+        try:
+            validated = SearchInput(**arguments)
+        except ValidationError as e:
+            return [TextContent(
+                type="text",
+                text=f"Invalid input: {e.errors()[0]['msg']}"
+            )]
+        return await execute_search(validated)</code></pre>
+
+<p>Validation catches issues like empty queries, negative limits, or oversized payloads before they reach your backend. Return clear error messages so the model can self-correct.</p>
+
+<h3>5. Response Caching</h3>
+
+<p>Cache tool results when the underlying data doesn't change between calls:</p>
+
+<pre><code>from functools import lru_cache
+from datetime import datetime, timedelta
+
+class ToolCache:
+    def __init__(self, ttl_seconds: int = 300):
+        self._cache: dict[str, tuple[datetime, any]] = {}
+        self._ttl = timedelta(seconds=ttl_seconds)
+
+    def get(self, key: str):
+        if key in self._cache:
+            timestamp, value = self._cache[key]
+            if datetime.now() - timestamp < self._ttl:
+                return value
+            del self._cache[key]
+        return None
+
+    def set(self, key: str, value):
+        self._cache[key] = (datetime.now(), value)
+
+# Usage in tool handler
+cache = ToolCache(ttl_seconds=60)
+
+async def search_with_cache(query: str, limit: int):
+    cache_key = f"search:{query}:{limit}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    result = await execute_search(query, limit)
+    cache.set(cache_key, result)
+    return result</code></pre>
+
+<p>Caching is especially valuable for tools the model calls repeatedly within one conversation — looking up the same documentation, checking the same config, or querying the same database state.</p>
+
+<h2>Putting It Together: A Complete MCP Server</h2>
+
+<p>Here's how these practices combine into a production-ready tool server:</p>
+
+<pre><code>import os
+import asyncio
+from mcp.server import Server
+from mcp.types import Tool, TextContent
+from pydantic import BaseModel, Field
+
+server = Server("production-tool-server")
+
+# Best practice: config from environment
+API_KEY = os.environ["SEARCH_API_KEY"]
+TIMEOUT = int(os.environ.get("SEARCH_TIMEOUT", "10"))
+
+# Best practice: input validation
+class SearchParams(BaseModel):
+    query: str = Field(min_length=1, max_length=500)
+    limit: int = Field(default=10, ge=1, le=100)
+
+# Best practice: caching
+_cache: dict[str, tuple[float, list]] = {}
+CACHE_TTL = 60  # seconds
+
+@server.list_tools()
+async def list_tools() -> list[Tool]:
+    return [Tool(
+        name="search_docs",
+        description=(
+            "Search internal documentation. Returns title, "
+            "snippet, and URL for each match. Use when the "
+            "user asks about internal processes or policies."
+        ),
+        inputSchema=SearchParams.model_json_schema()
+    )]
+
+@server.call_tool()
+async def call_tool(name: str, arguments: dict):
+    if name != "search_docs":
+        raise ValueError(f"Unknown tool: {name}")
+
+    # Validate
+    params = SearchParams(**arguments)
+    cache_key = f"{params.query}:{params.limit}"
+
+    # Check cache
+    import time
+    if cache_key in _cache:
+        ts, result = _cache[cache_key]
+        if time.time() - ts < CACHE_TTL:
+            return [TextContent(type="text", text=result)]
+
+    # Call with retry + timeout
+    result = await call_with_retry(
+        lambda: search_api(params, timeout=TIMEOUT)
+    )
+
+    # Cache and return
+    formatted = format_results(result)
+    _cache[cache_key] = (time.time(), formatted)
+    return [TextContent(type="text", text=formatted)]</code></pre>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">Your team has 20 agents across 4 squads, all calling a shared internal API. Which architecture pattern is most appropriate?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">In-runtime — embed the API client in each agent for lowest latency</li>
+    <li onclick="checkQuiz(this, false)">Direct access — each agent connects to the API with its own credentials</li>
+    <li onclick="checkQuiz(this, true)">Tools gateway — centralized auth, rate limiting, and audit across all 20 agents</li>
+    <li onclick="checkQuiz(this, false)">In-runtime with shared library — same code in each process, no network hops</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Your retry logic uses a fixed 2-second delay between attempts. Under load, all agents retry simultaneously and overwhelm the tool. What's the fix?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Increase the delay to 10 seconds to spread out retries over more time</li>
+    <li onclick="checkQuiz(this, false)">Reduce max retries to 1 so fewer requests hit the tool after failure</li>
+    <li onclick="checkQuiz(this, true)">Add exponential backoff with random jitter so retries spread across time</li>
+    <li onclick="checkQuiz(this, false)">Remove retries entirely and return an error to the user immediately</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">What is the primary problem MCP solves for tool integration?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">It makes tool calls faster by using binary serialization instead of JSON</li>
+    <li onclick="checkQuiz(this, true)">It eliminates the M×N integration problem by providing a standard interface between models and tools</li>
+    <li onclick="checkQuiz(this, false)">It provides built-in authentication so tools don't need their own credential management</li>
+    <li onclick="checkQuiz(this, false)">It guarantees tool reliability by automatically retrying failed calls</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Apply It</h2>
+
+<p>Take one of your existing tool integrations — a direct API call, a database query, a file system operation — and refactor it into an MCP server. Add input validation, a 10-second timeout, and a 60-second cache. Then ask: does this tool belong in-runtime, direct access, or behind a gateway?</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p>Read the <a href="https://www.anthropic.com/news/model-context-protocol">Anthropic MCP Announcement (November 2024)</a> — it explains the protocol design, the M×N problem, and the client-server architecture that underpins all MCP tool integrations.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>🤖 Ask your teacher:</strong> Unsure which architecture pattern fits your deployment? Describe your team size, tool count, and governance requirements and I'll recommend the right pattern.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0005-prompt-engineering.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0007-testing-and-validation.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — review the section above and try again.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3: Scope Definition</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0002-documentation-clarity.html" class="lesson-back-top" title="Documentation Clarity"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-modularity-and-reusability.html" class="lesson-next-top" title="Modularity and Reusability">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Scope Definition</h1>
+
+<div class="lesson-meta">
+  Lesson 3 · Agentic Skills Best Practices · ~8 minutes
+</div>
+
+<p>By the end of this lesson, you'll be able to apply the Single Responsibility Principle to skill files — drawing clear boundaries that prevent scope creep, reduce token usage, and make skills composable.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you'll instinctively decompose a "do-everything" skill into focused, single-purpose skills that compose cleanly.</p>
+</div>
+
+<h2>The Single Responsibility Principle for Skills</h2>
+
+<p>David Parnas wrote in 1972 that modules should be decomposed based on information hiding — each module encapsulates one design decision. The same principle applies to skills:</p>
+
+<ul>
+  <li>Each skill file addresses <strong>one domain or task family</strong></li>
+  <li>Avoid mixing unrelated capabilities</li>
+  <li>Use <strong>composition over inheritance</strong> — multiple focused skills working together</li>
+  <li>Define explicit boundaries in the skill description</li>
+</ul>
+
+<h2>The Monolithic Skill Anti-Pattern</h2>
+
+<p>Consider a "business-operations" skill that handles invoices, sends emails, and manages inventory. This monolith causes four concrete problems:</p>
+
+<table>
+  <tr><th>Problem</th><th>Impact</th></tr>
+  <tr><td>Increased token usage</td><td>The full skill definition (all three domains) loads into context even when only invoicing is needed</td></tr>
+  <tr><td>Reduced reliability</td><td>An email-sending bug breaks invoice processing too</td></tr>
+  <tr><td>Difficult maintenance</td><td>Changes to inventory logic require re-testing email workflows</td></tr>
+  <tr><td>Poor reusability</td><td>Another team needs email-sending but gets forced to take the whole bundle</td></tr>
+</table>
+
+<h2>Decomposition Strategy</h2>
+
+<p>The fix is composition. Split along domain boundaries:</p>
+
+<div class="diagram">
+❌  business-operations-skill (monolith)
+    ├── invoice processing
+    ├── customer communication
+    └── inventory management
+
+✅  Three focused skills:
+    ├── invoice-processing-skill
+    ├── customer-communication-skill
+    └── inventory-management-skill
+</div>
+
+<p>Each skill now:</p>
+<ul>
+  <li>Has one clear trigger ("user asks about invoices")</li>
+  <li>Loads only its own context (fewer tokens)</li>
+  <li>Can be versioned and tested independently</li>
+  <li>Can be reused by other teams without baggage</li>
+</ul>
+
+<h2>The Governance Dimension</h2>
+
+<p>The AWS governance guide adds an enterprise reason for tight scope: <strong>access control</strong>. Each agent operates with a core identity that defines its scope of permissions. A monolithic skill requires broad permissions (read invoices AND send emails AND modify inventory). Focused skills enable least-privilege — the invoice skill only needs invoice-system access.</p>
+
+<div class="callout">
+  <div class="callout-title">Enterprise Rule</div>
+  <p>Tool invocations must respect both the agent's capabilities and the user's access rights. Tightly scoped skills make permission boundaries enforceable. A monolithic skill with broad access becomes a privilege escalation vector.</p>
+</div>
+
+<h2>Where to Draw the Line</h2>
+
+<p>Use these heuristics to decide if two capabilities belong in one skill or two:</p>
+
+<ul>
+  <li><strong>Same data domain?</strong> — Invoice creation and invoice querying can share a skill. Invoice creation and email sending cannot.</li>
+  <li><strong>Same failure mode?</strong> — If one capability can fail without affecting the other, they're separate skills.</li>
+  <li><strong>Same rate of change?</strong> — If email templates change weekly but invoice logic is stable, separate them.</li>
+  <li><strong>Same permission set?</strong> — Different access requirements = different skills.</li>
+</ul>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">A skill handles both "create Jira ticket" and "send Slack notification." Should these be one skill or two?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">One skill — they're both communication actions for the same workflow</li>
+    <li onclick="checkQuiz(this, true)">Two skills — different services, different permissions, different failure modes</li>
+    <li onclick="checkQuiz(this, false)">One skill — splitting them would increase token usage from skill discovery</li>
+    <li onclick="checkQuiz(this, false)">Two skills — but only because Jira uses REST and Slack uses WebSocket APIs</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">What is the primary security risk of a monolithic skill?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">It uses more tokens, increasing cost and reducing response quality</li>
+    <li onclick="checkQuiz(this, false)">It's harder to test, leading to undetected bugs in production systems</li>
+    <li onclick="checkQuiz(this, true)">It requires broad permissions that violate least-privilege and enable escalation</li>
+    <li onclick="checkQuiz(this, false)">It creates dependency conflicts between its internal unrelated components</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Apply It</h2>
+
+<p>Look at your largest skill file. Ask yourself the four heuristic questions for each capability it contains. If any capability answers differently from the others, extract it into its own skill.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p>Read Parnas (1972), <a href="https://doi.org/10.1145/361598.361623">"On the Criteria to Be Used in Decomposing Systems into Modules"</a> — the foundational paper on information hiding that underpins this entire approach.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>🤖 Ask your teacher:</strong> Not sure whether to split a skill? Describe the capabilities and I'll walk through the heuristics with you.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0002-documentation-clarity.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0004-modularity-and-reusability.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — review the heuristics above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

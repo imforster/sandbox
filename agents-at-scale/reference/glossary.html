@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glossary — Agentic Skills Best Practices</title>
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <nav class="breadcrumb">
+        <a href="../lessons/index.html">← Back to Lessons</a>
+    </nav>
+
+    <main class="lesson-container">
+        <h1>Glossary</h1>
+        <p class="subtitle">Key terms and definitions for the Agentic Skills Best Practices course.</p>
+
+        <dl class="glossary">
+            <dt id="agent">Agent</dt>
+            <dd>An autonomous software entity that uses a foundation model to reason, plan, and execute tasks by invoking tools and skills in a loop until a goal is met.</dd>
+
+            <dt id="agent-registry">Agent Registry</dt>
+            <dd>A centralized or federated catalog where agents and their capabilities are published, discovered, and versioned — enabling reuse and coordination across teams.</dd>
+
+            <dt id="chain-of-thought">Chain of Thought (CoT)</dt>
+            <dd>A prompting technique that instructs the model to produce intermediate reasoning steps before arriving at a final answer, improving accuracy on complex tasks.</dd>
+
+            <dt id="citizen-developer">Citizen Developer</dt>
+            <dd>A non-professional developer (e.g., product manager, analyst) who builds automations or skills using low-code tools and agentic frameworks without deep software engineering expertise.</dd>
+
+            <dt id="composition">Composition</dt>
+            <dd>The practice of combining smaller, single-purpose skills or agents into larger workflows — favoring reuse and modularity over monolithic implementations.</dd>
+
+            <dt id="configuration">Configuration</dt>
+            <dd>External parameters (model choice, temperature, tool allowlists, guardrails) that control agent behavior without modifying core logic or prompt text.</dd>
+
+            <dt id="context-window">Context Window</dt>
+            <dd>The maximum number of tokens a foundation model can process in a single request — encompassing the system prompt, conversation history, tool results, and the generated response.</dd>
+
+            <dt id="core-logic">Core Logic</dt>
+            <dd>The essential reasoning and orchestration code within an agent or skill that determines how inputs are processed and actions are selected — distinct from configuration and tool integrations.</dd>
+
+            <dt id="dependency-injection">Dependency Injection</dt>
+            <dd>A design pattern where external services (tools, APIs, data stores) are provided to a skill at runtime rather than hard-coded, improving testability and portability.</dd>
+
+            <dt id="evaluation-framework">Evaluation Framework</dt>
+            <dd>A structured approach for measuring agent or skill quality — including test scenarios, success criteria, latency benchmarks, and regression detection — enabling continuous improvement.</dd>
+
+            <dt id="federated-governance">Federated Governance</dt>
+            <dd>A governance model where a central team sets standards, guardrails, and review processes while individual teams retain autonomy to build and publish their own skills and agents.</dd>
+
+            <dt id="foundation-model">Foundation Model</dt>
+            <dd>A large language model (LLM) or multimodal model pre-trained on broad data that serves as the reasoning engine for agents — e.g., Claude, GPT, Llama.</dd>
+
+            <dt id="guardrails">Guardrails</dt>
+            <dd>Constraints applied to agent behavior to ensure safety, compliance, and correctness — including input validation, output filtering, tool restrictions, and human-in-the-loop approvals.</dd>
+
+            <dt id="include-directive">Include Directive</dt>
+            <dd>A mechanism in skill or agent configuration files that pulls in external resources (other skills, context documents, tool definitions) by reference rather than inline duplication.</dd>
+
+            <dt id="interface-schema">Interface Schema</dt>
+            <dd>A formal definition of a skill's inputs, outputs, and side effects — enabling type-safe composition, validation, and documentation generation.</dd>
+
+            <dt id="knowledge-base">Knowledge Base</dt>
+            <dd>A curated collection of documents, facts, or embeddings that an agent can query (via RAG or direct lookup) to ground its responses in verified information.</dd>
+
+            <dt id="llm-gateway">LLM Gateway</dt>
+            <dd>A centralized service that routes agent requests to foundation models while enforcing rate limits, access control, logging, cost tracking, and model version management.</dd>
+
+            <dt id="mcp">MCP (Model Context Protocol)</dt>
+            <dd>A standardized protocol for connecting agents to external tools and data sources — providing a uniform interface for tool discovery, invocation, and result handling across heterogeneous backends.</dd>
+
+            <dt id="metadata">Metadata</dt>
+            <dd>Descriptive information attached to a skill or agent (name, version, author, description, tags, dependencies) that enables discovery, governance, and dependency resolution.</dd>
+
+            <dt id="monolithic-skill">Monolithic Skill</dt>
+            <dd>An anti-pattern where a single skill file handles too many responsibilities — making it hard to test, reuse, or maintain. Contrast with the Single Responsibility Principle.</dd>
+
+            <dt id="multi-agent-coordination">Multi-Agent Coordination</dt>
+            <dd>Patterns for multiple agents to collaborate on a task — including delegation, fan-out/fan-in, pipeline handoffs, and shared context — while avoiding conflicts and duplication.</dd>
+
+            <dt id="prompt-caching">Prompt Caching</dt>
+            <dd>A technique where repeated or static portions of a prompt (system instructions, skill definitions) are cached by the model provider to reduce latency and cost on subsequent calls.</dd>
+
+            <dt id="rag">RAG (Retrieval-Augmented Generation)</dt>
+            <dd>A pattern where relevant documents are retrieved from a knowledge base and injected into the model's context before generation — grounding responses in factual, up-to-date information.</dd>
+
+            <dt id="react-pattern">ReAct Pattern</dt>
+            <dd>An agent architecture that interleaves <strong>Re</strong>asoning (chain-of-thought) with <strong>Act</strong>ion (tool calls), observing results before deciding the next step — enabling iterative problem-solving.</dd>
+
+            <dt id="reflexion">Reflexion</dt>
+            <dd>A self-improvement pattern where an agent reviews its own output, identifies errors or shortcomings, and retries with corrective feedback — closing the loop without human intervention.</dd>
+
+            <dt id="scope-creep">Scope Creep</dt>
+            <dd>The gradual expansion of a skill's responsibilities beyond its original purpose — leading to monolithic designs, increased complexity, and reduced reusability.</dd>
+
+            <dt id="semantic-versioning">Semantic Versioning</dt>
+            <dd>A versioning scheme (MAJOR.MINOR.PATCH) applied to skills and agents where breaking changes increment MAJOR, new features increment MINOR, and bug fixes increment PATCH — enabling safe dependency management.</dd>
+
+            <dt id="shadow-ai">Shadow AI</dt>
+            <dd>Unsanctioned use of AI tools or agents within an organization — operating outside governance, security review, and compliance controls — creating risk and duplication.</dd>
+
+            <dt id="single-responsibility-principle">Single Responsibility Principle</dt>
+            <dd>The design guideline that each skill should do one thing well — with a clear, bounded scope — making it easier to test, version, compose, and replace.</dd>
+
+            <dt id="skill-file">Skill File</dt>
+            <dd>A structured document (typically markdown with front matter) that defines a skill's trigger, steps, rules, and resources — serving as both documentation and executable specification for an agent.</dd>
+
+            <dt id="skill-library">Skill Library</dt>
+            <dd>A shared repository of vetted, versioned skills that teams can discover, import, and compose into their agents — reducing duplication and raising quality through reuse.</dd>
+
+            <dt id="token-optimization">Token Optimization</dt>
+            <dd>Techniques for reducing token consumption (and thus cost and latency) — including concise prompts, context pruning, caching, summarization, and selective tool-result inclusion.</dd>
+
+            <dt id="tool-gateway">Tool Gateway</dt>
+            <dd>An intermediary layer that brokers agent requests to external tools — handling authentication, rate limiting, error retries, and audit logging in one place.</dd>
+
+            <dt id="workflow">Workflow</dt>
+            <dd>A defined sequence or graph of steps — potentially spanning multiple skills and agents — that accomplishes a complex task, with explicit control flow, error handling, and completion criteria.</dd>
+        </dl>
+    </main>
+
+    <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

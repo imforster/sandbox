@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5: Prompt Engineering Within Skills</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0004-modularity-and-reusability.html" class="lesson-back-top" title="Modularity and Reusability"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0006-tool-integration.html" class="lesson-next-top" title="Tool Integration Patterns">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Prompt Engineering Within Skills</h1>
+
+<div class="lesson-meta">
+  Lesson 5 · Agentic Skills Best Practices · ~12 minutes
+</div>
+
+<p>By the end of this lesson, you'll write skill prompts that guide agents through complex reasoning using Chain of Thought, ReAct loops, and self-reflection — the three patterns that turn a basic instruction into a reliable multi-step workflow.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you'll structure prompts that make agents think before acting, observe results before continuing, and learn from mistakes before retrying.</p>
+</div>
+
+<h2>Why Prompt Engineering Matters for Skills</h2>
+
+<p>A skill's prompt is its brain. The same tool access and context window produce wildly different outcomes depending on how you structure the instructions. Three prompting patterns dominate agentic workflows:</p>
+
+<ol>
+  <li><strong>Chain of Thought (CoT)</strong> — force the agent to reason before answering</li>
+  <li><strong>ReAct</strong> — interleave reasoning with action and observation</li>
+  <li><strong>Self-Reflection (Reflexion)</strong> — learn from failures within a single session</li>
+</ol>
+
+<p>Each builds on the previous. CoT gives reasoning. ReAct adds grounding in real-world feedback. Reflexion adds memory of what went wrong.</p>
+
+<h2>Chain of Thought (CoT) Prompting</h2>
+
+<p>CoT prompting asks the agent to show its work before committing to an answer. Within a skill, this means structuring your instructions to require explicit reasoning steps.</p>
+
+<h3>Without CoT</h3>
+
+<pre><code># Weak — jumps straight to action
+Analyze this codebase and refactor it for performance.</code></pre>
+
+<h3>With CoT</h3>
+
+<pre><code># Strong — forces reasoning before action
+Before making any changes:
+1. Identify the three hottest code paths (by call frequency or latency)
+2. For each path, state the current bottleneck and why it's slow
+3. Propose a fix for each, explaining the expected improvement
+4. Only then implement the highest-impact fix first
+
+Show your reasoning at each step.</code></pre>
+
+<p>The key insight: CoT works because it reduces the probability of skipping logical steps. When an agent must articulate "X is the bottleneck because Y," it's far less likely to make a change that doesn't address the actual problem.</p>
+
+<div class="callout">
+  <div class="callout-title">Key Insight</div>
+  <p>CoT is not just "think step by step." Effective CoT within skills means naming the specific reasoning steps the agent must produce. Generic "think carefully" instructions don't constrain the reasoning path enough.</p>
+</div>
+
+<h3>CoT Patterns for Skills</h3>
+
+<pre><code># Pattern: Diagnosis before prescription
+## Steps
+1. Read the error log and identify the root cause
+2. State your hypothesis: "The failure is caused by X because Y"
+3. Identify what evidence would confirm or refute this hypothesis
+4. Gather that evidence using available tools
+5. If confirmed, propose a fix. If refuted, return to step 2.
+
+# Pattern: Enumerate then select
+## Steps
+1. List all available approaches (minimum 3)
+2. For each, state one advantage and one disadvantage
+3. Select the approach that best fits the constraints
+4. Explain why the others were rejected</code></pre>
+
+<h2>The ReAct Pattern</h2>
+
+<p>ReAct (Reasoning + Acting) was introduced by <a href="https://arxiv.org/abs/2210.03629">Yao et al. (2023)</a> and is the foundational pattern for agentic tool use. The agent cycles through three phases:</p>
+
+<div class="diagram">
+┌──────────┐     ┌──────────┐     ┌─────────────┐
+│ Thought  │────▶│  Action  │────▶│ Observation │
+│ (reason) │     │ (act)    │     │ (observe)   │
+└──────────┘     └──────────┘     └─────────────┘
+      ▲                                   │
+      └───────────────────────────────────┘
+              (loop until done)
+</div>
+
+<ul>
+  <li><strong>Thought</strong> — the agent reasons about what to do next and why</li>
+  <li><strong>Action</strong> — the agent invokes a tool or takes a concrete step</li>
+  <li><strong>Observation</strong> — the agent interprets the result before deciding the next move</li>
+</ul>
+
+<p>The key finding from Yao et al.: ReAct outperforms both pure reasoning (CoT alone) and pure acting (tool use without reasoning). The interleaving is what matters — reasoning without grounding hallucinates, and acting without reasoning flails.</p>
+
+<h3>ReAct in Skill Design</h3>
+
+<p>You encode ReAct into a skill by structuring instructions that require the agent to think-act-observe explicitly:</p>
+
+<pre><code># Skill: diagnose-deployment-failure
+## Instructions
+
+For each investigation step, follow this loop:
+
+**Thought**: State what you're looking for and why.
+  - What symptom are you investigating?
+  - What would confirm or eliminate this hypothesis?
+
+**Action**: Use exactly one tool call to gather evidence.
+  - Read a log file, check a metric, or query a service.
+
+**Observation**: Interpret the result before proceeding.
+  - Did this confirm your hypothesis?
+  - If not, what does the evidence suggest instead?
+  - What should you investigate next?
+
+Continue this loop until you have sufficient evidence to
+identify the root cause. Do not propose a fix until you
+can state: "The root cause is X, evidenced by Y and Z."</code></pre>
+
+<p>This structure prevents the common failure mode where an agent reads one log, immediately proposes a fix, and misses the actual root cause three layers deeper.</p>
+
+<h3>ReAct vs. Flat Instructions</h3>
+
+<table>
+  <thead><tr><th>Flat instructions</th><th>ReAct-structured</th></tr></thead>
+  <tbody>
+    <tr><td>Check the logs, fix the bug</td><td>Thought → read logs → Observation → Thought → targeted fix</td></tr>
+    <tr><td>Agent may fix a symptom</td><td>Agent traces to root cause</td></tr>
+    <tr><td>No self-correction</td><td>Each observation can redirect</td></tr>
+    <tr><td>Works for trivial tasks</td><td>Required for multi-step investigation</td></tr>
+  </tbody>
+</table>
+
+<h2>Self-Reflection (Reflexion)</h2>
+
+<p>The Reflexion framework (Shinn et al., 2023) adds a learning loop: when an action fails, the agent generates a reflection about why it failed and uses that reflection to guide the next attempt.</p>
+
+<div class="diagram">
+┌──────────┐     ┌──────────┐     ┌───────────┐
+│ Attempt  │────▶│ Evaluate │────▶│  Reflect  │
+│          │     │ (pass?)  │     │ (why fail)│
+└──────────┘     └──────────┘     └───────────┘
+      ▲                                   │
+      └───────────────────────────────────┘
+           (retry with reflection context)
+</div>
+
+<p>Within a skill, this looks like explicit failure-handling instructions:</p>
+
+<pre><code># Skill: code-implementation
+## Failure Handling
+
+If the build fails after your changes:
+1. Read the error output completely — do not skim
+2. State what you expected vs. what happened
+3. Identify which of YOUR changes caused the failure
+   (not pre-existing issues)
+4. Explain WHY your approach was wrong, not just what
+   the error message says
+5. Propose a different approach (not a tweak of the same one)
+6. If the same approach has failed twice, stop and try a
+   fundamentally different strategy
+
+## Success Criteria
+- Build passes
+- All existing tests still pass
+- New behavior is verified by at least one test</code></pre>
+
+<p>The critical element is step 4: forcing the agent to explain <em>why</em> the approach was wrong, not just <em>what</em> error appeared. This prevents the common loop of making incremental tweaks to a fundamentally broken approach.</p>
+
+<div class="callout">
+  <div class="callout-title">Key Insight</div>
+  <p>Reflexion works because it converts implicit failure signals (error messages) into explicit reasoning about strategy. The "two failures means change approach" rule is a circuit breaker that prevents infinite loops on a dead-end path.</p>
+</div>
+
+<h2>Key Elements of Skill Prompts</h2>
+
+<p>Beyond the three reasoning patterns, effective skill prompts share five structural elements:</p>
+
+<h3>1. System Messages</h3>
+
+<p>Set the agent's identity, constraints, and operating mode at the top of the skill:</p>
+
+<pre><code># Identity and constraints
+You are a security auditor. You examine code for vulnerabilities.
+You never modify code directly — you report findings with severity,
+location, and recommended fix.
+
+# Operating mode
+- Prioritize: injection attacks > auth bypasses > data exposure
+- Report format: one finding per block, severity/location/fix
+- If you find zero issues, say so explicitly (don't invent problems)</code></pre>
+
+<h3>2. Stepwise Instructions</h3>
+
+<p>Number your steps. Agents follow numbered sequences more reliably than prose paragraphs:</p>
+
+<pre><code>## Steps
+1. Read the target file completely before making any claims
+2. Identify all external inputs (user data, API responses, file reads)
+3. For each input, trace its path to where it's used
+4. Flag any input that reaches a sensitive operation without validation
+5. Produce findings in the format specified above</code></pre>
+
+<h3>3. Temperature Control via Constraints</h3>
+
+<p>You can't set temperature directly in most skill frameworks, but you can constrain creativity through instruction specificity:</p>
+
+<pre><code># High creativity (exploration tasks)
+Generate 5 fundamentally different approaches to this problem.
+Each must use a different algorithm or data structure.
+Surprise me — the obvious answer is not enough.
+
+# Low creativity (precision tasks)
+Follow this exact sequence. Do not improvise or add steps.
+Use only the tools listed below. If a step fails, stop and
+report — do not attempt alternative approaches without asking.</code></pre>
+
+<p>Specificity of instructions acts as a proxy for temperature. Tightly constrained steps produce deterministic behavior. Open-ended prompts invite exploration.</p>
+
+<h3>4. Few-Shot Examples</h3>
+
+<p>Show the agent what good output looks like. One concrete example outweighs a paragraph of description:</p>
+
+<pre><code>## Output Format
+
+Example of a correct finding:
+
+**[HIGH] SQL Injection in user_service.py:47**
+- Input: `request.params["user_id"]` (untrusted)
+- Flows to: `cursor.execute(f"SELECT * FROM users WHERE id={user_id}")`
+- Fix: Use parameterized query: `cursor.execute("SELECT * FROM users WHERE id=?", (user_id,))`
+
+Example of an incorrect finding (don't do this):
+
+**[HIGH] Possible issue**
+- Something might be wrong with the database queries
+- Consider reviewing security
+
+The first example is specific and actionable. The second is vague and useless.</code></pre>
+
+<h3>5. Success and Failure Criteria</h3>
+
+<p>Tell the agent when it's done and when it has failed:</p>
+
+<pre><code>## Success Criteria
+- All tests pass (run `pytest` to verify)
+- No new linting errors (run `ruff check`)
+- The original bug is fixed (reproduce scenario returns expected result)
+- No unrelated changes introduced
+
+## Failure Criteria (stop and report)
+- You cannot reproduce the bug after 3 attempts
+- The fix requires changing more than 2 files
+- The fix breaks existing tests and you can't resolve within 2 attempts
+- You're unsure whether the fix is correct</code></pre>
+
+<p>Without explicit criteria, agents either declare success prematurely or loop indefinitely. These boundaries give the agent a clear decision function.</p>
+
+<h2>Putting It All Together</h2>
+
+<p>A well-structured skill prompt combines all three patterns with the five structural elements:</p>
+
+<pre><code># Skill: fix-failing-test
+
+## Identity
+You are a test debugger. You fix failing tests by identifying
+root causes, not by deleting or skipping tests.
+
+## Steps (ReAct loop)
+For each failing test:
+
+1. **Thought**: Read the test and state what it's asserting
+2. **Action**: Run the test in isolation, capture output
+3. **Observation**: Compare expected vs. actual — is this a test
+   bug or a code bug?
+4. **Thought**: Form a hypothesis about the root cause
+5. **Action**: Read the relevant source code
+6. **Observation**: Does the code match the test's expectations?
+7. Fix the correct side (test or code) based on your evidence
+
+## CoT Requirement
+Before any fix, state:
+- "The test expects X"
+- "The code produces Y"
+- "The discrepancy is because Z"
+- "The correct fix is to change [test/code] because [reason]"
+
+## Reflexion (on failure)
+If your fix doesn't resolve the test:
+1. State what you assumed vs. what actually happened
+2. Identify the flaw in your reasoning
+3. Try a fundamentally different hypothesis
+
+## Success Criteria
+- The previously-failing test now passes
+- All other tests still pass
+- You can explain WHY the fix is correct
+
+## Failure Criteria (escalate to human)
+- Same approach failed twice
+- Fix requires architectural changes beyond the test's scope
+- You cannot determine if this is a test bug or code bug</code></pre>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">An agent reads one error log and immediately proposes a fix without investigating further. Which pattern would most directly prevent this?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Chain of Thought — because it forces the agent to reason about the error before acting</li>
+    <li onclick="checkQuiz(this, true)">ReAct — because the Thought→Action→Observation loop requires interpreting results before the next step</li>
+    <li onclick="checkQuiz(this, false)">Reflexion — because it teaches the agent to learn from proposing bad fixes</li>
+    <li onclick="checkQuiz(this, false)">Few-shot examples — because showing a correct investigation teaches the right behavior</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Your skill prompt says "think carefully about the problem." The agent still produces shallow reasoning. What's the fix?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Add "think very carefully" with more emphasis</li>
+    <li onclick="checkQuiz(this, false)">Set a lower temperature to reduce randomness</li>
+    <li onclick="checkQuiz(this, true)">Replace with named reasoning steps: "State the root cause, list evidence, identify alternatives"</li>
+    <li onclick="checkQuiz(this, false)">Add a few-shot example of deep thinking</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">An agent has failed to fix a bug twice with slight variations of the same approach. What does the Reflexion pattern prescribe?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Try the same approach a third time with a smaller change</li>
+    <li onclick="checkQuiz(this, false)">Report the failure immediately and stop</li>
+    <li onclick="checkQuiz(this, true)">Explain why the approach is fundamentally wrong and try a completely different strategy</li>
+    <li onclick="checkQuiz(this, false)">Ask the user which approach to try next</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Apply It</h2>
+
+<p>Take an existing skill that uses flat instructions. Restructure it with an explicit ReAct loop: add a <code>## Steps</code> section where each step names the Thought, Action, and Observation phases. Add <code>## Failure Handling</code> with a two-strikes rule. Run the skill on a test case and compare the reasoning quality to the original.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p>Read <a href="https://arxiv.org/abs/2210.03629">ReAct: Synergizing Reasoning and Acting in Language Models (Yao et al., 2023)</a> — the paper demonstrates that interleaving reasoning traces with actions outperforms either alone on knowledge-intensive and decision-making tasks. Figure 1 shows the Thought/Action/Observation loop that underpins modern agentic frameworks.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>🤖 Ask your teacher:</strong> Want help restructuring a specific skill prompt with ReAct or Reflexion? Paste the current instructions and I'll show you the before/after.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0004-modularity-and-reusability.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0006-tool-integration.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — review the patterns above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

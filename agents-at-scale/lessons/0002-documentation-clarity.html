@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 2: Documentation Clarity</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0001-architecture-and-structure.html" class="lesson-back-top" title="Architecture and Structure"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0003-scope-definition.html" class="lesson-next-top" title="Scope Definition">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Documentation Clarity</h1>
+
+<div class="lesson-meta">
+  Lesson 2 · Agentic Skills Best Practices · ~8 minutes
+</div>
+
+<p>By the end of this lesson, you'll understand the five documentation elements every skill needs — and why documentation isn't just for humans; it's what the LLM uses to decide <em>whether</em> to invoke your skill.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, your skill descriptions will be precise enough that an orchestrating LLM can correctly decide when to use them — and when not to.</p>
+</div>
+
+<h2>The Dual Audience Problem</h2>
+
+<p>Skill documentation serves two audiences simultaneously:</p>
+
+<ol>
+  <li><strong>Humans</strong> who maintain, review, and compose skills</li>
+  <li><strong>LLMs</strong> that dynamically select tools at runtime based on descriptions</li>
+</ol>
+
+<p>This is unique. Traditional API documentation only needs to be readable by humans. But in agentic systems, the LLM reads your skill's description and decides whether to invoke it. Vague descriptions lead to hallucinated invocations or missed opportunities.</p>
+
+<p>The Prompt Engineering Guide research emphasizes: clear documentation improves both human understanding <em>and</em> LLM interpretation of when and how to use skills.</p>
+
+<h2>The Five Documentation Elements</h2>
+
+<h3>1. Description (Purpose Statement)</h3>
+
+<p>One to two sentences. What the skill does — not how it works internally.</p>
+
+<pre><code># Good — specific, actionable
+description: "Analyzes CSV datasets to identify statistical anomalies
+  and generates a summary report with confidence scores."
+
+# Bad — vague, no clear invocation signal
+description: "Helps with data stuff."</code></pre>
+
+<div class="callout">
+  <div class="callout-title">Key Insight</div>
+  <p>The description is what the LLM pattern-matches against when deciding which tool to call. If your description says "helps with data," the LLM will invoke it for <em>any</em> data-adjacent request — including ones your skill can't handle.</p>
+</div>
+
+<h3>2. Usage Triggers</h3>
+
+<p>Explicit conditions for when the skill should be activated. This is the decision boundary.</p>
+
+<pre><code>triggers:
+  - "User asks to analyze a CSV or tabular dataset"
+  - "User requests anomaly detection on numeric data"
+  - "User wants statistical summary of a data source"
+not_triggers:
+  - "User asks to visualize data (use chart-skill instead)"
+  - "User asks about database queries (use sql-skill instead)"</code></pre>
+
+<h3>3. Examples</h3>
+
+<p>Representative input/output pairs including edge cases. These serve as few-shot examples for the LLM and as test fixtures for validation.</p>
+
+<pre><code>examples:
+  - input: { data_source: "sales_q4.csv", analysis_type: "anomaly" }
+    output: { result: "3 anomalies detected in revenue column...", confidence: 0.92 }
+    explanation: "Standard anomaly detection on numeric columns"
+  - input: { data_source: "empty.csv", analysis_type: "summary" }
+    output: { result: "No data available for analysis", confidence: 0.0 }
+    explanation: "Edge case — empty file returns gracefully"</code></pre>
+
+<h3>4. Limitations</h3>
+
+<p>Explicit boundaries. What the skill <em>cannot</em> do. This prevents the LLM from over-promising.</p>
+
+<pre><code>limitations:
+  - "Maximum file size: 100MB"
+  - "Only supports CSV and TSV formats (not Excel or Parquet)"
+  - "Does not perform causal inference — correlation only"
+  - "Requires at least 30 rows for statistical significance"</code></pre>
+
+<h3>5. Dependencies</h3>
+
+<p>Required tools, APIs, or external services. Critical for governance and deployment planning.</p>
+
+<pre><code>dependencies:
+  tools: ["file_reader", "statistics_engine"]
+  apis: ["internal-data-lake-v2"]
+  services: ["Amazon S3 (for large file staging)"]</code></pre>
+
+<h2>The Registry Connection</h2>
+
+<p>The governance guide stresses that documentation is the foundation of discoverability. In enterprise deployments with hundreds of agents, registries use these five elements for:</p>
+
+<ul>
+  <li><strong>Discovery</strong> — teams find existing skills instead of duplicating effort</li>
+  <li><strong>Quality gates</strong> — skills without clear limitations fail governance review</li>
+  <li><strong>Impact assessment</strong> — dependency lists enable blast-radius analysis during changes</li>
+</ul>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">A skill's description says "Processes data and returns results." What's wrong?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">It's too short — descriptions should be at least five sentences long</li>
+    <li onclick="checkQuiz(this, true)">It's too vague — the LLM cannot distinguish when to invoke this skill</li>
+    <li onclick="checkQuiz(this, false)">It uses passive voice — descriptions should use active imperative verbs</li>
+    <li onclick="checkQuiz(this, false)">It's missing version information — descriptions must include the version</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Why do limitations matter for LLM-based tool selection?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">They help the LLM generate better prompts for the user's next question</li>
+    <li onclick="checkQuiz(this, true)">They prevent the LLM from invoking the skill for tasks it cannot handle</li>
+    <li onclick="checkQuiz(this, false)">They are required by JSON Schema for valid interface documentation</li>
+    <li onclick="checkQuiz(this, false)">They improve token efficiency by reducing the size of skill descriptions</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Apply It</h2>
+
+<p>Open one of your Kiro skills (check <code>~/.kiro/skills/</code>) and evaluate its documentation against the five elements. Score it:</p>
+
+<ul>
+  <li>☐ Description — specific enough for tool selection?</li>
+  <li>☐ Triggers — does it define when to fire <em>and</em> when not to?</li>
+  <li>☐ Examples — includes at least one edge case?</li>
+  <li>☐ Limitations — explicit about what it can't do?</li>
+  <li>☐ Dependencies — lists all external requirements?</li>
+</ul>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p>Read the <a href="https://www.promptingguide.ai/">DAIR.AI Prompt Engineering Guide</a> section on tool descriptions for the research behind how LLMs interpret tool documentation during selection.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>🤖 Ask your teacher:</strong> Want feedback on your skill's documentation? Paste the description and I'll evaluate it against the five-element model and suggest improvements.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0001-architecture-and-structure.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0003-scope-definition.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — review the section above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

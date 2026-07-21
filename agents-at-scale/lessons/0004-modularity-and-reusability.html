@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4: Modularity and Reusability</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0003-scope-definition.html" class="lesson-back-top" title="Scope Definition"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-prompt-engineering.html" class="lesson-next-top" title="Prompt Engineering Within Skills">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Modularity and Reusability</h1>
+
+<div class="lesson-meta">
+  Lesson 4 · Agentic Skills Best Practices · ~10 minutes
+</div>
+
+<p>By the end of this lesson, you'll design skills as composable building blocks — using shared libraries, dependency injection, and include directives to eliminate duplication across your skill portfolio.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you'll be able to extract common patterns (auth, error handling, validation) into reusable skill libraries instead of copying them between skills.</p>
+</div>
+
+<h2>Skills as Composable Units</h2>
+
+<p>AutoGen demonstrated that modular agent designs reduce coding effort by 4x and manual interactions by 3–10x. The same principle applies at the skill level: skills designed for composition outperform monoliths.</p>
+
+<p>Four patterns enable composition:</p>
+
+<h3>1. Include Directives</h3>
+
+<p>Share templates and utilities across skills without duplication:</p>
+
+<pre><code># skill-a/prompts/system.md
+You are an expert data analyst. Follow these guidelines:
+1. Always cite data sources
+2. Express uncertainty as confidence ranges
+3. Recommend follow-up questions
+
+# skill-b can include the same base prompt:
+includes:
+  - "../shared/prompts/analytical-base.md"
+  - "../shared/error-handling.yaml"</code></pre>
+
+<h3>2. Skill Libraries</h3>
+
+<p>Extract recurring patterns into shared modules:</p>
+
+<pre><code># shared/auth.py — reused by 12 skills
+class AuthProvider:
+    def get_token(self, service: str) -> str:
+        """Retrieve token from secrets manager."""
+        ...
+
+# shared/validation.py
+def validate_input(schema: dict, data: dict) -> ValidationResult:
+    """Validate against JSON Schema with clear error messages."""
+    ...
+
+# shared/retry.py
+async def with_retry(fn, max_attempts=3, backoff_base=2):
+    """Exponential backoff with jitter."""
+    ...</code></pre>
+
+<h3>3. Dependency Injection</h3>
+
+<p>Skills shouldn't hardcode which services they use. Inject them:</p>
+
+<pre><code>class SkillAgent:
+    def __init__(self, skill_config):
+        self.capabilities = load_capabilities(skill_config)
+        self.tools = initialize_tools(skill_config.tools)
+
+    def execute(self, task):
+        # Modular execution with clear interfaces
+        return self.capabilities.process(task, self.tools)</code></pre>
+
+<p>The skill doesn't know <em>which</em> file reader or statistics engine it gets — it just knows the interface. This makes testing trivial (inject mocks) and deployment flexible (swap implementations per environment).</p>
+
+<h3>4. Composition Patterns</h3>
+
+<p>Skills should work independently but integrate seamlessly:</p>
+
+<div class="diagram">
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  extract    │────▶│  transform  │────▶│   report    │
+│   skill     │     │    skill    │     │    skill    │
+└─────────────┘     └─────────────┘     └─────────────┘
+      │                    │                    │
+      └────────────────────┴────────────────────┘
+                    shared/validation
+                    shared/error-handling
+                    shared/auth
+</div>
+
+<h2>The Enterprise Registry</h2>
+
+<p>The governance guide describes agent registries that "support discovery, reuse, and governance while preventing unnecessary duplication." When your skills are modular:</p>
+
+<ul>
+  <li><strong>Discovery</strong> — other teams find and reuse your auth module instead of reinventing it</li>
+  <li><strong>Quality</strong> — shared libraries get tested once, benefit everyone</li>
+  <li><strong>Governance</strong> — centralized auth means one place to audit and rotate credentials</li>
+</ul>
+
+<div class="callout">
+  <div class="callout-title">Key Insight</div>
+  <p>The governance guide recommends "libraries of tested and compliant agent templates, tool integrations, and prompt patterns as building blocks." This is exactly the skill library pattern — pre-approved components that citizen developers compose from.</p>
+</div>
+
+<h2>When NOT to Extract</h2>
+
+<p>Don't abstract prematurely. Extract a shared module when:</p>
+
+<ul>
+  <li>The same code appears in <strong>3+ skills</strong> (not 2)</li>
+  <li>The shared behavior is <strong>stable</strong> (not actively changing)</li>
+  <li>The interface is <strong>clean</strong> (not leaking internal details)</li>
+</ul>
+
+<p>One copy is fine. Two copies is a coincidence. Three copies is a pattern worth extracting.</p>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">You have auth token retrieval duplicated in 4 skills. What's the right approach?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, true)">Extract to a shared auth library and inject it into each skill via configuration</li>
+    <li onclick="checkQuiz(this, false)">Leave it duplicated so each skill remains fully self-contained and independent</li>
+    <li onclick="checkQuiz(this, false)">Create one "auth-skill" that other skills call via tool invocation at runtime</li>
+    <li onclick="checkQuiz(this, false)">Move all four skills into one larger skill that handles auth once internally</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">You notice two skills both parse dates. One parses ISO-8601, the other natural language. Extract or keep separate?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Extract — any date parsing belongs in one shared module to stay consistent</li>
+    <li onclick="checkQuiz(this, true)">Keep separate — different interfaces and behaviors, not a true duplication</li>
+    <li onclick="checkQuiz(this, false)">Extract — always extract when code touches the same data type like dates</li>
+    <li onclick="checkQuiz(this, false)">Keep separate — but only until a third skill needs date parsing of any type</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Apply It</h2>
+
+<p>Scan your <code>~/.kiro/skills/</code> directory. Look for duplicated patterns — error handling, auth, validation, output formatting. If you find 3+ occurrences, extract it into a shared utility and use include directives.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p>Read the <a href="https://arxiv.org/abs/2308.08155">AutoGen paper (Wu et al., 2023)</a> — Section 3 on "Customizable and Conversable Agents" demonstrates how modular, composable agent designs deliver the 4x effort reduction.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>🤖 Ask your teacher:</strong> Not sure what qualifies as a reusable pattern vs. a coincidental similarity? Show me the duplicated code and I'll help you decide.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0003-scope-definition.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0005-prompt-engineering.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — review the extraction criteria above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

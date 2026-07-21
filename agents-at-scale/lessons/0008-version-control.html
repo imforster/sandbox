@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 8: Version Control and Maintenance</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0007-testing-and-validation.html" class="lesson-back-top" title="Testing and Validation"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0009-performance-optimization.html" class="lesson-next-top" title="Performance Optimization">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Version Control and Maintenance</h1>
+
+<div class="lesson-meta">
+  Lesson 8 · Agentic Skills Best Practices · ~8 minutes
+</div>
+
+<p>By the end of this lesson, you'll apply semantic versioning to agent skills, maintain changelogs that communicate impact clearly, manage dependencies across LLM model versions, and implement lifecycle management that keeps your agent ecosystem healthy over time.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you'll have a versioning strategy that lets consumers of your skills upgrade confidently — knowing exactly what changed, what might break, and when deprecated features disappear.</p>
+</div>
+
+<h2>Why Versioning Matters for Agent Skills</h2>
+
+<p>Agent skills aren't static artifacts. Models evolve, prompts get refined, tool APIs change, and new capabilities emerge. Without disciplined versioning, consumers of your skill face a grim choice: pin to an old version and miss improvements, or upgrade blindly and risk breakage in production.</p>
+
+<p>The MCP specification treats servers as versioned components with explicit capability negotiation. Your skills deserve the same rigor. A version number is a contract — it tells consumers exactly how much risk an upgrade carries.</p>
+
+<h2>Semantic Versioning for Skills</h2>
+
+<p>Apply <a href="https://semver.org">Semantic Versioning (SemVer)</a> to agent skills with domain-specific interpretations. The format is <code>MAJOR.MINOR.PATCH</code>, where each segment communicates a different level of change impact:</p>
+
+<h3>MAJOR — Breaking Interface Changes</h3>
+
+<p>Increment MAJOR when consumers must modify their code or configuration to continue working. In the agent skill context, these are breaking changes:</p>
+
+<ul>
+  <li>Renaming or removing a tool the skill exposes</li>
+  <li>Changing required input parameters (adding required fields, removing fields consumers depend on)</li>
+  <li>Altering output schema in ways that break downstream parsing</li>
+  <li>Changing the skill's trigger conditions or invocation contract</li>
+  <li>Dropping support for a model version consumers still use</li>
+  <li>Switching from synchronous to asynchronous execution (or vice versa)</li>
+</ul>
+
+<pre><code># skill-spec.yaml — MAJOR version bump (2.x → 3.0.0)
+# Breaking: renamed 'query' parameter to 'prompt', removed 'verbose' flag
+name: research-agent
+version: 3.0.0
+interface:
+  inputs:
+    - name: prompt        # was 'query' in v2.x — BREAKING
+      type: string
+      required: true
+    - name: depth         # was 'verbose' boolean in v2.x — BREAKING
+      type: integer       # changed type from boolean to integer
+      required: false
+      default: 2</code></pre>
+
+<h3>MINOR — New Features, Backward Compatible</h3>
+
+<p>Increment MINOR when you add functionality that existing consumers can ignore. Their code continues to work without changes:</p>
+
+<ul>
+  <li>Adding a new optional parameter with a sensible default</li>
+  <li>Exposing a new tool alongside existing ones</li>
+  <li>Adding new fields to output (consumers that don't read them are unaffected)</li>
+  <li>Supporting an additional model version</li>
+  <li>Improving prompt quality (better outputs from same inputs)</li>
+  <li>Adding new trigger conditions while preserving existing ones</li>
+</ul>
+
+<pre><code># skill-spec.yaml — MINOR version bump (3.0.0 → 3.1.0)
+# Added: optional 'sources' parameter, new 'confidence' field in output
+name: research-agent
+version: 3.1.0
+interface:
+  inputs:
+    - name: prompt
+      type: string
+      required: true
+    - name: depth
+      type: integer
+      required: false
+      default: 2
+    - name: sources       # NEW — optional, defaults to "all"
+      type: string
+      required: false
+      default: "all"
+  outputs:
+    - name: result
+      type: string
+    - name: confidence    # NEW — consumers can ignore this field
+      type: float</code></pre>
+
+<h3>PATCH — Bug Fixes</h3>
+
+<p>Increment PATCH for fixes that don't change the interface or add features. Consumers should always feel safe upgrading patches:</p>
+
+<ul>
+  <li>Fixing a prompt that produced incorrect output for certain inputs</li>
+  <li>Correcting token counting logic that caused truncation</li>
+  <li>Fixing error handling that swallowed exceptions silently</li>
+  <li>Resolving a race condition in tool execution</li>
+  <li>Updating documentation to match actual behavior</li>
+</ul>
+
+<pre><code># CHANGELOG entry for PATCH (3.1.0 → 3.1.1)
+# Fixed: prompt truncation when input exceeds 50k tokens
+# Fixed: timeout not respected when API returns partial response
+# No interface changes — safe to upgrade without code modifications</code></pre>
+
+<div class="callout">
+  <div class="callout-title">Key Insight</div>
+  <p>When in doubt, bump MAJOR. A false-alarm major version bump costs consumers a few minutes reading the changelog. A stealth breaking change in a minor bump costs them hours debugging production failures.</p>
+</div>
+
+<h2>Changelog Best Practices</h2>
+
+<p>A changelog is the human-readable story of your skill's evolution. The <a href="https://keepachangelog.com">Keep a Changelog</a> format, adapted for agent skills, uses three categories that map directly to SemVer:</p>
+
+<h3>Format: Added / Changed / Fixed</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Category</th>
+      <th>Maps to</th>
+      <th>What belongs here</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Added</strong></td>
+      <td>MINOR+</td>
+      <td>New features, tools, parameters, model support</td>
+    </tr>
+    <tr>
+      <td><strong>Changed</strong></td>
+      <td>MAJOR or MINOR</td>
+      <td>Modified behavior, renamed fields, altered defaults. Mark breaking changes explicitly.</td>
+    </tr>
+    <tr>
+      <td><strong>Fixed</strong></td>
+      <td>PATCH</td>
+      <td>Bug fixes, documentation corrections, edge-case handling</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Additional categories when needed: <strong>Deprecated</strong> (will be removed in a future MAJOR), <strong>Removed</strong> (MAJOR only), <strong>Security</strong> (vulnerability patches).</p>
+
+<h3>Example Changelog</h3>
+
+<pre><code># Changelog — research-agent
+
+## [3.1.1] - 2026-07-18
+
+### Fixed
+- Prompt truncation when input exceeds 50k tokens now chunks correctly
+- Timeout handler now respects partial API responses instead of hanging
+- Token counting uses cl100k_base encoding (was incorrectly using p50k)
+
+## [3.1.0] - 2026-07-10
+
+### Added
+- Optional `sources` parameter to restrict search scope (web, internal, academic)
+- `confidence` field in output (0.0–1.0) indicating result reliability
+- Support for Claude 3.5 Sonnet as execution model
+
+### Changed
+- Default search depth increased from 1 to 2 (backward compatible — existing
+  behavior unchanged for consumers not using the parameter)
+
+## [3.0.0] - 2026-06-28
+
+### Changed
+- **BREAKING:** Renamed `query` parameter to `prompt` for consistency with
+  MCP naming conventions. Update your invocations.
+- **BREAKING:** `verbose` boolean replaced by `depth` integer (1-5).
+  Migration: `verbose: true` → `depth: 3`, `verbose: false` → `depth: 1`
+
+### Removed
+- **BREAKING:** Dropped support for Claude 2.x models (EOL upstream)
+- Removed deprecated `raw_mode` parameter (deprecated since 2.3.0)
+
+### Added
+- Migration guide: docs/migration-v2-to-v3.md
+
+## [2.4.0] - 2026-06-15
+
+### Deprecated
+- `verbose` parameter — will be replaced by `depth` in v3.0.0 (target: June 28)
+- Claude 2.x model support — upstream EOL announced, removal in v3.0.0</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Changelog Rules</div>
+  <p>Each entry answers three questions: <em>What</em> changed? <em>Why</em> should consumers care? <em>What do they need to do</em> (if anything)? For breaking changes, always include migration instructions or a link to a migration guide.</p>
+</div>
+
+<h2>Dependency Management</h2>
+
+<p>Agent skills depend on models, tool APIs, framework libraries, and other skills. Each dependency is a potential break point. Manage them proactively rather than reactively.</p>
+
+<h3>Compatibility Matrices</h3>
+
+<p>Document which combinations of dependencies are tested and supported. This prevents the "works on my machine" problem at scale:</p>
+
+<pre><code># compatibility.yaml — research-agent v3.1.x
+dependencies:
+  models:
+    - name: claude-3.5-sonnet
+      versions: ["20241022", "20250101"]
+      status: supported
+      notes: "Primary target. All tests run against this."
+    - name: claude-3-opus
+      versions: ["20240229"]
+      status: supported
+      notes: "Higher quality, higher latency. Use for complex research."
+    - name: claude-3-haiku
+      versions: ["20240307"]
+      status: compatible
+      notes: "Works but quality degrades on multi-step tasks."
+    - name: claude-2.1
+      versions: ["*"]
+      status: deprecated
+      removal_date: "2026-06-28"
+      notes: "Upstream EOL. Migrate to claude-3.5-sonnet."
+
+  tools:
+    - name: web-search-api
+      versions: [">=2.0.0", "<4.0.0"]
+      pinned: "3.2.1"
+      notes: "v4.0 changes response schema — blocked until adapter written."
+    - name: document-retriever
+      versions: [">=1.5.0"]
+      pinned: "1.8.0"
+
+  frameworks:
+    - name: mcp-sdk
+      versions: [">=0.9.0", "<2.0.0"]
+      pinned: "1.2.3"
+    - name: tokenizer
+      versions: [">=0.4.0"]
+      pinned: "0.5.1"
+
+  skills:
+    - name: summarization-skill
+      versions: [">=2.0.0", "<3.0.0"]
+      notes: "Used for final output compression."</code></pre>
+
+<h3>Pin Critical Dependencies</h3>
+
+<p>Not all dependencies are equal. Pin the ones where version drift causes silent behavior changes:</p>
+
+<pre><code># requirements.lock — pinned for reproducibility
+# CRITICAL: These affect output quality. Do not upgrade without running eval suite.
+anthropic==0.34.2           # Model API client — response format can change
+tiktoken==0.7.0             # Token counting — different versions count differently
+mcp-sdk==1.2.3              # Protocol layer — breaking changes affect all tools
+
+# FLEXIBLE: These can float within compatible ranges
+httpx>=0.27.0,<1.0.0        # HTTP client — stable interface
+pydantic>=2.5.0,<3.0.0      # Validation — breaking changes are MAJOR only
+structlog>=24.1.0           # Logging — additive changes only</code></pre>
+
+<h3>Test Against Multiple LLM Versions</h3>
+
+<p>Model providers release new versions that change behavior subtly. Your CI must test against every supported model version:</p>
+
+<pre><code># ci/test-matrix.yaml
+test_matrix:
+  model_versions:
+    - claude-3.5-sonnet-20241022
+    - claude-3.5-sonnet-20250101
+    - claude-3-opus-20240229
+  
+  test_suites:
+    - name: regression
+      description: "Core behavior hasn't changed"
+      threshold: { accuracy: 0.92, latency_p95: 5000 }
+    
+    - name: quality
+      description: "Output quality meets bar"
+      threshold: { accuracy: 0.88 }
+      # Lower threshold for older models — acceptable degradation
+      overrides:
+        claude-3-haiku-20240307: { accuracy: 0.80 }
+
+  schedule:
+    on_commit: [regression]           # fast — runs on every PR
+    nightly: [regression, quality]    # full matrix — runs overnight
+    on_model_release: [regression, quality]  # triggered by provider announcements</code></pre>
+
+<h3>Document Deprecation Timelines</h3>
+
+<p>Deprecation without a timeline is a lie. Give consumers concrete dates and migration paths:</p>
+
+<pre><code># deprecation-policy.md
+
+## Active Deprecations
+
+| Feature | Deprecated | Removal Target | Migration Path |
+|---------|-----------|----------------|----------------|
+| `verbose` param | v2.4.0 (Jun 15) | v3.0.0 (Jun 28) | Use `depth: 3` for verbose, `depth: 1` for concise |
+| Claude 2.x support | v2.4.0 (Jun 15) | v3.0.0 (Jun 28) | Switch to claude-3.5-sonnet in config |
+| `raw_mode` param | v2.3.0 (May 20) | v3.0.0 (Jun 28) | Use structured output with `format: json` |
+| Python 3.9 support | v3.0.0 (Jun 28) | v4.0.0 (Q4 2026) | Upgrade to Python 3.11+ |
+
+## Deprecation Rules
+
+1. Minimum 30 days between deprecation notice and removal
+2. Deprecated features emit runtime warnings with migration instructions
+3. Removal only happens in MAJOR version bumps
+4. Each deprecation includes a migration guide or one-line fix
+5. Breaking removal is announced in the previous MINOR's changelog</code></pre>
+
+<div class="callout">
+  <div class="callout-title">Key Insight</div>
+  <p>Deprecation is a communication tool, not a punishment. The goal is giving consumers enough time and information to migrate smoothly. A surprise removal in a patch version destroys trust permanently.</p>
+</div>
+
+<h2>Lifecycle Management</h2>
+
+<p>Skills and their model dependencies have lifecycles. Governance requires tracking what's approved, what's aging, and what needs proactive replacement before it breaks.</p>
+
+<h3>Model Catalog</h3>
+
+<p>Maintain a catalog of approved models organized by use case. This prevents teams from independently adopting untested models and provides a single source of truth for what's production-ready:</p>
+
+<pre><code># model-catalog.yaml — Approved models by use case
+catalog:
+  text_generation:
+    primary:
+      model: claude-3.5-sonnet-20250101
+      status: approved
+      approved_date: 2025-01-15
+      eval_score: 0.94
+      cost_per_1k_tokens: 0.003
+      notes: "Best balance of quality, speed, and cost for general tasks."
+    alternatives:
+      - model: claude-3-opus-20240229
+        status: approved
+        use_when: "Task requires highest quality; latency budget > 10s"
+        eval_score: 0.97
+        cost_per_1k_tokens: 0.015
+      - model: claude-3-haiku-20240307
+        status: approved
+        use_when: "High volume, low complexity; latency budget < 1s"
+        eval_score: 0.82
+        cost_per_1k_tokens: 0.00025
+
+  code_generation:
+    primary:
+      model: claude-3.5-sonnet-20250101
+      status: approved
+      approved_date: 2025-01-20
+      eval_score: 0.91
+      notes: "Strongest code quality across languages."
+
+  summarization:
+    primary:
+      model: claude-3.5-sonnet-20250101
+      status: approved
+      eval_score: 0.93
+
+  classification:
+    primary:
+      model: claude-3-haiku-20240307
+      status: approved
+      eval_score: 0.89
+      notes: "Classification doesn't need heavy reasoning — haiku is cost-effective."
+
+  retired:
+    - model: claude-2.1
+      status: end_of_life
+      eol_date: 2026-06-01
+      replacement: claude-3.5-sonnet-20250101
+      migration_guide: docs/migrate-claude2-to-3.5.md</code></pre>
+
+<h3>Proactive Updates at End-of-Life</h3>
+
+<p>Don't wait for a model to stop working. When a provider announces end-of-life, trigger migration immediately:</p>
+
+<pre><code># lifecycle-automation.yaml
+lifecycle_rules:
+  - trigger: model_eol_announced
+    actions:
+      - create_migration_ticket:
+          priority: high
+          deadline: "eol_date - 30 days"
+          assignee: skill_owner
+          template: |
+            ## Model EOL Migration Required
+            
+            **Model:** {{model_name}}
+            **EOL Date:** {{eol_date}}
+            **Replacement:** {{recommended_replacement}}
+            
+            ### Steps
+            1. Update compatibility.yaml to add replacement model
+            2. Run full eval suite against replacement
+            3. Update prompts if quality degrades (score delta > 3%)
+            4. Publish MINOR version with new model support
+            5. Deprecate old model in changelog
+            6. Publish MAJOR version removing old model (after 30-day window)
+      
+      - notify_consumers:
+          channels: [email, slack]
+          message: |
+            ⚠️ {{skill_name}} v{{version}} uses {{model_name}} which reaches
+            EOL on {{eol_date}}. Upgrade to v{{next_version}} (available 
+            {{available_date}}) which supports {{replacement}}.
+      
+      - schedule_eval_run:
+          model: "{{recommended_replacement}}"
+          test_suite: full
+          notify_on_failure: skill_owner
+
+  - trigger: eval_score_drops_below_threshold
+    conditions:
+      score_delta: ">5%"
+      duration: "3 consecutive runs"
+    actions:
+      - alert:
+          severity: high
+          message: "{{skill_name}} quality degraded on {{model_name}}"
+      - create_investigation_ticket:
+          priority: high
+
+  - trigger: dependency_security_advisory
+    actions:
+      - create_patch_ticket:
+          priority: critical
+          deadline: "advisory_date + 7 days"</code></pre>
+
+<h3>Version Lifecycle States</h3>
+
+<p>Every skill version moves through a defined lifecycle. Track the state explicitly:</p>
+
+<div class="diagram">
+┌──────────┐    ┌──────────┐    ┌────────────┐    ┌─────────────┐    ┌─────────┐
+│  Draft   │───▶│  Active  │───▶│ Deprecated │───▶│ End-of-Life │───▶│ Removed │
+└──────────┘    └──────────┘    └────────────┘    └─────────────┘    └─────────┘
+     │               │                │                  │
+     │               │                │                  │
+  Internal       Production        Warnings          Errors on
+  testing        use allowed       emitted on        invocation
+  only                             each use
+</div>
+
+<pre><code># Track skill versions and their lifecycle state
+skill_registry:
+  research-agent:
+    versions:
+      - version: "3.1.1"
+        state: active
+        released: "2026-07-18"
+        supported_until: null  # current — no planned EOL
+      
+      - version: "3.0.0"
+        state: deprecated
+        released: "2026-06-28"
+        deprecated_since: "2026-07-10"
+        removal_target: "2026-09-10"
+        reason: "Superseded by 3.1.x with confidence scoring"
+      
+      - version: "2.4.0"
+        state: end_of_life
+        released: "2026-06-15"
+        eol_since: "2026-06-28"
+        reason: "MAJOR version released — v2.x no longer maintained"</code></pre>
+
+<h2>Putting It Together: The Maintenance Workflow</h2>
+
+<p>Here's how versioning, changelogs, dependencies, and lifecycle management connect in practice:</p>
+
+<pre><code># Maintenance workflow — triggered by upstream model release
+
+1. Provider announces new model version
+   └─▶ Lifecycle automation creates eval ticket
+
+2. Run eval suite against new model
+   ├─▶ Pass (score within 3%): Add to compatibility matrix → MINOR bump
+   └─▶ Fail (score drops >3%): Investigate → fix prompts → re-eval → MINOR bump
+
+3. Update compatibility.yaml
+   └─▶ Add new model to "supported" list
+
+4. Update CHANGELOG.md
+   └─▶ "Added: Support for claude-X.Y-YYYYMMDD"
+
+5. If old model approaching EOL:
+   ├─▶ Add "Deprecated" entry to changelog (current MINOR)
+   ├─▶ Emit runtime deprecation warning
+   ├─▶ Notify consumers with timeline
+   └─▶ Schedule MAJOR bump to remove (30+ days out)
+
+6. Publish new version
+   └─▶ Consumers upgrade at their own pace within the support window</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Automation</div>
+  <p>Automate steps 1-3. Model releases are predictable events. A scheduled CI job that runs your eval suite against newly released models and opens a PR with updated compatibility data eliminates the most common maintenance bottleneck: nobody noticed the new version was available.</p>
+</div>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">You add a new optional parameter to your skill with a sensible default value. Existing consumers don't need to change their code. What version bump is correct?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">MAJOR — any interface change is breaking</li>
+    <li onclick="checkQuiz(this, true)">MINOR — new feature, backward compatible</li>
+    <li onclick="checkQuiz(this, false)">PATCH — it's a small change</li>
+    <li onclick="checkQuiz(this, false)">No version bump needed — optional params don't count</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">A model provider announces that Claude 3 Haiku reaches end-of-life in 60 days. Your skill currently lists it as "supported." What's the correct sequence of actions?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Immediately release a MAJOR version removing Haiku support</li>
+    <li onclick="checkQuiz(this, false)">Do nothing until the EOL date, then release a PATCH removing it</li>
+    <li onclick="checkQuiz(this, true)">Deprecate in a MINOR now (with warnings and timeline), then remove in a MAJOR after 30+ days</li>
+    <li onclick="checkQuiz(this, false)">Add a note to the README and let consumers figure it out</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Your compatibility matrix shows a skill tested against two model versions. A third model version is released by the provider. Your eval suite shows quality drops 8% on the new version. What should you do?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Add the new model to "supported" since the provider released it</li>
+    <li onclick="checkQuiz(this, false)">Ignore it — the existing supported versions still work</li>
+    <li onclick="checkQuiz(this, true)">Investigate the quality drop, fix prompts if possible, then add support in a MINOR bump only after eval passes</li>
+    <li onclick="checkQuiz(this, false)">Release a MAJOR version that only supports the new model</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Apply It</h2>
+
+<p>Pick one of your skills and create a <code>CHANGELOG.md</code> retroactively. Document at least three versions (even if you've been informally iterating). Then create a <code>compatibility.yaml</code> listing every model and tool dependency with its tested version range. If you discover untested combinations, add them to your CI matrix.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p>Read the <a href="https://github.com/modelcontextprotocol">Anthropic MCP Specification</a> — the protocol's approach to capability negotiation and version handshakes between clients and servers demonstrates how versioning enables safe evolution of distributed agent systems without breaking existing integrations.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>🤖 Ask your teacher:</strong> Want help creating a compatibility matrix or deprecation timeline for your skills? Share your current dependency list and I'll draft a maintenance plan with automation triggers.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0007-testing-and-validation.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0009-performance-optimization.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — review the section above for the right approach.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

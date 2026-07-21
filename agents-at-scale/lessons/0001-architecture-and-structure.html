@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1: Architecture and Structure</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><span></span><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0002-documentation-clarity.html" class="lesson-next-top" title="Documentation Clarity">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Architecture and Structure</h1>
+
+<div class="lesson-meta">
+  Lesson 1 · Agentic Skills Best Practices · ~10 minutes
+</div>
+
+<p>By the end of this lesson, you'll know how to organize a skill file into five clearly defined sections — and understand why separation of concerns matters as much for skills as it does for code.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, every skill file you write will start from a consistent skeleton that separates <em>what</em> a skill is from <em>how</em> it works.</p>
+</div>
+
+<h2>Why Structure Matters</h2>
+
+<p>A skill file is not a prompt template. It's a <strong>modular extension</strong> that encapsulates domain-specific knowledge, workflows, and tool integrations. Without clear architecture, skills become brittle monoliths that are hard to test, version, or compose with other skills.</p>
+
+<p>The research paper analyzed over 4,476 public repositories and found that well-structured skill files correlate with a 20% reduction in development time and 15–30% improvement in token efficiency. The structure itself communicates intent — both to the LLM consuming the skill and to the humans maintaining it.</p>
+
+<h2>The Five Sections</h2>
+
+<p>Every skill file should separate concerns into these five areas:</p>
+
+<div class="diagram">
+┌─────────────────────────────────────────┐
+│  1. METADATA                            │
+│     name, version, author, deps, compat │
+├─────────────────────────────────────────┤
+│  2. INTERFACES                          │
+│     input/output schemas (JSON Schema)  │
+├─────────────────────────────────────────┤
+│  3. CORE LOGIC                          │
+│     prompts, reasoning chains, code     │
+├─────────────────────────────────────────┤
+│  4. WORKFLOWS                           │
+│     step sequences, tool calls, errors  │
+├─────────────────────────────────────────┤
+│  5. CONFIGURATION                       │
+│     env vars, endpoints, feature flags  │
+└─────────────────────────────────────────┘
+</div>
+
+<h3>1. Metadata</h3>
+
+<p>The identity card. Contains name, version (semver), author, dependencies, and compatibility requirements. This is what registries index and what governance systems audit.</p>
+
+<pre><code>skill:
+  metadata:
+    name: "data-analysis-skill"
+    version: "1.2.0"
+    author: "platform-team"
+    dependencies: ["pandas", "numpy"]
+    compatibility:
+      min_framework: "0.9.0"
+      models: ["claude-3.5-sonnet", "claude-4"]</code></pre>
+
+<h3>2. Interfaces</h3>
+
+<p>Input/output contracts using JSON Schema or TypeScript types. These make a skill composable — other skills and orchestrators can validate payloads before invocation.</p>
+
+<pre><code>interface:
+  input_schema:
+    type: "object"
+    properties:
+      data_source: { type: "string", description: "Path or URL to data" }
+      analysis_type: { type: "string", enum: ["summary", "correlation", "anomaly"] }
+    required: ["data_source"]
+  output_schema:
+    type: "object"
+    properties:
+      result: { type: "string" }
+      confidence: { type: "number", minimum: 0, maximum: 1 }</code></pre>
+
+<h3>3. Core Logic</h3>
+
+<p>Prompt templates, reasoning chains, and code snippets. This is the domain expertise — what makes this skill valuable. Separate from the plumbing.</p>
+
+<h3>4. Workflows</h3>
+
+<p>Step sequences, tool invocations, error handling paths. Describes the <em>process</em> the skill follows, including branching logic and fallback behaviors.</p>
+
+<h3>5. Configuration</h3>
+
+<p>Environment-specific values that change between deployments. Never hard-coded — always externalized.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Enterprise Context</div>
+  <p>The AWS governance guide emphasizes that agent registries index skills by their metadata — name, version, dependencies, permissions, and ownership. If your metadata section is incomplete, your skill becomes invisible to governance systems and undiscoverable by other teams.</p>
+</div>
+
+<h2>The MCP Connection</h2>
+
+<p>This five-section structure maps cleanly onto MCP (Model Context Protocol) server architecture. MCP servers define <strong>resources</strong> (data exposed to agents), <strong>tools</strong> (functions agents can call), and <strong>prompts</strong> (templates for interactions). When you structure a skill file well, it becomes trivially portable to an MCP server:</p>
+
+<table>
+  <tr><th>Skill Section</th><th>MCP Equivalent</th></tr>
+  <tr><td>Metadata</td><td>Server manifest</td></tr>
+  <tr><td>Interfaces</td><td>Tool input schemas</td></tr>
+  <tr><td>Core Logic</td><td>Prompt definitions</td></tr>
+  <tr><td>Workflows</td><td>Tool implementations</td></tr>
+  <tr><td>Configuration</td><td>Server configuration</td></tr>
+</table>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">A skill's retry logic with exponential backoff belongs in which section?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Metadata — it describes the skill's operational characteristics</li>
+    <li onclick="checkQuiz(this, false)">Interfaces — it defines how the skill communicates externally</li>
+    <li onclick="checkQuiz(this, false)">Core Logic — it's part of the domain expertise the skill provides</li>
+    <li onclick="checkQuiz(this, true)">Workflows — it's a step in the execution process with error handling</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Why should API endpoints live in Configuration rather than Core Logic?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, true)">They change between environments and should never be hard-coded in logic</li>
+    <li onclick="checkQuiz(this, false)">They are metadata about the skill's identity and classification needs</li>
+    <li onclick="checkQuiz(this, false)">They define the contract between the skill and its external consumers</li>
+    <li onclick="checkQuiz(this, false)">They are workflow steps that determine the order of tool invocations</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">What makes a skill "discoverable" in an enterprise agent registry?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Having well-crafted prompts with chain-of-thought reasoning patterns</li>
+    <li onclick="checkQuiz(this, false)">Using JSON Schema for all input and output interface definitions</li>
+    <li onclick="checkQuiz(this, true)">Complete metadata: name, version, dependencies, permissions, ownership</li>
+    <li onclick="checkQuiz(this, false)">Implementing comprehensive error handling in all workflow branches</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Apply It</h2>
+
+<p>Pick one of your existing skills (or a steering file in <code>~/.kiro/skills/</code>). Map its contents to the five sections. What's missing? Most skills have strong Core Logic but weak Metadata and Interfaces — that's the gap to fill first.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p>Read Lilian Weng's <a href="https://lilianweng.github.io/posts/2023-06-23-agent/">LLM Powered Autonomous Agents</a> for the foundational model of Planning + Memory + Tool Use that these architecture patterns serve.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>🤖 Ask your teacher:</strong> Unclear how any section maps to your existing skills? Paste a skill file and ask me to audit its structure against the five-section model.
+</div>
+
+<nav class="lesson-nav">
+  <span class="lesson-nav-disabled">← Previous</span>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0002-documentation-clarity.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — review the section descriptions above.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

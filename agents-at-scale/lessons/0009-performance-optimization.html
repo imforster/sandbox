@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 9: Performance Optimization</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0008-version-control.html" class="lesson-back-top" title="Version Control"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0010-anti-patterns.html" class="lesson-next-top" title="Anti-Patterns">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Performance Optimization</h1>
+
+<div class="lesson-meta">
+  Lesson 9 · Agentic Skills Best Practices · ~10 minutes
+</div>
+
+<p>By the end of this lesson, you'll apply token optimization strategies, implement caching patterns for tool outputs, track performance metrics that reveal cost and latency bottlenecks, and attribute spend to business units with granular cost tracking.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Win</div>
+  <p>After this lesson, you'll reduce token usage by 15-30% through prompt caching, context compression, and concise schemas — without sacrificing output quality.</p>
+</div>
+
+<h2>Why Performance Optimization Matters</h2>
+
+<p>Every token costs money, every millisecond costs patience. Research from early adopters of agentic systems reports a 20% reduction in development time and 15-30% improvement in token efficiency when teams apply structured optimization. The difference between a prototype agent and a production agent is often not capability — it's cost control and latency management.</p>
+
+<p>The DAIR.AI Prompt Engineering Guide identifies token efficiency as a first-class concern: prompts that are verbose, redundant, or poorly structured waste budget on every invocation without improving output quality. Optimization is not premature here — it's table stakes for production deployment.</p>
+
+<h2>Token Optimization Strategies</h2>
+
+<p>Tokens are your primary cost driver. Four strategies reduce consumption without degrading results.</p>
+
+<h3>1. Concise Schemas</h3>
+
+<p>Replace verbose natural-language instructions with structured schemas. The model parses compact formats more efficiently than prose descriptions of the same constraints:</p>
+
+<pre><code># ❌ Verbose — 147 tokens
+"""
+Please return your response as a JSON object. The object should have
+a field called "analysis" which contains your analysis as a string.
+It should also have a field called "confidence" which is a number
+between 0 and 1 representing how confident you are. Finally, include
+a field called "sources" which is a list of strings, where each
+string is a URL you referenced.
+"""
+
+# ✅ Concise schema — 42 tokens
+"""
+Respond in JSON:
+{"analysis": str, "confidence": float 0-1, "sources": [str]}
+"""</code></pre>
+
+<p>The concise version saves 105 tokens per request. At 10,000 requests per day, that's over a million tokens saved daily — purely from tighter formatting.</p>
+
+<h3>2. Prompt Caching</h3>
+
+<p>Most API providers now support prompt caching: identical prompt prefixes are stored server-side and not re-processed on subsequent calls. Structure your prompts with a stable prefix (system instructions, tool definitions) and a variable suffix (user input, context):</p>
+
+<pre><code># Structure prompts for cache hits
+# The stable prefix is cached after the first request
+
+SYSTEM_PREFIX = """You are a code review agent. You analyze diffs for:
+- Security vulnerabilities
+- Performance regressions
+- Style violations
+- Missing test coverage
+
+Output format: {"issues": [{"severity": "high|medium|low", "line": int, "msg": str}]}
+"""
+
+def build_prompt(diff: str) -> list[dict]:
+    return [
+        {"role": "system", "content": SYSTEM_PREFIX},  # cached after first call
+        {"role": "user", "content": f"Review this diff:\n{diff}"},  # variable per request
+    ]</code></pre>
+
+<p>Prompt caching typically reduces latency by 50-80% for the cached portion and costs significantly less per cached token. The key constraint: the prefix must be identical byte-for-byte. Any variation — even a timestamp or request ID embedded in the system prompt — breaks the cache.</p>
+
+<h3>3. Context Compression via Summarization</h3>
+
+<p>Long conversation histories and large documents consume tokens that add diminishing value. Compress older context into summaries while preserving recent detail:</p>
+
+<pre><code>from dataclasses import dataclass
+
+@dataclass
+class ConversationManager:
+    """Manages context window by compressing old messages."""
+    max_tokens: int = 100_000
+    summary_threshold: int = 80_000  # compress when 80% full
+    recent_window: int = 10          # keep last N messages verbatim
+
+    def compress_context(self, messages: list[dict]) -> list[dict]:
+        total_tokens = sum(count_tokens(m["content"]) for m in messages)
+
+        if total_tokens < self.summary_threshold:
+            return messages  # no compression needed
+
+        # Keep system prompt and recent messages verbatim
+        system = [m for m in messages if m["role"] == "system"]
+        recent = messages[-self.recent_window:]
+        old = messages[len(system):-self.recent_window]
+
+        # Summarize old messages into a single context block
+        summary = self._summarize(old)
+        compressed = system + [
+            {"role": "system", "content": f"Previous context summary:\n{summary}"}
+        ] + recent
+
+        return compressed
+
+    def _summarize(self, messages: list[dict]) -> str:
+        """Distill key decisions, facts, and pending items."""
+        content = "\n".join(m["content"] for m in messages)
+        # Use a fast, cheap model for summarization
+        return call_model(
+            model="fast-summarizer",
+            prompt=f"Summarize the key facts, decisions, and open items:\n{content}",
+            max_tokens=500,
+        )</code></pre>
+
+<p>This pattern trades a small summarization cost for large savings on subsequent calls. A 50-message history compressed to a 500-token summary saves tens of thousands of tokens on every subsequent request that includes that context.</p>
+
+<h3>4. Remove Redundant Instructions</h3>
+
+<p>Audit your prompts for instructions that repeat what the model already knows, restate constraints already encoded in the schema, or duplicate information present in tool definitions:</p>
+
+<pre><code># ❌ Redundant — repeats what the schema and tools already specify
+"""
+You have access to a search tool. When you want to search, use the
+search tool. The search tool takes a query parameter which should be
+a string. Make sure to provide a query when using the search tool.
+After searching, analyze the results. The results will be returned
+as a list. Process each item in the list.
+Remember to always provide your response in JSON format as specified
+in the output schema above.
+"""
+
+# ✅ Lean — trusts the model to read tool definitions and schemas
+"""
+Search for relevant information, then analyze the results.
+"""</code></pre>
+
+<p>The DAIR.AI guide emphasizes that modern models read tool schemas and output format specifications directly. Restating them in prose wastes tokens and can even confuse the model when the prose diverges from the actual schema.</p>
+
+<h2>Caching Patterns for Tool Outputs</h2>
+
+<p>Tool calls are expensive — they incur network latency, API rate limits, and sometimes monetary cost. Cache results for operations that produce stable outputs:</p>
+
+<pre><code>import time
+from functools import lru_cache
+from hashlib import sha256
+
+class ToolCache:
+    """Cache tool outputs to avoid redundant API calls."""
+
+    def __init__(self, ttl_seconds: int = 300):
+        self.ttl = ttl_seconds
+        self._cache: dict[str, tuple[float, any]] = {}
+
+    def _key(self, tool_name: str, params: dict) -> str:
+        raw = f"{tool_name}:{sorted(params.items())}"
+        return sha256(raw.encode()).hexdigest()
+
+    def get(self, tool_name: str, params: dict):
+        key = self._key(tool_name, params)
+        if key in self._cache:
+            timestamp, value = self._cache[key]
+            if time.time() - timestamp < self.ttl:
+                return value
+            del self._cache[key]
+        return None
+
+    def set(self, tool_name: str, params: dict, value):
+        key = self._key(tool_name, params)
+        self._cache[key] = (time.time(), value)
+
+
+# Simple lru_cache for pure tool outputs
+@lru_cache(maxsize=256)
+def fetch_file_content(repo: str, path: str, commit_sha: str) -> str:
+    """Fetch file content — immutable for a given commit SHA."""
+    return api_client.get_file(repo, path, commit_sha)
+
+@lru_cache(maxsize=128)
+def resolve_package_version(package: str, version_set: str) -> str:
+    """Resolve package version — stable within a version set."""
+    return brazil_client.resolve(package, version_set)
+
+
+# Usage in agent tool execution
+tool_cache = ToolCache(ttl_seconds=600)
+
+def execute_tool(tool_name: str, params: dict) -> dict:
+    """Execute a tool with caching for stable operations."""
+    # Check cache first
+    cached = tool_cache.get(tool_name, params)
+    if cached is not None:
+        return {"result": cached, "cached": True}
+
+    # Execute the tool
+    result = tool_registry[tool_name].execute(**params)
+
+    # Cache if the tool is marked as cacheable
+    if tool_registry[tool_name].cacheable:
+        tool_cache.set(tool_name, params, result)
+
+    return {"result": result, "cached": False}</code></pre>
+
+<div class="callout">
+  <div class="callout-title">When Not to Cache</div>
+  <p>Never cache tools that produce time-sensitive data (current metrics, live status), have side effects (write operations, notifications), or depend on user session state. Cache only read operations with stable outputs: file contents at a specific commit, resolved versions, documentation lookups, and schema definitions.</p>
+</div>
+
+<h2>Performance Metrics</h2>
+
+<p>You cannot optimize what you do not measure. Track these four metrics for every agent in production:</p>
+
+<h3>Core Metrics Dashboard</h3>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────┐
+│                    PERFORMANCE METRICS                               │
+├─────────────────────┬───────────────────────────────────────────────┤
+│  Avg Tokens/Request │  Total tokens (input + output) per invocation │
+│                     │  Target: monitor trend, alert on +20% spike   │
+├─────────────────────┼───────────────────────────────────────────────┤
+│  Response Latency   │  P50:  baseline user experience               │
+│                     │  P95:  tail latency for most users            │
+│                     │  P99:  worst-case for SLA compliance          │
+├─────────────────────┼───────────────────────────────────────────────┤
+│  Success Rate       │  % of requests completing without error       │
+│                     │  Target: ≥ 99% for production agents          │
+├─────────────────────┼───────────────────────────────────────────────┤
+│  Cost per Operation │  Dollar cost per completed task               │
+│                     │  Attributed to business unit + operation type  │
+└─────────────────────┴───────────────────────────────────────────────┘
+</div>
+
+<pre><code>import time
+from dataclasses import dataclass, field
+from collections import defaultdict
+from statistics import mean, quantiles
+
+@dataclass
+class PerformanceTracker:
+    """Track agent performance metrics with percentile calculations."""
+    metrics: dict = field(default_factory=lambda: defaultdict(list))
+
+    def record_request(
+        self,
+        agent_id: str,
+        tokens_in: int,
+        tokens_out: int,
+        latency_ms: float,
+        success: bool,
+        cost_usd: float,
+        business_unit: str,
+    ):
+        self.metrics[agent_id].append({
+            "tokens_total": tokens_in + tokens_out,
+            "latency_ms": latency_ms,
+            "success": success,
+            "cost_usd": cost_usd,
+            "business_unit": business_unit,
+            "timestamp": time.time(),
+        })
+
+    def summary(self, agent_id: str) -> dict:
+        records = self.metrics[agent_id]
+        if not records:
+            return {}
+
+        latencies = [r["latency_ms"] for r in records]
+        p50, p95, p99 = quantiles(latencies, n=100)[49], \
+                        quantiles(latencies, n=100)[94], \
+                        quantiles(latencies, n=100)[98]
+
+        return {
+            "avg_tokens_per_request": mean(r["tokens_total"] for r in records),
+            "latency_p50_ms": p50,
+            "latency_p95_ms": p95,
+            "latency_p99_ms": p99,
+            "success_rate": mean(r["success"] for r in records),
+            "total_cost_usd": sum(r["cost_usd"] for r in records),
+            "request_count": len(records),
+        }
+
+    def cost_by_business_unit(self, agent_id: str) -> dict:
+        """Granular cost attribution for governance reporting."""
+        records = self.metrics[agent_id]
+        costs = defaultdict(float)
+        for r in records:
+            costs[r["business_unit"]] += r["cost_usd"]
+        return dict(costs)</code></pre>
+
+<h3>Setting Targets</h3>
+
+<p>Metrics without targets are just numbers. Set thresholds based on your use case:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Interactive Agent</th>
+      <th>Background Agent</th>
+      <th>Alert Trigger</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Avg Tokens/Request</strong></td>
+      <td>&lt; 5,000</td>
+      <td>&lt; 50,000</td>
+      <td>+20% over 7-day average</td>
+    </tr>
+    <tr>
+      <td><strong>Latency P50</strong></td>
+      <td>&lt; 2s</td>
+      <td>&lt; 30s</td>
+      <td>2x baseline for 5 min</td>
+    </tr>
+    <tr>
+      <td><strong>Latency P95</strong></td>
+      <td>&lt; 5s</td>
+      <td>&lt; 60s</td>
+      <td>3x baseline for 5 min</td>
+    </tr>
+    <tr>
+      <td><strong>Latency P99</strong></td>
+      <td>&lt; 10s</td>
+      <td>&lt; 120s</td>
+      <td>5x baseline</td>
+    </tr>
+    <tr>
+      <td><strong>Success Rate</strong></td>
+      <td>≥ 99.5%</td>
+      <td>≥ 99%</td>
+      <td>&lt; 98% for 15 min</td>
+    </tr>
+    <tr>
+      <td><strong>Cost per Operation</strong></td>
+      <td>&lt; $0.05</td>
+      <td>&lt; $0.50</td>
+      <td>+50% over weekly average</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Cost Tracking with Business Unit Attribution</h2>
+
+<p>The governance guide mandates granular cost attribution — every token spent must trace back to a business unit, team, or project. Without this, cost overruns are invisible until the monthly bill arrives.</p>
+
+<pre><code>from dataclasses import dataclass
+from datetime import datetime, date
+from collections import defaultdict
+
+@dataclass
+class CostRecord:
+    """Individual cost record for attribution."""
+    timestamp: datetime
+    agent_id: str
+    operation: str
+    business_unit: str
+    team: str
+    tokens_in: int
+    tokens_out: int
+    model: str
+    cost_usd: float
+
+class CostTracker:
+    """Granular cost tracking with attribution to business units."""
+
+    # Pricing per million tokens (example rates)
+    PRICING = {
+        "claude-sonnet": {"input": 3.00, "output": 15.00},
+        "claude-haiku": {"input": 0.25, "output": 1.25},
+        "gpt-4o": {"input": 2.50, "output": 10.00},
+    }
+
+    def __init__(self):
+        self.records: list[CostRecord] = []
+
+    def record(self, agent_id: str, operation: str, business_unit: str,
+               team: str, model: str, tokens_in: int, tokens_out: int):
+        pricing = self.PRICING[model]
+        cost = (tokens_in * pricing["input"] + tokens_out * pricing["output"]) / 1_000_000
+
+        self.records.append(CostRecord(
+            timestamp=datetime.now(),
+            agent_id=agent_id,
+            operation=operation,
+            business_unit=business_unit,
+            team=team,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            model=model,
+            cost_usd=cost,
+        ))
+
+    def report_by_business_unit(self, start: date, end: date) -> dict:
+        """Generate cost report grouped by business unit."""
+        filtered = [r for r in self.records if start <= r.timestamp.date() <= end]
+        report = defaultdict(lambda: {"cost": 0.0, "requests": 0, "tokens": 0})
+
+        for r in filtered:
+            bu = report[r.business_unit]
+            bu["cost"] += r.cost_usd
+            bu["requests"] += 1
+            bu["tokens"] += r.tokens_in + r.tokens_out
+
+        return dict(report)
+
+    def alert_budget_exceeded(self, budgets: dict[str, float]) -> list[str]:
+        """Check if any business unit exceeded their daily budget."""
+        today = date.today()
+        today_report = self.report_by_business_unit(today, today)
+        alerts = []
+        for bu, budget in budgets.items():
+            if bu in today_report and today_report[bu]["cost"] > budget:
+                alerts.append(
+                    f"{bu}: ${today_report[bu]['cost']:.2f} exceeds "
+                    f"daily budget ${budget:.2f}"
+                )
+        return alerts</code></pre>
+
+<div class="callout">
+  <div class="callout-title">Governance Requirement</div>
+  <p>Cost attribution is not optional for enterprise deployments. Without it, you cannot answer "which team is responsible for the $50K spike in API costs last week?" Budget alerts must fire before costs reach the monthly limit, not after. Set daily budgets at 1/30th of the monthly allocation and alert at 80% of daily spend.</p>
+</div>
+
+<h2>Optimization in Practice</h2>
+
+<p>Combining these strategies produces compounding gains. Here's a before-and-after for a code review agent:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Before</th>
+      <th>After</th>
+      <th>Improvement</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Avg tokens/request</td>
+      <td>12,400</td>
+      <td>8,700</td>
+      <td>-30%</td>
+    </tr>
+    <tr>
+      <td>Latency P50</td>
+      <td>4.2s</td>
+      <td>1.8s</td>
+      <td>-57%</td>
+    </tr>
+    <tr>
+      <td>Latency P95</td>
+      <td>9.1s</td>
+      <td>4.3s</td>
+      <td>-53%</td>
+    </tr>
+    <tr>
+      <td>Cost per review</td>
+      <td>$0.037</td>
+      <td>$0.021</td>
+      <td>-43%</td>
+    </tr>
+    <tr>
+      <td>Cache hit rate</td>
+      <td>0%</td>
+      <td>34%</td>
+      <td>+34pp</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The optimizations applied: concise output schema (-28% tokens), prompt caching for system prefix (-50% latency on cache hit), <code>lru_cache</code> on file content lookups (eliminated 34% of API calls), and removal of redundant tool-use instructions (-15% system prompt tokens).</p>
+
+<div class="callout tip">
+  <div class="callout-title">Research Finding</div>
+  <p>Early adopters of structured agent optimization report a 20% reduction in development time (less time debugging token overflows and timeout errors) and a 15-30% improvement in token efficiency. The gains compound: fewer tokens means faster responses, which means more iterations within the same budget, which means better-tuned agents overall.</p>
+</div>
+
+<h2>Verify Your Understanding</h2>
+
+<div class="quiz">
+  <p class="quiz-question">Your agent's system prompt includes a full description of each tool's parameters in natural language, despite the tools already having JSON schema definitions. What optimization should you apply?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Add prompt caching to reduce the cost of the redundant description</li>
+    <li onclick="checkQuiz(this, true)">Remove the redundant instructions — the model reads tool schemas directly</li>
+    <li onclick="checkQuiz(this, false)">Compress the tool descriptions using summarization</li>
+    <li onclick="checkQuiz(this, false)">Move the tool descriptions to the user message instead of system prompt</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">An agent fetches the same file content 8 times during a single code review task, hitting the API each time. The file hasn't changed. Which caching pattern is most appropriate?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Time-based cache with a 5-minute TTL</li>
+    <li onclick="checkQuiz(this, true)">lru_cache keyed on (repo, path, commit_sha) — content is immutable per commit</li>
+    <li onclick="checkQuiz(this, false)">Context compression to summarize the file after first read</li>
+    <li onclick="checkQuiz(this, false)">Prompt caching to store the file content in the system prefix</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Your governance team asks: "Which business unit caused the 40% spike in API costs last Tuesday?" You cannot answer. What's missing from your system?</p>
+  <ul class="quiz-options">
+    <li onclick="checkQuiz(this, false)">Performance metrics tracking latency percentiles</li>
+    <li onclick="checkQuiz(this, false)">A daily budget alert system with 80% thresholds</li>
+    <li onclick="checkQuiz(this, true)">Granular cost attribution that tags every request with a business unit</li>
+    <li onclick="checkQuiz(this, false)">Token optimization to keep costs below the alert threshold</li>
+  </ul>
+  <div class="quiz-feedback"></div>
+</div>
+
+<h2>Apply It</h2>
+
+<p>Pick an agent or skill you've built. Measure its current token usage per request (check your API dashboard or add logging). Then apply two optimizations from this lesson: tighten the schema and remove redundant instructions. Measure again. If you achieve less than 15% reduction, look at whether conversation history compression or tool output caching would help — these often deliver larger gains for multi-turn agents.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p>Read the <a href="https://www.promptingguide.ai/">DAIR.AI Prompt Engineering Guide</a> — particularly the sections on prompt optimization and token efficiency. The guide demonstrates how structured prompts reduce token waste while maintaining or improving output quality through systematic optimization techniques.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>🤖 Ask your teacher:</strong> Want help profiling token usage for a specific agent? Share the system prompt and a sample interaction, and I'll identify the top three optimization opportunities with estimated savings.
+</div>
+
+<nav class="lesson-nav">
+  <a href="0008-version-control.html">← Previous</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0010-anti-patterns.html">Next →</a>
+</nav>
+
+<script>
+function checkQuiz(li, correct) {
+  const options = li.parentElement;
+  const feedback = options.nextElementSibling;
+  const items = options.querySelectorAll('li');
+  items.forEach(item => { item.style.pointerEvents = 'none'; item.classList.remove('correct', 'incorrect'); });
+  li.classList.add(correct ? 'correct' : 'incorrect');
+  feedback.textContent = correct ? '✓ Correct!' : '✗ Not quite — review the section above for the right approach.';
+  feedback.className = 'quiz-feedback show ' + (correct ? 'correct' : 'incorrect');
+  if (!correct) { setTimeout(() => { items.forEach(item => { if (!item.classList.contains('incorrect')) item.style.pointerEvents = 'auto'; }); }, 800); }
+}
+</script>
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
