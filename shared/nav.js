@@ -120,6 +120,33 @@
     .sb-panel a.active-link {
       color: #0071e3;
     }
+    .sb-theme-row {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem 0;
+    }
+    .sb-theme-btn {
+      flex: 1;
+      padding: 0.5rem 0.4rem;
+      font-size: 0.8rem;
+      font-family: inherit;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 8px;
+      background: rgba(245, 245, 247, 0.8);
+      color: #6e6e73;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .sb-theme-btn:hover {
+      background: rgba(0, 0, 0, 0.04);
+      color: #1d1d1f;
+    }
+    .sb-theme-btn.active {
+      background: rgba(0, 113, 227, 0.1);
+      border-color: #0071e3;
+      color: #0071e3;
+    }
 
     /* Dark mode */
     @media (prefers-color-scheme: dark) {
@@ -148,6 +175,74 @@
       .sb-panel a.active-link {
         color: #64d2ff;
       }
+      .sb-theme-row {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.75rem 0;
+      }
+      .sb-theme-btn {
+        flex: 1;
+        padding: 0.5rem 0.4rem;
+        font-size: 0.8rem;
+        font-family: inherit;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        background: rgba(44, 44, 46, 0.5);
+        color: #a1a1a6;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+      }
+      .sb-theme-btn:hover {
+        background: rgba(44, 44, 46, 0.9);
+        color: #f5f5f7;
+      }
+      .sb-theme-btn.active {
+        background: rgba(100, 210, 255, 0.15);
+        border-color: #64d2ff;
+        color: #64d2ff;
+      }
+    }
+
+    /* Dark mode (manual toggle) */
+    [data-theme="dark"] .sb-menu-btn {
+      background: rgba(28, 28, 30, 0.72);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    [data-theme="dark"] .sb-menu-btn:hover {
+      background: rgba(44, 44, 46, 0.9);
+    }
+    [data-theme="dark"] .sb-menu-btn span {
+      background: #f5f5f7;
+    }
+    [data-theme="dark"] .sb-panel {
+      background: rgba(28, 28, 30, 0.95);
+      border-left-color: rgba(255, 255, 255, 0.08);
+    }
+    [data-theme="dark"] .sb-panel-label {
+      color: #6e6e73;
+    }
+    [data-theme="dark"] .sb-panel a {
+      color: #f5f5f7;
+      border-bottom-color: rgba(255, 255, 255, 0.06);
+    }
+    [data-theme="dark"] .sb-panel a:hover,
+    [data-theme="dark"] .sb-panel a.active-link {
+      color: #64d2ff;
+    }
+    [data-theme="dark"] .sb-theme-btn {
+      border-color: rgba(255, 255, 255, 0.08);
+      background: rgba(44, 44, 46, 0.5);
+      color: #a1a1a6;
+    }
+    [data-theme="dark"] .sb-theme-btn:hover {
+      background: rgba(44, 44, 46, 0.9);
+      color: #f5f5f7;
+    }
+    [data-theme="dark"] .sb-theme-btn.active {
+      background: rgba(100, 210, 255, 0.15);
+      border-color: #64d2ff;
+      color: #64d2ff;
     }
   `;
   document.head.appendChild(style);
@@ -215,6 +310,45 @@
   document.body.appendChild(nav);
   document.body.appendChild(overlay);
   document.body.appendChild(panel);
+
+  // Theme toggle in panel
+  const themeLbl = document.createElement('div');
+  themeLbl.className = 'sb-panel-label';
+  themeLbl.textContent = 'Theme';
+  panel.appendChild(themeLbl);
+
+  const themeRow = document.createElement('div');
+  themeRow.className = 'sb-theme-row';
+  const MODES = [
+    { key: 'system', icon: '💻', label: 'System' },
+    { key: 'light', icon: '☀️', label: 'Light' },
+    { key: 'dark', icon: '🌙', label: 'Dark' }
+  ];
+  const KEY = 'sb-theme';
+
+  function getTheme() { return localStorage.getItem(KEY) || 'system'; }
+  function applyTheme(mode) {
+    const root = document.documentElement;
+    if (mode === 'system') { root.removeAttribute('data-theme'); }
+    else { root.setAttribute('data-theme', mode); }
+    localStorage.setItem(KEY, mode);
+    themeRow.querySelectorAll('.sb-theme-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.theme === mode);
+    });
+  }
+
+  MODES.forEach(function (m) {
+    const b = document.createElement('button');
+    b.className = 'sb-theme-btn' + (getTheme() === m.key ? ' active' : '');
+    b.dataset.theme = m.key;
+    b.innerHTML = m.icon + ' ' + m.label;
+    b.addEventListener('click', function () { applyTheme(m.key); });
+    themeRow.appendChild(b);
+  });
+  panel.appendChild(themeRow);
+
+  // Apply stored theme on load
+  applyTheme(getTheme());
 
   // Toggle
   const btn = nav.querySelector('.sb-menu-btn');

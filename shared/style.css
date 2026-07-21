@@ -498,31 +498,6 @@ pre:hover .copy-btn { opacity: 1; }
   color: var(--color-accent);
 }
 
-/* ─── Theme Toggle ─── */
-.theme-toggle {
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background: var(--color-card-bg);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  box-shadow: var(--shadow-card);
-  transition: transform 0.2s, box-shadow 0.2s;
-  z-index: 1000;
-}
-
-.theme-toggle:hover {
-  transform: scale(1.1);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-}
-
 /* ─── Print ─── */
 @media print {
   body { max-width: 100%; padding: 1rem; font-size: 10pt; }
@@ -530,7 +505,7 @@ pre:hover .copy-btn { opacity: 1; }
   .quiz-options li { cursor: default; }
   .ask-teacher, .callout, .quiz { border: 1px solid #ccc; box-shadow: none; }
   pre { border: 1px solid #ccc; }
-  .lesson-top-nav, .lesson-nav, .theme-toggle { display: none; }
+  .lesson-top-nav, .lesson-nav { display: none; }
 }
 
 /* ─── Responsive ─── */
@@ -542,5 +517,4 @@ pre:hover .copy-btn { opacity: 1; }
   .comparison { grid-template-columns: 1fr; }
   .diagram { font-size: 0.68rem; }
   .lesson-nav { font-size: 0.82rem; }
-  .theme-toggle { bottom: 1rem; right: 1rem; width: 32px; height: 32px; }
 }
