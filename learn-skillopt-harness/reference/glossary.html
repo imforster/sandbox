@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glossary — SkillOpt Harness</title>
+    <style>
+:root {
+    --bg: #fbfbfd;
+    --text-primary: #1d1d1f;
+    --text-secondary: #6e6e73;
+    --text-tertiary: #86868b;
+    --accent: #0071e3;
+    --border: rgba(0, 0, 0, 0.06);
+    --card-bg: rgba(255, 255, 255, 0.72);
+    --search-bg: #f5f5f7;
+    --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #000000;
+        --text-primary: #f5f5f7;
+        --text-secondary: #a1a1a6;
+        --text-tertiary: #6e6e73;
+        --accent: #64d2ff;
+        --border: rgba(255, 255, 255, 0.08);
+        --card-bg: rgba(28, 28, 30, 0.72);
+        --search-bg: rgba(28, 28, 30, 0.9);
+    }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+}
+
+.page { max-width: 720px; margin: 0 auto; padding: 0 2rem 4rem; }
+.back-nav { padding: 1.5rem 0; }
+.back-nav a { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; font-weight: 400; color: var(--accent); text-decoration: none; transition: opacity 0.2s; }
+.back-nav a:hover { opacity: 0.7; }
+.glossary-header { padding: 2rem 0 2.5rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+.glossary-header h1 { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+.glossary-header p { font-size: 1.05rem; color: var(--text-secondary); max-width: 540px; }
+.search-container { position: sticky; top: 0; z-index: 100; background: var(--bg); padding: 1rem 0; }
+.search-input { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; font-size: 1rem; font-family: inherit; background: var(--search-bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1); }
+.search-input::placeholder { color: var(--text-tertiary); }
+.search-wrapper { position: relative; }
+.search-icon { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); pointer-events: none; }
+.search-count { font-size: 0.8rem; color: var(--text-tertiary); margin-top: 0.5rem; min-height: 1.2em; }
+.letter-group { margin-top: 2rem; }
+.letter-heading { font-size: 1.4rem; font-weight: 700; color: var(--text-primary); padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); margin-bottom: 0; position: sticky; top: 4.5rem; background: var(--bg); z-index: 50; }
+.term-entry { padding: 1.25rem 0; border-bottom: 1px solid var(--border); transition: opacity 0.2s; }
+.term-entry:last-child { border-bottom: none; }
+.term-entry.hidden { display: none; }
+.term-name { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.35rem; letter-spacing: -0.01em; }
+.term-def { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; }
+.letter-index { position: fixed; right: 1.5rem; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 0.15rem; z-index: 200; }
+.letter-index a { font-size: 0.7rem; font-weight: 600; color: var(--text-tertiary); text-decoration: none; padding: 0.15rem 0.4rem; border-radius: 4px; text-align: center; transition: color 0.15s, background 0.15s; }
+.letter-index a:hover { color: var(--accent); background: var(--search-bg); }
+.no-results { text-align: center; padding: 3rem 1rem; color: var(--text-tertiary); font-size: 1rem; display: none; }
+@media (max-width: 900px) { .letter-index { display: none; } }
+@media (max-width: 600px) { .page { padding: 0 1.25rem 3rem; } .glossary-header h1 { font-size: 2rem; } .letter-heading { top: 4rem; } }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <nav class="back-nav">
+            <a href="../lessons/index.html">← Lessons</a>
+        </nav>
+
+        <header class="glossary-header">
+            <h1>Glossary</h1>
+            <p>Key terms for skill optimization, sleep-cycle training, and the SkillOpt harness architecture.</p>
+        </header>
+
+        <div class="search-container">
+            <div class="search-wrapper">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" class="search-input" placeholder="Search terms…" id="searchInput">
+            </div>
+            <div class="search-count" id="searchCount"></div>
+        </div>
+
+        <div class="glossary-content" id="glossaryContent">
+
+            <!-- B -->
+            <div class="letter-group" id="letter-B">
+                <h2 class="letter-heading">B</h2>
+                <div class="term-entry" data-term="backend (harness)">
+                    <div class="term-name">Backend (Harness)</div>
+                    <div class="term-def">The pluggable execution target that runs tasks with the current skill document and returns a trajectory or ModelResponse to SkillOpt's engine.</div>
+                </div>
+                <div class="term-entry" data-term="bounded edit">
+                    <div class="term-name">Bounded Edit</div>
+                    <div class="term-def">A constrained text modification (add, delete, or replace) applied to the skill document, limited in size by the textual learning rate.</div>
+                </div>
+            </div>
+
+            <!-- C -->
+            <div class="letter-group" id="letter-C">
+                <h2 class="letter-heading">C</h2>
+                <div class="term-entry" data-term="contrastive dreaming">
+                    <div class="term-name">Contrastive Dreaming</div>
+                    <div class="term-def">Running each task multiple times during replay to produce both successful and failed trajectories, giving the optimizer clearer signal about what specifically caused success or failure.</div>
+                </div>
+            </div>
+
+            <!-- D -->
+            <div class="letter-group" id="letter-D">
+                <h2 class="letter-heading">D</h2>
+                <div class="term-entry" data-term="dream rollout">
+                    <div class="term-name">Dream Rollout</div>
+                    <div class="term-def">An offline re-execution of a task using the current skill, performed during the sleep cycle's replay phase to generate training signal without live user interaction.</div>
+                </div>
+            </div>
+
+            <!-- E -->
+            <div class="letter-group" id="letter-E">
+                <h2 class="letter-heading">E</h2>
+                <div class="term-entry" data-term="env (environment)">
+                    <div class="term-name">Env (Environment)</div>
+                    <div class="term-def">The combination of a task dataset, a scoring function, and a seed skill that defines what SkillOpt trains against — analogous to a training benchmark.</div>
+                </div>
+                <div class="term-entry" data-term="experience archive">
+                    <div class="term-name">Experience Archive</div>
+                    <div class="term-def">A persistent store of past tasks and trajectories that accumulates across nightly sleep cycles, enabling associative recall of relevant history into future consolidation runs.</div>
+                </div>
+                <div class="term-entry" data-term="experience replay">
+                    <div class="term-name">Experience Replay</div>
+                    <div class="term-def">The technique of pulling similar past tasks from the archive into the current night's dream batch to provide richer context for the optimizer's reflection.</div>
+                </div>
+            </div>
+
+            <!-- M -->
+            <div class="letter-group" id="letter-M">
+                <h2 class="letter-heading">M</h2>
+                <div class="term-entry" data-term="meta-skill">
+                    <div class="term-name">Meta-Skill</div>
+                    <div class="term-def">A quality rubric embedded into the optimizer's own prompt that instructs it what constitutes a good skill rule, yielding higher-quality proposals.</div>
+                </div>
+                <div class="term-entry" data-term="model backend">
+                    <div class="term-name">Model Backend</div>
+                    <div class="term-def">The interface class requiring a single generate(messages, temperature, max_tokens) → ModelResponse method that wraps any target agent (CLI or API) for SkillOpt.</div>
+                </div>
+            </div>
+
+            <!-- N -->
+            <div class="letter-group" id="letter-N">
+                <h2 class="letter-heading">N</h2>
+                <div class="term-entry" data-term="negative transfer">
+                    <div class="term-name">Negative Transfer</div>
+                    <div class="term-def">When an extracted or proposed skill rule makes the agent perform worse than having no skill at all, measured at 25% of ungated cases in SkillLens research.</div>
+                </div>
+                <div class="term-entry" data-term="noise floor">
+                    <div class="term-name">Noise Floor</div>
+                    <div class="term-def">The variance in evaluation scores across repeated identical runs, below which measured lift cannot be confidently distinguished from random variation.</div>
+                </div>
+            </div>
+
+            <!-- O -->
+            <div class="letter-group" id="letter-O">
+                <h2 class="letter-heading">O</h2>
+                <div class="term-entry" data-term="optimizer model">
+                    <div class="term-name">Optimizer Model</div>
+                    <div class="term-def">The separate LLM that reads scored trajectories, reflects on failures, and proposes bounded edits to the skill document — distinct from the target model that executes tasks.</div>
+                </div>
+            </div>
+
+            <!-- S -->
+            <div class="letter-group" id="letter-S">
+                <h2 class="letter-heading">S</h2>
+                <div class="term-entry" data-term="saturation">
+                    <div class="term-name">Saturation</div>
+                    <div class="term-def">The state where consecutive nightly proposals are all rejected by the gate, indicating the skill has reached ceiling performance for the current task distribution.</div>
+                </div>
+                <div class="term-entry" data-term="seed skill">
+                    <div class="term-name">Seed Skill</div>
+                    <div class="term-def">The initial markdown document (can be empty or minimal) that serves as the starting point before any optimization edits are applied.</div>
+                </div>
+                <div class="term-entry" data-term="skill document">
+                    <div class="term-name">Skill Document</div>
+                    <div class="term-def">The plain-text markdown file that serves as the trainable state in SkillOpt — analogous to neural network weights — injected as a system prompt at zero inference-time cost.</div>
+                </div>
+                <div class="term-entry" data-term="skill transfer">
+                    <div class="term-name">Skill Transfer</div>
+                    <div class="term-def">The property that a skill document optimized in one harness or model can improve performance in a different harness or model, though gains vary and the validation gate should be re-run on the new target.</div>
+                </div>
+                <div class="term-entry" data-term="sleep cycle">
+                    <div class="term-name">Sleep Cycle</div>
+                    <div class="term-def">The nightly automated pipeline of harvest → mine → replay → consolidate → stage → adopt that extracts improvements from real agent sessions without active user involvement.</div>
+                </div>
+                <div class="term-entry" data-term="staged proposal">
+                    <div class="term-name">Staged Proposal</div>
+                    <div class="term-def">A candidate set of skill edits that passed the validation gate and awaits explicit user adoption (or auto-adoption) before being merged into the deployed skill.</div>
+                </div>
+            </div>
+
+            <!-- T -->
+            <div class="letter-group" id="letter-T">
+                <h2 class="letter-heading">T</h2>
+                <div class="term-entry" data-term="task mining">
+                    <div class="term-name">Task Mining</div>
+                    <div class="term-def">The process of analyzing harvested agent session transcripts to identify recurring task patterns that can be replayed and optimized against.</div>
+                </div>
+                <div class="term-entry" data-term="textual learning rate">
+                    <div class="term-name">Textual Learning Rate</div>
+                    <div class="term-def">The edit budget that limits how much of the skill document can change per optimization step, preventing catastrophic drift — analogous to learning rate in gradient descent.</div>
+                </div>
+            </div>
+
+            <!-- V -->
+            <div class="letter-group" id="letter-V">
+                <h2 class="letter-heading">V</h2>
+                <div class="term-entry" data-term="validation gate">
+                    <div class="term-name">Validation Gate</div>
+                    <div class="term-def">The strict empirical check that accepts a proposed skill edit only if it improves the score on held-out tasks never used during training, preventing drift and negative transfer.</div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="no-results" id="noResults">No matching terms found.</div>
+    </div>
+
+    <nav class="letter-index" id="letterIndex">
+        <a href="#letter-B">B</a>
+        <a href="#letter-C">C</a>
+        <a href="#letter-D">D</a>
+        <a href="#letter-E">E</a>
+        <a href="#letter-M">M</a>
+        <a href="#letter-N">N</a>
+        <a href="#letter-O">O</a>
+        <a href="#letter-S">S</a>
+        <a href="#letter-T">T</a>
+        <a href="#letter-V">V</a>
+    </nav>
+
+    <script>
+    const searchInput = document.getElementById('searchInput');
+    const searchCount = document.getElementById('searchCount');
+    const glossaryContent = document.getElementById('glossaryContent');
+    const noResults = document.getElementById('noResults');
+    const entries = document.querySelectorAll('.term-entry');
+    const letterGroups = document.querySelectorAll('.letter-group');
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        let visible = 0;
+
+        entries.forEach(entry => {
+            const term = entry.getAttribute('data-term');
+            const def = entry.querySelector('.term-def').textContent.toLowerCase();
+            const match = !query || term.includes(query) || def.includes(query);
+            entry.classList.toggle('hidden', !match);
+            if (match) visible++;
+        });
+
+        letterGroups.forEach(group => {
+            const hasVisible = group.querySelectorAll('.term-entry:not(.hidden)').length > 0;
+            group.style.display = hasVisible ? '' : 'none';
+        });
+
+        noResults.style.display = visible === 0 ? 'block' : 'none';
+        searchCount.textContent = query ? `${visible} term${visible !== 1 ? 's' : ''} found` : '';
+    });
+    </script>
+    <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

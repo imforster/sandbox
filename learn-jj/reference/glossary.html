@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glossary — Jujutsu (jj)</title>
+    <style>
+        :root {
+            --bg: #fbfbfd;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #86868b;
+            --accent: #0071e3;
+            --border: rgba(0, 0, 0, 0.06);
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --search-bg: #f5f5f7;
+            --radius: 12px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000;
+                --text-primary: #f5f5f7;
+                --text-secondary: #a1a1a6;
+                --text-tertiary: #6e6e73;
+                --accent: #64d2ff;
+                --border: rgba(255, 255, 255, 0.08);
+                --card-bg: rgba(28, 28, 30, 0.72);
+                --search-bg: rgba(28, 28, 30, 0.9);
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .header {
+            padding: 3rem 2rem 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 600px;
+        }
+
+        .back-nav {
+            padding: 1rem 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .back-nav a {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .back-nav a:hover {
+            text-decoration: underline;
+        }
+
+        .search-container {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--search-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .search-container input {
+            width: 100%;
+            max-width: 900px;
+            display: block;
+            margin: 0 auto;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-container input:focus {
+            border-color: var(--accent);
+        }
+
+        .search-container input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .content-wrapper {
+            display: flex;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            gap: 2rem;
+            position: relative;
+        }
+
+        .glossary-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .letter-group {
+            margin-bottom: 2rem;
+        }
+
+        .letter-heading {
+            position: sticky;
+            top: 60px;
+            background: var(--bg);
+            padding: 0.5rem 0;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+            z-index: 10;
+        }
+
+        .term-entry {
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .term-entry:last-child {
+            border-bottom: none;
+        }
+
+        .term-name {
+            font-weight: 600;
+            font-size: 1.05rem;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .term-def {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        .letter-index {
+            position: sticky;
+            top: 80px;
+            align-self: flex-start;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            padding: 0.5rem;
+        }
+
+        .letter-index a {
+            color: var(--text-tertiary);
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            text-align: center;
+            transition: color 0.2s, background 0.2s;
+        }
+
+        .letter-index a:hover {
+            color: var(--accent);
+            background: var(--border);
+        }
+
+        .no-results {
+            display: none;
+            padding: 2rem 0;
+            color: var(--text-tertiary);
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        @media (max-width: 900px) {
+            .letter-index {
+                display: none;
+            }
+
+            .content-wrapper {
+                padding: 1rem;
+            }
+
+            .header {
+                padding: 2rem 1rem 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="back-nav">
+        <a href="../lessons/index.html">← Lessons</a>
+    </nav>
+
+    <div class="header">
+        <h1>Glossary</h1>
+        <p>Key terms and concepts for jj version control — how they differ from git and what they mean in practice.</p>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="search" placeholder="Filter terms…" autocomplete="off">
+    </div>
+
+    <div class="content-wrapper">
+        <div class="glossary-content" id="glossary">
+            <!-- # -->
+            <div class="letter-group" id="group-symbol">
+                <div class="letter-heading">#</div>
+                <div class="term-entry" data-term="@ (at symbol)">
+                    <div class="term-name">@ (at symbol)</div>
+                    <div class="term-def">The revset symbol representing the current working-copy commit, usable in any jj command wherever a revision is expected.</div>
+                </div>
+            </div>
+
+            <!-- A -->
+            <div class="letter-group" id="group-a">
+                <div class="letter-heading">A</div>
+                <div class="term-entry" data-term="absorb">
+                    <div class="term-name">absorb</div>
+                    <div class="term-def">A command (jj absorb) that automatically analyzes changed lines in your working copy, determines which prior commit introduced each line, and squashes each hunk into the appropriate ancestor commit.</div>
+                </div>
+                <div class="term-entry" data-term="auto-rebase">
+                    <div class="term-name">auto-rebase</div>
+                    <div class="term-def">jj's behavior of automatically rebasing all descendant commits whenever an ancestor commit is modified, eliminating the need for manual rebase propagation.</div>
+                </div>
+            </div>
+
+            <!-- B -->
+            <div class="letter-group" id="group-b">
+                <div class="letter-heading">B</div>
+                <div class="term-entry" data-term="bookmark">
+                    <div class="term-name">bookmark</div>
+                    <div class="term-def">jj's equivalent of a git branch — a named pointer to a commit that exists solely for remote interaction (pushing/fetching) and is not required for local work.</div>
+                </div>
+            </div>
+
+            <!-- C -->
+            <div class="letter-group" id="group-c">
+                <div class="letter-heading">C</div>
+                <div class="term-entry" data-term="change id">
+                    <div class="term-name">change ID</div>
+                    <div class="term-def">A stable identifier assigned to each commit that survives amends, rebases, and rewrites, unlike the commit hash which changes whenever content changes.</div>
+                </div>
+                <div class="term-entry" data-term="colocated mode">
+                    <div class="term-name">colocated mode</div>
+                    <div class="term-def">A repository configuration where jj's .jj/ directory exists alongside an existing .git/ directory, allowing both jj and git commands to operate on the same repo simultaneously.</div>
+                </div>
+                <div class="term-entry" data-term="commit id">
+                    <div class="term-name">commit ID</div>
+                    <div class="term-def">The content-addressable SHA hash of a commit (same concept as git), which changes every time the commit's content is modified.</div>
+                </div>
+                <div class="term-entry" data-term="conflicts as data">
+                    <div class="term-name">conflicts as data</div>
+                    <div class="term-def">jj's approach of storing merge conflicts inside the commit itself rather than blocking operations, allowing you to defer resolution and continue working.</div>
+                </div>
+            </div>
+
+            <!-- D -->
+            <div class="letter-group" id="group-d">
+                <div class="letter-heading">D</div>
+                <div class="term-entry" data-term="describe">
+                    <div class="term-name">describe</div>
+                    <div class="term-def">The command (jj describe) that sets or updates a commit message on an already-existing commit, replaceable at any time since commits exist before their messages are written.</div>
+                </div>
+            </div>
+
+            <!-- E -->
+            <div class="letter-group" id="group-e">
+                <div class="letter-heading">E</div>
+                <div class="term-entry" data-term="edit">
+                    <div class="term-name">edit</div>
+                    <div class="term-def">The command (jj edit) that moves your working copy into an existing commit so that any file changes amend that commit in place, with descendants auto-rebasing.</div>
+                </div>
+            </div>
+
+            <!-- I -->
+            <div class="letter-group" id="group-i">
+                <div class="letter-heading">I</div>
+                <div class="term-entry" data-term="immutable commit">
+                    <div class="term-name">immutable commit</div>
+                    <div class="term-def">A commit marked with ◆ in jj log that cannot be edited, typically because it has already been pushed to a remote or is otherwise protected.</div>
+                </div>
+            </div>
+
+            <!-- J -->
+            <div class="letter-group" id="group-j">
+                <div class="letter-heading">J</div>
+                <div class="term-entry" data-term="jj new">
+                    <div class="term-name">jj new</div>
+                    <div class="term-def">The command that creates a fresh empty commit on top of the current working-copy commit, signaling "I'm done with this change" and providing a clean canvas for the next one.</div>
+                </div>
+            </div>
+
+            <!-- O -->
+            <div class="letter-group" id="group-o">
+                <div class="letter-heading">O</div>
+                <div class="term-entry" data-term="operation">
+                    <div class="term-name">operation</div>
+                    <div class="term-def">An atomic, recorded mutation to the repository state — every jj command that changes the repo creates one, forming the basis for undo and time-travel restoration.</div>
+                </div>
+                <div class="term-entry" data-term="operation log">
+                    <div class="term-name">operation log</div>
+                    <div class="term-def">An immutable, human-readable history of every repository mutation (jj op log), replacing git's per-ref reflog with a single atomic timeline that never expires.</div>
+                </div>
+            </div>
+
+            <!-- R -->
+            <div class="letter-group" id="group-r">
+                <div class="letter-heading">R</div>
+                <div class="term-entry" data-term="revset">
+                    <div class="term-name">revset</div>
+                    <div class="term-def">jj's composable query language for selecting commits (e.g., @, @-, trunk()..@), unifying what git splits across HEAD~N, branch names, ranges, and reflog syntax.</div>
+                </div>
+                <div class="term-entry" data-term="root commit">
+                    <div class="term-name">root commit</div>
+                    <div class="term-def">An empty commit at the bottom of every jj repository's history that serves as the universal ancestor of all other commits, anchoring the DAG.</div>
+                </div>
+            </div>
+
+            <!-- S -->
+            <div class="letter-group" id="group-s">
+                <div class="letter-heading">S</div>
+                <div class="term-entry" data-term="split">
+                    <div class="term-name">split</div>
+                    <div class="term-def">The command (jj split) that breaks a single commit into two sequential commits by letting you choose which changes go in each, workable on any commit in the stack.</div>
+                </div>
+                <div class="term-entry" data-term="squash">
+                    <div class="term-name">squash</div>
+                    <div class="term-def">The command (jj squash) that moves changes from the current commit into its parent (or any specified ancestor with --into), optionally discarding the source commit if it becomes empty.</div>
+                </div>
+                <div class="term-entry" data-term="staging area">
+                    <div class="term-name">staging area</div>
+                    <div class="term-def">Git's index/staging concept that is entirely eliminated in jj — all file changes are immediately part of the working-copy commit with no intermediate step.</div>
+                </div>
+            </div>
+
+            <!-- T -->
+            <div class="letter-group" id="group-t">
+                <div class="letter-heading">T</div>
+                <div class="term-entry" data-term="trunk()">
+                    <div class="term-name">trunk()</div>
+                    <div class="term-def">A revset expression that refers to the main branch tip (usually main@origin), used as the standard anchor point for rebasing local work.</div>
+                </div>
+            </div>
+
+            <!-- W -->
+            <div class="letter-group" id="group-w">
+                <div class="letter-heading">W</div>
+                <div class="term-entry" data-term="working-copy commit">
+                    <div class="term-name">working-copy commit</div>
+                    <div class="term-def">The single commit (marked with @) that you are currently editing — in jj, the working copy IS a commit, and all file changes automatically amend it without any add or stage step.</div>
+                </div>
+            </div>
+
+            <div class="no-results" id="no-results">No matching terms found.</div>
+        </div>
+
+        <nav class="letter-index" id="letter-index">
+            <a href="#group-symbol">#</a>
+            <a href="#group-a">A</a>
+            <a href="#group-b">B</a>
+            <a href="#group-c">C</a>
+            <a href="#group-d">D</a>
+            <a href="#group-e">E</a>
+            <a href="#group-i">I</a>
+            <a href="#group-j">J</a>
+            <a href="#group-o">O</a>
+            <a href="#group-r">R</a>
+            <a href="#group-s">S</a>
+            <a href="#group-t">T</a>
+            <a href="#group-w">W</a>
+        </nav>
+    </div>
+
+    <script>
+        const search = document.getElementById('search');
+        const glossary = document.getElementById('glossary');
+        const noResults = document.getElementById('no-results');
+        const entries = document.querySelectorAll('.term-entry');
+        const groups = document.querySelectorAll('.letter-group');
+
+        search.addEventListener('input', () => {
+            const query = search.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            entries.forEach(entry => {
+                const term = entry.getAttribute('data-term');
+                const def = entry.querySelector('.term-def').textContent.toLowerCase();
+                const matches = term.includes(query) || def.includes(query);
+                entry.style.display = matches ? '' : 'none';
+                if (matches) visibleCount++;
+            });
+
+            groups.forEach(group => {
+                const visibleEntries = group.querySelectorAll('.term-entry:not([style*="display: none"])');
+                group.style.display = visibleEntries.length > 0 ? '' : 'none';
+            });
+
+            noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+        });
+    </script>
+    <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

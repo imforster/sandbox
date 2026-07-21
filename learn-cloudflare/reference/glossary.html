@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glossary — Cloudflare Workers</title>
+    <style>
+        :root {
+            --bg: #fbfbfd;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #86868b;
+            --accent: #0071e3;
+            --border: rgba(0, 0, 0, 0.06);
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --search-bg: #f5f5f7;
+            --radius: 12px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000;
+                --text-primary: #f5f5f7;
+                --text-secondary: #a1a1a6;
+                --text-tertiary: #6e6e73;
+                --accent: #64d2ff;
+                --border: rgba(255, 255, 255, 0.08);
+                --card-bg: rgba(28, 28, 30, 0.72);
+                --search-bg: rgba(28, 28, 30, 0.9);
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .header {
+            padding: 3rem 2rem 2rem;
+            max-width: 980px;
+            margin: 0 auto;
+        }
+
+        .header .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .header .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 640px;
+        }
+
+        .search-container {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--search-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .search-container input {
+            display: block;
+            width: 100%;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-container input:focus {
+            border-color: var(--accent);
+        }
+
+        .search-container .search-icon {
+            position: absolute;
+            left: calc(50% - 490px + 1rem);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            pointer-events: none;
+        }
+
+        .content-wrapper {
+            display: flex;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 2rem;
+            gap: 2rem;
+        }
+
+        .glossary-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .letter-group {
+            margin-bottom: 2rem;
+        }
+
+        .letter-heading {
+            position: sticky;
+            top: 60px;
+            z-index: 10;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent);
+            padding: 0.5rem 0;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .term-entry {
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .term-entry:last-child {
+            border-bottom: none;
+        }
+
+        .term-name {
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin-bottom: 0.3rem;
+            color: var(--text-primary);
+        }
+
+        .term-def {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.65;
+        }
+
+        .letter-index {
+            position: sticky;
+            top: 80px;
+            align-self: flex-start;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            padding: 0.5rem;
+        }
+
+        .letter-index a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .letter-index a:hover {
+            background: var(--border);
+            color: var(--accent);
+        }
+
+        .no-results {
+            display: none;
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-tertiary);
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 900px) {
+            .letter-index {
+                display: none;
+            }
+
+            .header {
+                padding: 2rem 1.5rem 1.5rem;
+            }
+
+            .content-wrapper {
+                padding: 1.5rem;
+            }
+
+            .search-container .search-icon {
+                left: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="../lessons/index.html" class="back-link">← Lessons</a>
+        <h1>Glossary</h1>
+        <p>Key terms for Cloudflare Workers, edge computing, and the platform's storage and automation primitives.</p>
+    </div>
+
+    <div class="search-container">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Filter terms…" autocomplete="off">
+    </div>
+
+    <div class="content-wrapper">
+        <div class="glossary-content" id="glossaryContent">
+
+            <div class="letter-group" id="group-B">
+                <div class="letter-heading">B</div>
+                <div class="term-entry" data-term="binding">
+                    <div class="term-name">Binding</div>
+                    <div class="term-def">A declared connection in wrangler.jsonc that makes a Cloudflare resource (KV namespace, D1 database, R2 bucket, secret) available to your Worker code via the env parameter.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="group-C">
+                <div class="letter-heading">C</div>
+                <div class="term-entry" data-term="cpu time">
+                    <div class="term-name">CPU time</div>
+                    <div class="term-def">The actual milliseconds your Worker code spends executing on the processor, excluding time spent waiting for network I/O like fetch() calls or DNS lookups.</div>
+                </div>
+                <div class="term-entry" data-term="cron trigger">
+                    <div class="term-name">Cron Trigger</div>
+                    <div class="term-def">A scheduled invocation of a Worker using standard 5-field cron syntax, allowing code to run on a time-based schedule without an incoming HTTP request.</div>
+                </div>
+                <div class="term-entry" data-term="custom domain">
+                    <div class="term-name">Custom Domain</div>
+                    <div class="term-def">A Cloudflare feature that automatically creates DNS records, issues SSL certificates, and routes traffic from your own domain to a specific Worker.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="group-D">
+                <div class="letter-heading">D</div>
+                <div class="term-entry" data-term="d1">
+                    <div class="term-name">D1</div>
+                    <div class="term-def">Cloudflare's serverless SQLite database that runs at the edge, providing full SQL support with ACID transactions, schema migrations, and zero-configuration connectivity via bindings.</div>
+                </div>
+                <div class="term-entry" data-term="durable objects">
+                    <div class="term-name">Durable Objects</div>
+                    <div class="term-def">Stateful, single-threaded objects with their own SQLite storage that handle real-time coordination such as WebSocket connections, chat rooms, and collaborative editing.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="group-E">
+                <div class="letter-heading">E</div>
+                <div class="term-entry" data-term="edge network">
+                    <div class="term-name">Edge network</div>
+                    <div class="term-def">Cloudflare's globally distributed infrastructure of 300+ data centers where Workers execute, placing compute milliseconds from end users rather than in a single origin region.</div>
+                </div>
+                <div class="term-entry" data-term="eventual consistency">
+                    <div class="term-name">Eventual consistency</div>
+                    <div class="term-def">KV's replication model where writes propagate to all 300+ edge locations within approximately 60 seconds, meaning reads from other locations may serve stale data briefly after a write.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="group-K">
+                <div class="letter-heading">K</div>
+                <div class="term-entry" data-term="kv (key-value)">
+                    <div class="term-name">KV (Key-Value)</div>
+                    <div class="term-def">Cloudflare's globally distributed, eventually consistent key-value store optimized for read-heavy workloads with a simple get/put API.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="group-Q">
+                <div class="letter-heading">Q</div>
+                <div class="term-entry" data-term="queues">
+                    <div class="term-name">Queues</div>
+                    <div class="term-def">Cloudflare's message passing system enabling reliable producer-to-consumer communication between Workers for background job processing.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="group-R">
+                <div class="letter-heading">R</div>
+                <div class="term-entry" data-term="r2">
+                    <div class="term-name">R2</div>
+                    <div class="term-def">Cloudflare's S3-compatible object storage with zero egress fees, designed for storing and serving files, images, and backups without bandwidth charges.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="group-S">
+                <div class="letter-heading">S</div>
+                <div class="term-entry" data-term="scheduled handler">
+                    <div class="term-name">Scheduled handler</div>
+                    <div class="term-def">The scheduled(event, env, ctx) export in a Worker that runs when a Cron Trigger fires, as opposed to the fetch handler which responds to HTTP requests.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="group-V">
+                <div class="letter-heading">V</div>
+                <div class="term-entry" data-term="vectorize">
+                    <div class="term-name">Vectorize</div>
+                    <div class="term-def">Cloudflare's vector database for storing and querying vector embeddings, enabling semantic search and AI applications at the edge.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="group-W">
+                <div class="letter-heading">W</div>
+                <div class="term-entry" data-term="waituntil">
+                    <div class="term-name">waitUntil</div>
+                    <div class="term-def">A method on the execution context (ctx.waitUntil(promise)) that keeps a Worker alive until asynchronous background work completes, even after the response has been sent.</div>
+                </div>
+                <div class="term-entry" data-term="webassembly (wasm)">
+                    <div class="term-name">WebAssembly (Wasm)</div>
+                    <div class="term-def">A binary instruction format that allows languages like Rust, Go (TinyGo), and C/C++ to compile and run inside the Workers runtime alongside or instead of JavaScript.</div>
+                </div>
+                <div class="term-entry" data-term="worker">
+                    <div class="term-name">Worker</div>
+                    <div class="term-def">A serverless JavaScript/TypeScript/Python/Rust program that runs on Cloudflare's edge network, intercepting HTTP requests and returning responses with automatic scaling and no server management.</div>
+                </div>
+                <div class="term-entry" data-term="workers.dev">
+                    <div class="term-name">workers.dev</div>
+                    <div class="term-def">The default subdomain Cloudflare provides for deployed Workers (e.g., my-worker.my-account.workers.dev) before a custom domain is configured.</div>
+                </div>
+                <div class="term-entry" data-term="wrangler">
+                    <div class="term-name">Wrangler</div>
+                    <div class="term-def">Cloudflare's official CLI tool for scaffolding, developing locally, testing, and deploying Workers and their associated resources.</div>
+                </div>
+                <div class="term-entry" data-term="wrangler.jsonc">
+                    <div class="term-name">wrangler.jsonc</div>
+                    <div class="term-def">The configuration file for a Worker project that declares the Worker's name, entry point, compatibility date, bindings (KV, D1, R2), triggers, and route mappings.</div>
+                </div>
+            </div>
+
+            <div class="no-results" id="noResults">No matching terms found.</div>
+        </div>
+
+        <nav class="letter-index" id="letterIndex">
+            <a href="#group-B">B</a>
+            <a href="#group-C">C</a>
+            <a href="#group-D">D</a>
+            <a href="#group-E">E</a>
+            <a href="#group-K">K</a>
+            <a href="#group-Q">Q</a>
+            <a href="#group-R">R</a>
+            <a href="#group-S">S</a>
+            <a href="#group-V">V</a>
+            <a href="#group-W">W</a>
+        </nav>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const glossaryContent = document.getElementById('glossaryContent');
+        const noResults = document.getElementById('noResults');
+        const letterGroups = document.querySelectorAll('.letter-group');
+        const letterLinks = document.querySelectorAll('.letter-index a');
+
+        searchInput.addEventListener('input', function () {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            letterGroups.forEach(group => {
+                const entries = group.querySelectorAll('.term-entry');
+                let groupVisible = 0;
+
+                entries.forEach(entry => {
+                    const term = entry.getAttribute('data-term');
+                    const def = entry.querySelector('.term-def').textContent.toLowerCase();
+                    const match = term.includes(query) || def.includes(query);
+                    entry.style.display = match ? '' : 'none';
+                    if (match) groupVisible++;
+                });
+
+                group.style.display = groupVisible > 0 ? '' : 'none';
+                visibleCount += groupVisible;
+            });
+
+            noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+
+            letterLinks.forEach(link => {
+                const targetId = link.getAttribute('href').substring(1);
+                const targetGroup = document.getElementById(targetId);
+                link.style.display = targetGroup && targetGroup.style.display !== 'none' ? '' : 'none';
+            });
+        });
+
+        letterLinks.forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const target = document.getElementById(targetId);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+
+    <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

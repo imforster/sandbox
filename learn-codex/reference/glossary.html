@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glossary — Codex</title>
+    <style>
+        :root {
+            --bg: #fbfbfd;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #86868b;
+            --accent: #0071e3;
+            --border: rgba(0, 0, 0, 0.06);
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --search-bg: #f5f5f7;
+            --radius: 12px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000;
+                --text-primary: #f5f5f7;
+                --text-secondary: #a1a1a6;
+                --text-tertiary: #6e6e73;
+                --accent: #64d2ff;
+                --border: rgba(255, 255, 255, 0.08);
+                --card-bg: rgba(28, 28, 30, 0.72);
+                --search-bg: rgba(28, 28, 30, 0.9);
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 3rem 2rem 1rem;
+        }
+
+        .header .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.875rem;
+            color: var(--accent);
+            text-decoration: none;
+            margin-bottom: 1.5rem;
+        }
+
+        .header .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+        }
+
+        .search-container {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+        }
+
+        .search-container .search-inner {
+            max-width: 980px;
+            margin: 0 auto;
+        }
+
+        .search-input {
+            width: 100%;
+            max-width: 480px;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            font-size: 1rem;
+            border: none;
+            border-radius: var(--radius);
+            background: var(--search-bg);
+            color: var(--text-primary);
+            outline: none;
+            transition: box-shadow 0.2s;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .search-input:focus {
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.2);
+        }
+
+        .search-wrapper {
+            position: relative;
+            max-width: 480px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            pointer-events: none;
+        }
+
+        .content-wrapper {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 60px;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .glossary-body {
+            min-width: 0;
+        }
+
+        .letter-group {
+            margin-bottom: 2.5rem;
+        }
+
+        .letter-heading {
+            position: sticky;
+            top: 65px;
+            z-index: 50;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent);
+            padding: 0.5rem 0;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .term-entry {
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .term-entry:last-child {
+            border-bottom: none;
+        }
+
+        .term-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .term-def {
+            font-size: 0.9375rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .letter-index {
+            position: sticky;
+            top: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .letter-index a {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-decoration: none;
+            padding: 0.15rem 0.35rem;
+            border-radius: 4px;
+            transition: color 0.15s, background 0.15s;
+        }
+
+        .letter-index a:hover {
+            color: var(--accent);
+            background: var(--search-bg);
+        }
+
+        .no-results {
+            display: none;
+            padding: 3rem 0;
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 1rem;
+        }
+
+        @media (max-width: 900px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+            }
+
+            .letter-index {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .header {
+                padding: 2rem 1.25rem 0.75rem;
+            }
+
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .search-container {
+                padding: 0.75rem 1.25rem;
+            }
+
+            .content-wrapper {
+                padding: 1.5rem 1.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="../lessons/index.html" class="back-link">← Lessons</a>
+        <h1>Glossary</h1>
+        <p>Key terms for OpenAI Codex, agentic coding workflows, and multi-agent development patterns.</p>
+    </div>
+
+    <div class="search-container">
+        <div class="search-inner">
+            <div class="search-wrapper">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" class="search-input" placeholder="Filter terms..." id="searchInput">
+            </div>
+        </div>
+    </div>
+
+    <div class="content-wrapper">
+        <div class="glossary-body" id="glossaryBody">
+
+            <!-- A -->
+            <div class="letter-group" id="letter-A">
+                <div class="letter-heading">A</div>
+                <div class="term-entry" data-term="agents.md">
+                    <div class="term-name">AGENTS.md</div>
+                    <div class="term-def">A markdown file at the repository or directory level that provides persistent custom instructions to Codex, scoped by proximity to the working directory with closer files taking precedence.</div>
+                </div>
+                <div class="term-entry" data-term="approval policy">
+                    <div class="term-name">Approval Policy</div>
+                    <div class="term-def">A configuration setting (e.g., "on-request" or "never") that determines when Codex must pause and ask the user for permission before executing commands that cross the sandbox boundary.</div>
+                </div>
+            </div>
+
+            <!-- C -->
+            <div class="letter-group" id="letter-C">
+                <div class="letter-heading">C</div>
+                <div class="term-entry" data-term="cloud task">
+                    <div class="term-name">Cloud Task</div>
+                    <div class="term-def">An asynchronous Codex job that runs hosted against a pushed GitHub repository rather than a local checkout, suitable for work that does not depend on untracked local artifacts.</div>
+                </div>
+                <div class="term-entry" data-term="codex exec">
+                    <div class="term-name">Codex Exec</div>
+                    <div class="term-def">The non-interactive CLI command (codex exec) that runs a prompt as a scripted or CI-integrated job, defaulting to a read-only sandbox and supporting structured JSON output.</div>
+                </div>
+                <div class="term-entry" data-term="complementary workflow">
+                    <div class="term-name">Complementary Workflow</div>
+                    <div class="term-def">An operating model where multiple AI agents fill distinct roles (e.g., one implements while another reviews) rather than competing on the same task, creating separation of duties.</div>
+                </div>
+                <div class="term-entry" data-term="computer use">
+                    <div class="term-name">Computer Use</div>
+                    <div class="term-def">A Codex capability that allows the agent to operate native desktop applications through visual interaction, used when browser-based or structured tool access is insufficient.</div>
+                </div>
+            </div>
+
+            <!-- G -->
+            <div class="letter-group" id="letter-G">
+                <div class="letter-heading">G</div>
+                <div class="term-entry" data-term="goal mode">
+                    <div class="term-name">Goal Mode</div>
+                    <div class="term-def">A Codex execution mode that keeps a measurable objective active across a long multi-step session, serving as both the starting instruction and the completion test.</div>
+                </div>
+                <div class="term-entry" data-term="guidance layer">
+                    <div class="term-name">Guidance Layer</div>
+                    <div class="term-def">One of several scoped levels (prompt, AGENTS.md, repository config, global config, skill) where Codex instructions can live, with narrower scope taking precedence over broader scope.</div>
+                </div>
+            </div>
+
+            <!-- H -->
+            <div class="letter-group" id="letter-H">
+                <div class="letter-heading">H</div>
+                <div class="term-entry" data-term="handoff">
+                    <div class="term-name">Handoff</div>
+                    <div class="term-def">The process of moving a Codex thread and its associated changes from an isolated worktree back to the local checkout without manually copying files or creating branch conflicts.</div>
+                </div>
+            </div>
+
+            <!-- I -->
+            <div class="letter-group" id="letter-I">
+                <div class="letter-heading">I</div>
+                <div class="term-entry" data-term="instruction debt">
+                    <div class="term-name">Instruction Debt</div>
+                    <div class="term-def">The accumulation of vague or unverifiable rules (e.g., "write clean code") in agent guidance files that consume context without producing measurable behavior change.</div>
+                </div>
+            </div>
+
+            <!-- M -->
+            <div class="letter-group" id="letter-M">
+                <div class="letter-heading">M</div>
+                <div class="term-entry" data-term="mcp (model context protocol)">
+                    <div class="term-name">MCP (Model Context Protocol)</div>
+                    <div class="term-def">An integration mechanism that connects Codex to external data sources or action systems outside the repository, enabling live queries and operations through standardized tool interfaces.</div>
+                </div>
+            </div>
+
+            <!-- P -->
+            <div class="letter-group" id="letter-P">
+                <div class="letter-heading">P</div>
+                <div class="term-entry" data-term="plan mode">
+                    <div class="term-name">Plan Mode</div>
+                    <div class="term-def">A Codex execution mode used to interview the user, expose assumptions, and shape an ambiguous task into a clear objective before any code edits begin.</div>
+                </div>
+                <div class="term-entry" data-term="plugin">
+                    <div class="term-name">Plugin</div>
+                    <div class="term-def">An installable bundle that packages one or more Codex skills, tools, or configuration into a distributable unit that can be shared across users or repositories.</div>
+                </div>
+                <div class="term-entry" data-term="promotion ladder">
+                    <div class="term-name">Promotion Ladder</div>
+                    <div class="term-def">The progressive escalation path from manual interactive execution to scripted automation, where a workflow must succeed repeatedly before being scheduled for unattended runs.</div>
+                </div>
+            </div>
+
+            <!-- S -->
+            <div class="letter-group" id="letter-S">
+                <div class="letter-heading">S</div>
+                <div class="term-entry" data-term="sandbox mode">
+                    <div class="term-name">Sandbox Mode</div>
+                    <div class="term-def">A security configuration (read-only, workspace-write, or danger-full-access) that defines the technical boundary of what filesystem and network resources Codex can access during execution.</div>
+                </div>
+                <div class="term-entry" data-term="separation of duties">
+                    <div class="term-name">Separation of Duties</div>
+                    <div class="term-def">The practice of assigning implementation and review to different agents so that the reviewer does not inherit the implementer's assumptions or context bias.</div>
+                </div>
+                <div class="term-entry" data-term="side chat">
+                    <div class="term-name">Side Chat</div>
+                    <div class="term-def">A conversation mechanism that allows asking an agent for explanation or clarification mid-task without redirecting or interrupting the active work thread.</div>
+                </div>
+                <div class="term-entry" data-term="skill">
+                    <div class="term-name">Skill</div>
+                    <div class="term-def">A reusable named procedure with metadata, instructions, and optional helper scripts that Codex loads on demand when its description matches the current task, using progressive disclosure.</div>
+                </div>
+                <div class="term-entry" data-term="subagent">
+                    <div class="term-name">Subagent</div>
+                    <div class="term-def">A parallel worker spawned by Codex to perform a bounded, typically read-only investigation or specialist review, returning distilled findings to the main thread for synthesis.</div>
+                </div>
+                <div class="term-entry" data-term="surface map">
+                    <div class="term-name">Surface Map</div>
+                    <div class="term-def">A mental model for choosing which Codex interface (CLI, IDE, app, web/cloud, or exec) best fits a given task based on requirements like interactivity, isolation, or GitHub integration.</div>
+                </div>
+            </div>
+
+            <!-- T -->
+            <div class="letter-group" id="letter-T">
+                <div class="letter-heading">T</div>
+                <div class="term-entry" data-term="thread automation">
+                    <div class="term-name">Thread Automation</div>
+                    <div class="term-def">A scheduled Codex automation that continues an existing conversation thread on a recurring basis, maintaining accumulated context across runs.</div>
+                </div>
+            </div>
+
+            <!-- V -->
+            <div class="letter-group" id="letter-V">
+                <div class="letter-heading">V</div>
+                <div class="term-entry" data-term="visual feedback loop">
+                    <div class="term-name">Visual Feedback Loop</div>
+                    <div class="term-def">A verification pattern where the agent reproduces a UI state, captures multi-signal evidence (screenshot, DOM, console, network), makes a scoped change, and repeats the identical flow to confirm the fix.</div>
+                </div>
+            </div>
+
+            <!-- W -->
+            <div class="letter-group" id="letter-W">
+                <div class="letter-heading">W</div>
+                <div class="term-entry" data-term="worktree">
+                    <div class="term-name">Worktree</div>
+                    <div class="term-def">A Git-based isolated filesystem managed by the Codex app that gives a background task its own checkout separate from the user's local working directory, preventing concurrent-edit conflicts.</div>
+                </div>
+                <div class="term-entry" data-term="writable root">
+                    <div class="term-name">Writable Root</div>
+                    <div class="term-def">A narrowly scoped filesystem exception added to Codex's sandbox configuration that grants write access to one specific directory without broadening permissions globally.</div>
+                </div>
+            </div>
+
+            <div class="no-results" id="noResults">No terms match your search.</div>
+        </div>
+
+        <nav class="letter-index" id="letterIndex">
+            <a href="#letter-A">A</a>
+            <a href="#letter-C">C</a>
+            <a href="#letter-G">G</a>
+            <a href="#letter-H">H</a>
+            <a href="#letter-I">I</a>
+            <a href="#letter-M">M</a>
+            <a href="#letter-P">P</a>
+            <a href="#letter-S">S</a>
+            <a href="#letter-T">T</a>
+            <a href="#letter-V">V</a>
+            <a href="#letter-W">W</a>
+        </nav>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const glossaryBody = document.getElementById('glossaryBody');
+        const noResults = document.getElementById('noResults');
+        const letterGroups = glossaryBody.querySelectorAll('.letter-group');
+
+        searchInput.addEventListener('input', function () {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            letterGroups.forEach(group => {
+                const entries = group.querySelectorAll('.term-entry');
+                let groupVisible = 0;
+
+                entries.forEach(entry => {
+                    const term = entry.getAttribute('data-term');
+                    const def = entry.querySelector('.term-def').textContent.toLowerCase();
+                    const matches = term.includes(query) || def.includes(query);
+                    entry.style.display = matches ? '' : 'none';
+                    if (matches) groupVisible++;
+                });
+
+                group.style.display = groupVisible > 0 ? '' : 'none';
+                visibleCount += groupVisible;
+            });
+
+            noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+        });
+
+        document.querySelectorAll('.letter-index a').forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+    <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

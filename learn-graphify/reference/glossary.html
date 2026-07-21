@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glossary — Graphify</title>
+    <style>
+        :root {
+            --bg: #fbfbfd;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #86868b;
+            --accent: #0071e3;
+            --border: rgba(0, 0, 0, 0.06);
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --search-bg: #f5f5f7;
+            --radius: 12px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000;
+                --text-primary: #f5f5f7;
+                --text-secondary: #a1a1a6;
+                --text-tertiary: #6e6e73;
+                --accent: #64d2ff;
+                --border: rgba(255, 255, 255, 0.08);
+                --card-bg: rgba(28, 28, 30, 0.72);
+                --search-bg: rgba(28, 28, 30, 0.9);
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            line-height: 1.5;
+        }
+
+        .page {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 0 2rem 4rem;
+        }
+
+        /* Back nav */
+        .back-nav {
+            padding: 1.5rem 0;
+        }
+
+        .back-nav a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--accent);
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+
+        .back-nav a:hover { opacity: 0.7; }
+
+        /* Header */
+        .glossary-header {
+            padding: 2rem 0 2.5rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .glossary-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.5rem;
+        }
+
+        .glossary-header p {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            max-width: 540px;
+        }
+
+        /* Search */
+        .search-container {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--bg);
+            padding: 1rem 0;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            font-size: 1rem;
+            font-family: inherit;
+            background: var(--search-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+        }
+
+        .search-input::placeholder { color: var(--text-tertiary); }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            pointer-events: none;
+        }
+
+        .search-count {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            margin-top: 0.5rem;
+            min-height: 1.2em;
+        }
+
+        /* Letter groups */
+        .letter-group {
+            margin-top: 2rem;
+        }
+
+        .letter-heading {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 0;
+            position: sticky;
+            top: 4.5rem;
+            background: var(--bg);
+            z-index: 50;
+        }
+
+        /* Terms */
+        .term-entry {
+            padding: 1.25rem 0;
+            border-bottom: 1px solid var(--border);
+            transition: opacity 0.2s;
+        }
+
+        .term-entry:last-child { border-bottom: none; }
+
+        .term-entry.hidden { display: none; }
+
+        .term-name {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.35rem;
+            letter-spacing: -0.01em;
+        }
+
+        .term-def {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Letter index sidebar */
+        .letter-index {
+            position: fixed;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            z-index: 200;
+        }
+
+        .letter-index a {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-decoration: none;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            text-align: center;
+            transition: color 0.15s, background 0.15s;
+        }
+
+        .letter-index a:hover {
+            color: var(--accent);
+            background: var(--search-bg);
+        }
+
+        /* No results */
+        .no-results {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-tertiary);
+            font-size: 1rem;
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .letter-index { display: none; }
+        }
+
+        @media (max-width: 600px) {
+            .page { padding: 0 1.25rem 3rem; }
+            .glossary-header h1 { font-size: 2rem; }
+            .letter-heading { top: 4rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page">
+    <nav class="back-nav">
+        <a href="../lessons/index.html">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 10 4 6 8 2"/></svg>
+            Lessons
+        </a>
+    </nav>
+
+    <header class="glossary-header">
+        <h1>Glossary</h1>
+        <p>Key terms for knowledge graphs, code structure analysis, and AI-assisted development with Graphify.</p>
+    </header>
+
+    <div class="search-container">
+        <div class="search-wrapper">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg>
+            <input type="text" class="search-input" placeholder="Filter terms…" id="search" autocomplete="off">
+        </div>
+        <div class="search-count" id="count"></div>
+    </div>
+
+    <div class="no-results" id="no-results">No matching terms found.</div>
+
+    <div id="glossary-content">
+        <div class="letter-group" data-letter="A">
+            <div class="letter-heading">A</div>
+            <div class="term-entry" data-term="architectural boundary">
+                <div class="term-name">Architectural Boundary</div>
+                <div class="term-def">A directional dependency rule between code layers (e.g., tests → framework → utilities) that, when violated, indicates structural drift in the codebase.</div>
+            </div>
+            <div class="term-entry" data-term="ast parsing">
+                <div class="term-name">AST Parsing</div>
+                <div class="term-def">The process of analyzing source code into an Abstract Syntax Tree to extract structural information like classes, functions, and import relationships without executing the code.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="B">
+            <div class="letter-heading">B</div>
+            <div class="term-entry" data-term="benchmark loop">
+                <div class="term-name">Benchmark Loop</div>
+                <div class="term-def">A feedback cycle of running graphify benchmark after graph configuration changes to measure whether modifications improve or degrade the token reduction ratio.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="C">
+            <div class="letter-heading">C</div>
+            <div class="term-entry" data-term="call graph">
+                <div class="term-name">Call Graph</div>
+                <div class="term-def">A directed graph representing which functions or methods invoke which other functions, used to trace execution paths through a codebase without reading source files.</div>
+            </div>
+            <div class="term-entry" data-term="community">
+                <div class="term-name">Community</div>
+                <div class="term-def">A cluster of graph nodes that are more densely connected to each other than to the rest of the graph, automatically named by an LLM during the clustering phase to represent a logical subsystem.</div>
+            </div>
+            <div class="term-entry" data-term="context window">
+                <div class="term-name">Context Window</div>
+                <div class="term-def">The fixed token budget available to an AI model in a single session, which knowledge graphs help conserve by replacing bulk file reading with structured relationship data.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="E">
+            <div class="letter-heading">E</div>
+            <div class="term-entry" data-term="edge">
+                <div class="term-name">Edge</div>
+                <div class="term-def">A directed relationship between two nodes in a knowledge graph, representing connections like "imports," "calls," "inherits from," or "defined in."</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="G">
+            <div class="letter-heading">G</div>
+            <div class="term-entry" data-term="global graph">
+                <div class="term-name">Global Graph</div>
+                <div class="term-def">A unified knowledge graph at ~/.graphify/global-graph.json that merges node and edge data from multiple repositories to enable cross-repo structural queries.</div>
+            </div>
+            <div class="term-entry" data-term="graph staleness">
+                <div class="term-name">Graph Staleness</div>
+                <div class="term-def">The condition where a knowledge graph no longer reflects the current state of the codebase due to file additions, deletions, or refactors since the last graph build.</div>
+            </div>
+            <div class="term-entry" data-term="graph-driven prompt">
+                <div class="term-name">Graph-Driven Prompt</div>
+                <div class="term-def">A prompt that references community names, node identifiers, or structural relationships from the knowledge graph to scope the AI agent's attention and reduce discovery overhead.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="I">
+            <div class="letter-heading">I</div>
+            <div class="term-entry" data-term="isomorphic subgraph">
+                <div class="term-name">Isomorphic Subgraph</div>
+                <div class="term-def">A recurring structural pattern in the graph where multiple file groups share the same shape (same imports, inheritance, and naming conventions), indicating a replicable convention.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="K">
+            <div class="letter-heading">K</div>
+            <div class="term-entry" data-term="knowledge graph">
+                <div class="term-name">Knowledge Graph</div>
+                <div class="term-def">A structured representation of a codebase's entities (nodes) and their relationships (edges) stored as JSON, enabling an AI agent to navigate code structure without reading every source file.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="N">
+            <div class="letter-heading">N</div>
+            <div class="term-entry" data-term="node">
+                <div class="term-name">Node</div>
+                <div class="term-def">An entity extracted from source code and represented in the knowledge graph — typically a class, function, method, module, or file.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="P">
+            <div class="letter-heading">P</div>
+            <div class="term-entry" data-term="pattern extraction">
+                <div class="term-name">Pattern Extraction</div>
+                <div class="term-def">The process of identifying structural regularities (shared imports, inheritance chains, naming conventions) from graph data and articulating them as explicit constraints for AI code generation.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="S">
+            <div class="letter-heading">S</div>
+            <div class="term-entry" data-term="session primer">
+                <div class="term-name">Session Primer</div>
+                <div class="term-def">An opening prompt pattern that loads the graph context and immediately scopes the AI agent to a specific community and task, eliminating the discovery phase.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="T">
+            <div class="letter-heading">T</div>
+            <div class="term-entry" data-term="token reduction ratio">
+                <div class="term-name">Token Reduction Ratio</div>
+                <div class="term-def">The ratio between total source corpus tokens and graph.json tokens, representing the theoretical maximum context savings when using a knowledge graph instead of reading all files.</div>
+            </div>
+            <div class="term-entry" data-term="tree-sitter">
+                <div class="term-name">Tree-sitter</div>
+                <div class="term-def">A parser generator tool that produces concrete syntax trees from source code, used by Graphify to extract structural information (classes, functions, imports, call chains) locally without sending code to external services.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="W">
+            <div class="letter-heading">W</div>
+            <div class="term-entry" data-term="wiring test">
+                <div class="term-name">Wiring Test</div>
+                <div class="term-def">A minimal test (1-2 cases) that proves an operator correctly delegates to a shared foundational behavior, rather than exhaustively retesting that behavior.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<nav class="letter-index" id="letter-index">
+    <a href="#" data-letter="A">A</a>
+    <a href="#" data-letter="B">B</a>
+    <a href="#" data-letter="C">C</a>
+    <a href="#" data-letter="E">E</a>
+    <a href="#" data-letter="G">G</a>
+    <a href="#" data-letter="I">I</a>
+    <a href="#" data-letter="K">K</a>
+    <a href="#" data-letter="N">N</a>
+    <a href="#" data-letter="P">P</a>
+    <a href="#" data-letter="S">S</a>
+    <a href="#" data-letter="T">T</a>
+    <a href="#" data-letter="W">W</a>
+</nav>
+
+<script>
+(function() {
+    const search = document.getElementById('search');
+    const count = document.getElementById('count');
+    const noResults = document.getElementById('no-results');
+    const entries = document.querySelectorAll('.term-entry');
+    const groups = document.querySelectorAll('.letter-group');
+    const total = entries.length;
+
+    // Search filter
+    search.addEventListener('input', function() {
+        const q = this.value.toLowerCase().trim();
+        let visible = 0;
+
+        entries.forEach(entry => {
+            const term = entry.dataset.term;
+            const def = entry.querySelector('.term-def').textContent.toLowerCase();
+            const match = !q || term.includes(q) || def.includes(q);
+            entry.classList.toggle('hidden', !match);
+            if (match) visible++;
+        });
+
+        // Hide empty letter groups
+        groups.forEach(group => {
+            const hasVisible = group.querySelector('.term-entry:not(.hidden)');
+            group.style.display = hasVisible ? '' : 'none';
+        });
+
+        count.textContent = q ? `${visible} of ${total} terms` : '';
+        noResults.style.display = visible === 0 ? 'block' : 'none';
+    });
+
+    // Letter index scroll
+    document.getElementById('letter-index').addEventListener('click', function(e) {
+        if (e.target.tagName === 'A') {
+            e.preventDefault();
+            const letter = e.target.dataset.letter;
+            const group = document.querySelector(`.letter-group[data-letter="${letter}"]`);
+            if (group) {
+                group.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    });
+})();
+</script>
+
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

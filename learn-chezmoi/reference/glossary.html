@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glossary — chezmoi</title>
+    <style>
+        :root {
+            --bg: #fbfbfd;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #86868b;
+            --accent: #0071e3;
+            --border: rgba(0, 0, 0, 0.06);
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --search-bg: #f5f5f7;
+            --radius: 12px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000;
+                --text-primary: #f5f5f7;
+                --text-secondary: #a1a1a6;
+                --text-tertiary: #6e6e73;
+                --accent: #64d2ff;
+                --border: rgba(255, 255, 255, 0.08);
+                --card-bg: rgba(28, 28, 30, 0.72);
+                --search-bg: rgba(28, 28, 30, 0.9);
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            padding: 3rem 2rem 2rem;
+            max-width: 980px;
+            margin: 0 auto;
+        }
+
+        .header nav {
+            margin-bottom: 2rem;
+        }
+
+        .header nav a {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .header nav a:hover {
+            text-decoration: underline;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 600px;
+        }
+
+        .search-container {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--bg);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .search-container input {
+            width: 100%;
+            max-width: 980px;
+            margin: 0 auto;
+            display: block;
+            padding: 0.75rem 1.25rem;
+            font-size: 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--search-bg);
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .search-container input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .search-container input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .search-container input:focus {
+                box-shadow: 0 0 0 3px rgba(100, 210, 255, 0.15);
+            }
+        }
+
+        .content-wrapper {
+            display: flex;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 2rem;
+            gap: 2rem;
+        }
+
+        .glossary-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .letter-group {
+            margin-bottom: 2.5rem;
+        }
+
+        .letter-heading {
+            position: sticky;
+            top: 60px;
+            background: var(--bg);
+            padding: 0.5rem 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+            z-index: 50;
+        }
+
+        .term-entry {
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .term-entry:last-child {
+            border-bottom: none;
+        }
+
+        .term-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+            font-family: 'SF Mono', SFMono-Regular, Menlo, monospace;
+        }
+
+        .term-def {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .letter-index {
+            position: sticky;
+            top: 80px;
+            align-self: flex-start;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            padding: 0.5rem;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .letter-index a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .letter-index a:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-tertiary);
+            font-size: 1.1rem;
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .letter-index {
+                display: none;
+            }
+
+            .header {
+                padding: 2rem 1.5rem 1.5rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .content-wrapper {
+                padding: 1.5rem;
+            }
+
+            .search-container {
+                padding: 0.75rem 1.5rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .header {
+                padding: 1.5rem 1rem 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .content-wrapper {
+                padding: 1rem;
+            }
+
+            .search-container {
+                padding: 0.75rem 1rem;
+            }
+
+            .letter-heading {
+                font-size: 1.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <nav><a href="../lessons/index.html">← Lessons</a></nav>
+        <h1>Glossary</h1>
+        <p>Key terms for chezmoi dotfile management — templates, scripts, data files, and the source-to-target lifecycle.</p>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="search" placeholder="Filter terms…" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="content-wrapper">
+        <div class="glossary-content" id="glossary">
+            <div class="no-results" id="no-results">No matching terms found.</div>
+
+            <!-- . -->
+            <div class="letter-group" data-letter=".">
+                <div class="letter-heading" id="letter-dot">.</div>
+                <div class="term-entry" data-term=".chezmoi.toml.tmpl">
+                    <div class="term-name">.chezmoi.toml.tmpl</div>
+                    <div class="term-def">A config template at the source state root that generates the machine-local chezmoi configuration file during chezmoi init, typically using prompts to collect machine-specific values.</div>
+                </div>
+                <div class="term-entry" data-term=".chezmoidata file">
+                    <div class="term-name">.chezmoidata file</div>
+                    <div class="term-def">A TOML, YAML, or JSON file in the source state root that defines custom template variables available to all templates during rendering.</div>
+                </div>
+                <div class="term-entry" data-term=".chezmoiexternal.toml">
+                    <div class="term-name">.chezmoiexternal.toml</div>
+                    <div class="term-def">A declaration file in the source state that specifies remote files and archives to download and place in the target during chezmoi apply.</div>
+                </div>
+                <div class="term-entry" data-term=".chezmoiignore">
+                    <div class="term-name">.chezmoiignore</div>
+                    <div class="term-def">A templated file in the source state that lists patterns of files chezmoi should not manage on the current machine, supporting conditional logic per hostname or OS.</div>
+                </div>
+                <div class="term-entry" data-term=".chezmoiremove">
+                    <div class="term-name">.chezmoiremove</div>
+                    <div class="term-def">A file listing patterns of target files that chezmoi will actively delete from the home directory on every chezmoi apply.</div>
+                </div>
+                <div class="term-entry" data-term=".tmpl suffix">
+                    <div class="term-name">.tmpl suffix</div>
+                    <div class="term-def">A filename suffix in the source state indicating the file contains Go template actions and should be rendered through the template engine before being written to the target.</div>
+                </div>
+            </div>
+
+            <!-- C -->
+            <div class="letter-group" data-letter="C">
+                <div class="letter-heading" id="letter-c">C</div>
+                <div class="term-entry" data-term="chezmoi apply">
+                    <div class="term-name">chezmoi apply</div>
+                    <div class="term-def">The command that renders templates and pushes the source state into the target (home directory), executing scripts and downloading externals in the process.</div>
+                </div>
+                <div class="term-entry" data-term="chezmoi data">
+                    <div class="term-name">chezmoi data</div>
+                    <div class="term-def">The merged dictionary of all template variables available during rendering, combining auto-detected machine info (.chezmoi.*) with custom data files and config values.</div>
+                </div>
+                <div class="term-entry" data-term="chezmoi re-add">
+                    <div class="term-name">chezmoi re-add</div>
+                    <div class="term-def">A command that copies modified target files back into the source state, capturing changes made directly to home directory files outside the normal chezmoi edit workflow.</div>
+                </div>
+                <div class="term-entry" data-term="chezmoi update">
+                    <div class="term-name">chezmoi update</div>
+                    <div class="term-def">A command that pulls the latest changes from the remote repository and applies them to the home directory in a single step (equivalent to git pull + chezmoi apply).</div>
+                </div>
+            </div>
+
+            <!-- D -->
+            <div class="letter-group" data-letter="D">
+                <div class="letter-heading" id="letter-d">D</div>
+                <div class="term-entry" data-term="dot_ prefix">
+                    <div class="term-name">dot_ prefix</div>
+                    <div class="term-def">Chezmoi's source state naming convention where a leading dot_ in a filename maps to a leading . in the target path (e.g., dot_gitconfig becomes .gitconfig).</div>
+                </div>
+            </div>
+
+            <!-- E -->
+            <div class="letter-group" data-letter="E">
+                <div class="letter-heading" id="letter-e">E</div>
+                <div class="term-entry" data-term="exact (external option)">
+                    <div class="term-name">exact (external option)</div>
+                    <div class="term-def">An option in .chezmoiexternal.toml that ensures the target directory contains only what is in the archive, deleting any extra files on apply.</div>
+                </div>
+            </div>
+
+            <!-- G -->
+            <div class="letter-group" data-letter="G">
+                <div class="letter-heading" id="letter-g">G</div>
+                <div class="term-entry" data-term="go text/template">
+                    <div class="term-name">Go text/template</div>
+                    <div class="term-def">The templating engine chezmoi uses, where actions between {{ }} delimiters are evaluated and everything outside passes through as literal text.</div>
+                </div>
+            </div>
+
+            <!-- K -->
+            <div class="letter-group" data-letter="K">
+                <div class="letter-heading" id="letter-k">K</div>
+                <div class="term-entry" data-term="keyring function">
+                    <div class="term-name">keyring function</div>
+                    <div class="term-def">A Go template function ({{ keyring "service" "account" }}) that reads secrets from the system credential store (macOS Keychain, GNOME Keyring, or Windows Credentials Manager) at render time.</div>
+                </div>
+            </div>
+
+            <!-- P -->
+            <div class="letter-group" data-letter="P">
+                <div class="letter-heading" id="letter-p">P</div>
+                <div class="term-entry" data-term="promptchoiceonce">
+                    <div class="term-name">promptChoiceOnce</div>
+                    <div class="term-def">A template function used in .chezmoi.toml.tmpl that prompts the user to select from predefined options on first init and reuses the stored answer on subsequent runs.</div>
+                </div>
+            </div>
+
+            <!-- R -->
+            <div class="letter-group" data-letter="R">
+                <div class="letter-heading" id="letter-r">R</div>
+                <div class="term-entry" data-term="refreshperiod">
+                    <div class="term-name">refreshPeriod</div>
+                    <div class="term-def">An option in .chezmoiexternal.toml that sets a time-based cache duration for external downloads, preventing re-fetching on every apply.</div>
+                </div>
+                <div class="term-entry" data-term="run_once_ prefix">
+                    <div class="term-name">run_once_ prefix</div>
+                    <div class="term-def">A script filename prefix indicating the script executes exactly once per machine, with chezmoi recording its completion in persistent state.</div>
+                </div>
+                <div class="term-entry" data-term="run_onchange_ prefix">
+                    <div class="term-name">run_onchange_ prefix</div>
+                    <div class="term-def">A script filename prefix indicating the script re-executes only when the SHA-256 hash of its rendered content differs from the previously stored hash.</div>
+                </div>
+            </div>
+
+            <!-- S -->
+            <div class="letter-group" data-letter="S">
+                <div class="letter-heading" id="letter-s">S</div>
+                <div class="term-entry" data-term="source state">
+                    <div class="term-name">source state</div>
+                    <div class="term-def">The local git repository (at ~/.local/share/chezmoi/) where chezmoi stores templates, scripts, and data files that represent the desired configuration.</div>
+                </div>
+                <div class="term-entry" data-term="stripcomponents">
+                    <div class="term-name">stripComponents</div>
+                    <div class="term-def">An option for archive-type externals that removes N leading directory levels from archive paths during extraction, analogous to tar --strip-components.</div>
+                </div>
+            </div>
+
+            <!-- T -->
+            <div class="letter-group" data-letter="T">
+                <div class="letter-heading" id="letter-t">T</div>
+                <div class="term-entry" data-term="target state">
+                    <div class="term-name">target state</div>
+                    <div class="term-def">The actual files in your home directory that chezmoi manages — the rendered output of templates and the destination for applied changes.</div>
+                </div>
+            </div>
+
+            <!-- W -->
+            <div class="letter-group" data-letter="W">
+                <div class="letter-heading" id="letter-w">W</div>
+                <div class="term-entry" data-term="whitespace control ({{- / -}})">
+                    <div class="term-name">whitespace control ({{- / -}})</div>
+                    <div class="term-def">Template syntax using a dash inside delimiters to trim adjacent whitespace and newlines, producing clean rendered output without blank lines from control structures.</div>
+                </div>
+            </div>
+        </div>
+
+        <nav class="letter-index" id="letter-index">
+            <a href="#letter-dot">.</a>
+            <a href="#letter-c">C</a>
+            <a href="#letter-d">D</a>
+            <a href="#letter-e">E</a>
+            <a href="#letter-g">G</a>
+            <a href="#letter-k">K</a>
+            <a href="#letter-p">P</a>
+            <a href="#letter-r">R</a>
+            <a href="#letter-s">S</a>
+            <a href="#letter-t">T</a>
+            <a href="#letter-w">W</a>
+        </nav>
+    </div>
+
+    <script>
+        const search = document.getElementById('search');
+        const glossary = document.getElementById('glossary');
+        const noResults = document.getElementById('no-results');
+        const letterGroups = glossary.querySelectorAll('.letter-group');
+
+        search.addEventListener('input', () => {
+            const query = search.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            letterGroups.forEach(group => {
+                const entries = group.querySelectorAll('.term-entry');
+                let groupVisible = 0;
+
+                entries.forEach(entry => {
+                    const term = entry.getAttribute('data-term') || '';
+                    const def = entry.querySelector('.term-def').textContent.toLowerCase();
+                    const name = entry.querySelector('.term-name').textContent.toLowerCase();
+                    const match = !query || term.includes(query) || def.includes(query) || name.includes(query);
+                    entry.style.display = match ? '' : 'none';
+                    if (match) groupVisible++;
+                });
+
+                group.style.display = groupVisible > 0 ? '' : 'none';
+                visibleCount += groupVisible;
+            });
+
+            noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+        });
+
+        document.querySelectorAll('.letter-index a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+    <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
