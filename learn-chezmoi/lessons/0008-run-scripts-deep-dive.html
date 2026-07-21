@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 8: Run Scripts Deep Dive</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .script-type-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+    .script-type-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .script-type-card h4 {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.92rem;
+      color: var(--color-accent);
+    }
+    .script-type-card p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      line-height: 1.4;
+    }
+    .ordering-diagram {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+    .ordering-diagram-label {
+      font-family: var(--font-heading);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-muted);
+      text-align: center;
+      margin-bottom: 1.25rem;
+    }
+    .ordering-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .ordering-step {
+      border: 2px solid var(--color-border);
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      text-align: center;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .ordering-step.before { border-color: #f59e0b; background: #fffbeb; color: #92400e; }
+    .ordering-step.files { border-color: var(--color-accent); background: var(--color-accent-light); color: var(--color-accent); }
+    .ordering-step.after { border-color: var(--color-success); background: #f0fdf4; color: #16a34a; }
+    .ordering-arrow {
+      font-size: 1.2rem;
+      color: var(--color-muted);
+    }
+    @media (max-width: 600px) {
+      .ordering-flow { flex-direction: column; }
+      .ordering-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0007-edit-workflow.html" class="lesson-prev-top" title="Edit Workflow"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1l-5 5 5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0009-external-files.html" class="lesson-next-top" title="External Files">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Run Scripts Deep Dive</h1>
+
+<div class="lesson-meta">
+  Lesson 8 · chezmoi · ~10 minutes
+</div>
+
+<p>Chezmoi doesn't just manage files — it can run scripts at specific points during <code>chezmoi apply</code>. This is how you automate package installs, reload shell configs, or set up system preferences. By the end of this lesson, you'll understand all four script types and when to use each one.</p>
+
+<h2>The Four Script Types</h2>
+
+<div class="script-type-grid">
+  <div class="script-type-card">
+    <h4>run_once</h4>
+    <p>Runs exactly once per machine. Chezmoi tracks which scripts have already executed and skips them on future applies.</p>
+  </div>
+  <div class="script-type-card">
+    <h4>run_onchange</h4>
+    <p>Runs only when the script's content changes. Chezmoi hashes the file — if the hash differs from last run, it re-executes.</p>
+  </div>
+  <div class="script-type-card">
+    <h4>run_before</h4>
+    <p>Runs before chezmoi updates any files. Use for setup tasks that managed files depend on.</p>
+  </div>
+  <div class="script-type-card">
+    <h4>run_after</h4>
+    <p>Runs after chezmoi finishes updating files. Use for reload commands or post-setup tasks.</p>
+  </div>
+</div>
+
+<p>These attributes combine. A script named <code>run_once_before_install-packages.sh</code> runs <strong>once</strong>, <strong>before</strong> file updates. A script named <code>run_onchange_after_reload.sh</code> runs <strong>after</strong> file updates, but <strong>only when its contents change</strong>.</p>
+
+<h2>Execution Order</h2>
+
+<p>Chezmoi runs scripts in a strict order during <code>chezmoi apply</code>:</p>
+
+<div class="ordering-diagram">
+  <div class="ordering-diagram-label">Script execution order during chezmoi apply</div>
+  <div class="ordering-flow">
+    <div class="ordering-step before">run_before scripts</div>
+    <span class="ordering-arrow">→</span>
+    <div class="ordering-step files">File updates</div>
+    <span class="ordering-arrow">→</span>
+    <div class="ordering-step after">run_after scripts</div>
+  </div>
+</div>
+
+<p>Within each phase (<code>before</code> or <code>after</code>), scripts execute in <strong>lexicographic order by filename</strong>. This means you control execution order with numeric prefixes:</p>
+
+<pre><code>run_once_before_01-install-homebrew.sh
+run_once_before_02-install-packages.sh
+run_after_reload-shell.sh</code></pre>
+
+<p>Homebrew installs first (01), then packages (02), because <code>01</code> sorts before <code>02</code>. Scripts without <code>before</code> or <code>after</code> in their name run after file updates (same as <code>run_after</code>).</p>
+
+<h2>How run_onchange Detects Changes</h2>
+
+<p>Chezmoi computes a SHA-256 hash of the script's contents after template execution. It stores this hash in its persistent state. On the next <code>chezmoi apply</code>, it re-hashes the script — if the hash matches, the script is skipped.</p>
+
+<p>This is powerful for template-based scripts. If you use a template variable in the script body, the hash changes when the variable changes:</p>
+
+<pre><code># .chezmoiscripts/run_onchange_after_configure-git.sh.tmpl
+#!/bin/bash
+# hash: {{ include "dot_gitconfig.tmpl" | sha256sum }}
+git config --global core.autocrlf input</code></pre>
+
+<p>The <code>include | sha256sum</code> trick forces the script to re-run whenever <code>.gitconfig</code> changes — even though the actual command hasn't changed. The hash in the comment changes the script's content hash.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Key insight</div>
+  <p>The <code>run_onchange</code> hash is computed <em>after</em> template execution. So template variables, includes, and conditionals all contribute to whether the script re-runs.</p>
+</div>
+
+<h2>The .chezmoiscripts/ Directory</h2>
+
+<p>You can place scripts directly in your source root, but as your collection grows this gets messy. Chezmoi supports a dedicated <code>.chezmoiscripts/</code> directory to keep scripts organized separately from managed files:</p>
+
+<pre><code>~/.local/share/chezmoi/
+├── .chezmoiscripts/
+│   ├── run_once_before_01-install-xcode-cli.sh
+│   ├── run_once_before_02-install-homebrew.sh
+│   ├── run_once_before_03-install-packages.sh
+│   └── run_after_reload-shell.sh
+├── dot_gitconfig
+├── dot_zshrc.tmpl
+└── .chezmoi.toml.tmpl</code></pre>
+
+<p>Scripts in <code>.chezmoiscripts/</code> behave identically to scripts in the source root. The directory just provides organization — chezmoi discovers and runs them the same way.</p>
+
+<h2>Idempotency Best Practices</h2>
+
+<p>A script is <strong>idempotent</strong> if running it multiple times produces the same result as running it once. This matters because <code>run_before</code> and <code>run_after</code> scripts run on <em>every</em> apply. Even <code>run_once</code> scripts should be idempotent in case you reset chezmoi's state.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Guard your scripts</div>
+  <p>Always check whether work has already been done before doing it. Don't assume a clean slate.</p>
+</div>
+
+<p>Common patterns for idempotent scripts:</p>
+
+<table>
+  <thead><tr><th>Pattern</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>Check before install</td><td><code>command -v brew &gt;/dev/null || /bin/bash -c "$(curl ...)"</code></td></tr>
+    <tr><td>Check before directory create</td><td><code>mkdir -p ~/.config/myapp</code> (already idempotent)</td></tr>
+    <tr><td>Use package manager flags</td><td><code>brew install --quiet pkg</code> (no-op if installed)</td></tr>
+    <tr><td>Check file existence</td><td><code>[ -f ~/.ssh/id_ed25519 ] || ssh-keygen ...</code></td></tr>
+  </tbody>
+</table>
+
+<h2>Exercise: Setup and Reload Scripts</h2>
+
+<h3>Step 1: Create the scripts directory</h3>
+
+<pre><code>chezmoi cd
+mkdir -p .chezmoiscripts</code></pre>
+
+<h3>Step 2: Create a run_once script for Xcode CLI tools</h3>
+
+<p>Create <code>.chezmoiscripts/run_once_before_install-xcode-cli.sh</code>:</p>
+
+<pre><code>#!/bin/bash
+# Install Xcode Command Line Tools if not already present.
+
+if ! xcode-select -p &>/dev/null; then
+  echo "Installing Xcode Command Line Tools..."
+  xcode-select --install
+  # Wait for installation to complete.
+  until xcode-select -p &>/dev/null; do
+    sleep 5
+  done
+  echo "Xcode CLI tools installed."
+else
+  echo "Xcode CLI tools already installed."
+fi</code></pre>
+
+<p>Make it executable:</p>
+
+<pre><code>chmod +x .chezmoiscripts/run_once_before_install-xcode-cli.sh</code></pre>
+
+<h3>Step 3: Create a run_after script to reload shell config</h3>
+
+<p>Create <code>.chezmoiscripts/run_after_reload-shell.sh</code>:</p>
+
+<pre><code>#!/bin/bash
+# Reload shell configuration after dotfile updates.
+
+if [ -n "$ZSH_VERSION" ] || [ "$SHELL" = "/bin/zsh" ]; then
+  echo "Shell config updated. Run 'source ~/.zshrc' to reload in this session."
+elif [ -n "$BASH_VERSION" ] || [ "$SHELL" = "/bin/bash" ]; then
+  echo "Shell config updated. Run 'source ~/.bashrc' to reload in this session."
+fi</code></pre>
+
+<p>Make it executable:</p>
+
+<pre><code>chmod +x .chezmoiscripts/run_after_reload-shell.sh</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Why not source directly?</div>
+  <p>Chezmoi runs scripts in a subshell. Running <code>source ~/.zshrc</code> inside the script would reload the config in that subshell only — not in your active terminal. Instead, print a reminder for the user.</p>
+</div>
+
+<h3>Step 4: Test with a dry run</h3>
+
+<pre><code>chezmoi apply --dry-run --verbose</code></pre>
+
+<p>You should see both scripts listed in the output. The <code>run_once_before</code> script will show up in the "before" phase, and the <code>run_after</code> script in the "after" phase.</p>
+
+<h3>Step 5: Apply and commit</h3>
+
+<pre><code>chezmoi apply
+git add .chezmoiscripts/
+git commit -m "chore: add xcode-cli install and shell reload scripts"
+git push
+exit</code></pre>
+
+<h2>What just happened</h2>
+
+<table>
+  <thead><tr><th>Script</th><th>Type</th><th>Behavior</th></tr></thead>
+  <tbody>
+    <tr><td><code>run_once_before_install-xcode-cli.sh</code></td><td>run_once + before</td><td>Runs once per machine, before file updates. Checks if Xcode CLI is present before installing.</td></tr>
+    <tr><td><code>run_after_reload-shell.sh</code></td><td>run_after</td><td>Runs on every apply, after file updates. Reminds you to reload your shell.</td></tr>
+  </tbody>
+</table>
+
+<h2>Knowledge Check</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">What determines the execution order of scripts within the same phase (before or after)?</div>
+  <ul class="quiz-options">
+    <li>File modification timestamp</li>
+    <li>The order they were added with <code>chezmoi add</code></li>
+    <li data-correct="true">Lexicographic (alphabetical) order by filename</li>
+    <li>File size, smallest first</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Chezmoi sorts scripts lexicographically by filename within each phase. Use numeric prefixes like <code>01-</code>, <code>02-</code> to control order explicitly.</div>
+  <div class="quiz-feedback incorrect">Chezmoi uses lexicographic (alphabetical) order by filename. This is why numeric prefixes like <code>01-</code>, <code>02-</code> are the standard pattern for controlling execution sequence.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">How does <code>run_onchange</code> decide whether to re-run a script?</div>
+  <ul class="quiz-options">
+    <li>It checks the file's modification timestamp</li>
+    <li>It re-runs on every apply regardless</li>
+    <li data-correct="true">It compares the SHA-256 hash of the script's content (after template execution) against the stored hash from the last run</li>
+    <li>It checks whether the output file exists in the target</li>
+  </ul>
+  <div class="quiz-feedback correct">Right. Chezmoi hashes the script's content <em>after</em> template execution. If the hash matches what's stored, the script is skipped. This means template variable changes can trigger re-execution.</div>
+  <div class="quiz-feedback incorrect">Chezmoi doesn't use timestamps. It computes a SHA-256 hash of the script after template execution and compares it to the stored hash from the last run. A hash mismatch triggers re-execution.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">A script named <code>run_once_before_setup.sh</code> — when does it execute?</div>
+  <ul class="quiz-options">
+    <li>Once, after all files are updated</li>
+    <li>Every apply, before files are updated</li>
+    <li data-correct="true">Once per machine, before files are updated</li>
+    <li>Once, but only if its content has changed</li>
+  </ul>
+  <div class="quiz-feedback correct">Exactly. <code>run_once</code> means it executes only once (chezmoi remembers). <code>before</code> means it runs in the pre-file-update phase. The attributes combine.</div>
+  <div class="quiz-feedback incorrect">The attributes combine: <code>run_once</code> means it only executes once per machine (tracked in chezmoi's state), and <code>before</code> means it runs before file updates. Together: once per machine, in the before phase.</div>
+</div>
+
+<h2>Next up</h2>
+
+<p>Scripts handle setup tasks, but what about pulling in files you don't own — like fonts, binaries, or archives from the internet? In <strong>Lesson 9: External Files</strong>, you'll learn to declare external dependencies in <code>.chezmoiexternal.toml</code> and have chezmoi fetch them automatically.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://www.chezmoi.io/user-guide/use-scripts-to-perform-actions/">chezmoi: Use Scripts to Perform Actions</a> — The full reference on script types, ordering, and template integration. Covers edge cases like <code>run_onchange</code> with <code>.tmpl</code> extensions. ~8 minute read.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me anything that's unclear. I can explain the content hashing mechanism in more detail, help you debug script execution order, or design scripts for your specific setup needs.
+</div>
+
+<div class="lesson-nav">
+  <a href="0007-edit-workflow.html" class="lesson-nav-prev" title="Edit Workflow">← Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0009-external-files.html" class="lesson-nav-next" title="External Files">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

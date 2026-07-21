@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6: Ignore & Exclude Per Machine</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+    }
+    .compare-table th,
+    .compare-table td {
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--color-border);
+      text-align: left;
+    }
+    .compare-table th {
+      background: var(--color-card-bg);
+      font-weight: 600;
+      font-size: 0.88rem;
+    }
+    .compare-table td {
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0005-secrets-and-keychain.html" class="lesson-prev-top" title="Secrets &amp; Keychain"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1l-5 5 5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0007-edit-workflow.html" class="lesson-next-top" title="Edit Workflow">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Ignore & Exclude Per Machine</h1>
+
+<div class="lesson-meta">
+  Lesson 6 · chezmoi · ~8 minutes
+</div>
+
+<p>Not every dotfile belongs on every machine. Your work laptop has VPN configs and corporate tooling. Your home machine has gaming scripts and personal API keys. Chezmoi's <code>.chezmoiignore</code> lets you keep everything in one repo but selectively ignore files based on which machine is running <code>chezmoi apply</code>.</p>
+
+<h2>How .chezmoiignore Works</h2>
+
+<p>The file <code>.chezmoiignore</code> lives in the root of your source state (<code>~/.local/share/chezmoi/.chezmoiignore</code>). It lists patterns of files that chezmoi should <strong>not manage</strong> — similar to <code>.gitignore</code>, but with a critical superpower: it's a template.</p>
+
+<p>Because <code>.chezmoiignore</code> is processed as a Go template (even without a <code>.tmpl</code> extension), you can conditionally include or exclude patterns based on machine variables like hostname, OS, or custom data.</p>
+
+<pre><code># ~/.local/share/chezmoi/.chezmoiignore
+
+# Always ignore these
+README.md
+LICENSE
+
+# Ignore work configs on personal machines
+{{- if ne .chezmoi.hostname "work-laptop" }}
+.config/corporate-vpn/
+.config/work-slack-theme
+.aws/config
+{{- end }}
+
+# Ignore personal configs on work machine
+{{- if eq .chezmoi.hostname "work-laptop" }}
+.config/gaming/
+.local/bin/personal-backup.sh
+{{- end }}</code></pre>
+
+<p>Key details about patterns:</p>
+
+<ul>
+  <li>Patterns match against the <strong>target path</strong> (e.g., <code>.gitconfig</code>), not the source path (e.g., <code>dot_gitconfig</code>)</li>
+  <li>Patterns use <a href="https://pkg.go.dev/github.com/bmatcuk/doublestar/v4#Match">doublestar</a> matching — <code>**</code> matches across directory separators</li>
+  <li>Prefix a pattern with <code>!</code> to un-ignore it (excludes always take priority over includes)</li>
+  <li>Comments start with <code>#</code> (must be preceded by whitespace if mid-line)</li>
+</ul>
+
+<div class="callout tip">
+  <div class="callout-title">Key insight</div>
+  <p>The template runs at apply-time on the current machine. On your work laptop, the work-specific block disappears and those files get managed. On your home machine, those same files get ignored — chezmoi won't touch them.</p>
+</div>
+
+<h2>Ignore vs. Remove: Two Different Things</h2>
+
+<p>Chezmoi has two special files with very different behaviors:</p>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>File</th><th>Behavior</th><th>Use when</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>.chezmoiignore</code></td>
+      <td>Chezmoi pretends the file doesn't exist in the source state. It won't create, update, <strong>or delete</strong> it in the target.</td>
+      <td>You want a file to exist in your repo but not be applied on certain machines.</td>
+    </tr>
+    <tr>
+      <td><code>.chezmoiremove</code></td>
+      <td>Chezmoi <strong>actively deletes</strong> matching files from the target on <code>chezmoi apply</code>.</td>
+      <td>You want to ensure a file is gone — e.g., removing a deprecated config across all machines.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The distinction matters: <strong>ignore</strong> means "don't manage this file, leave whatever is on disk alone." <strong>Remove</strong> means "delete this file from the target if it exists." Ignoring is passive; removing is active.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Be careful with .chezmoiremove</div>
+  <p><code>.chezmoiremove</code> will delete files from your home directory on every <code>chezmoi apply</code>. Use it sparingly and deliberately. If you just want chezmoi to leave a file alone, <code>.chezmoiignore</code> is what you want.</p>
+</div>
+
+<h2>Exercise: Conditional Ignoring Per Machine</h2>
+
+<h3>Step 1: Create some machine-specific files</h3>
+
+<p>Add a couple of files that only belong on one machine:</p>
+
+<pre><code># Pretend these exist in your source state
+chezmoi cd
+mkdir -p dot_config/work-tools
+echo "vpn-endpoint: corp.example.com" > dot_config/work-tools/vpn.yaml
+mkdir -p dot_config/personal
+echo "backup-target: /Volumes/NAS" > dot_config/personal/backup.yaml
+exit</code></pre>
+
+<h3>Step 2: Create .chezmoiignore with conditionals</h3>
+
+<p>Create the ignore file in your source state:</p>
+
+<pre><code>chezmoi cd
+cat > .chezmoiignore << 'EOF'
+# Files that should never be applied anywhere
+README.md
+LICENSE
+*.bak
+
+# Work-only configs — ignore on personal machines
+{{- if ne .chezmoi.hostname "work-laptop" }}
+.config/work-tools/**
+{{- end }}
+
+# Personal-only configs — ignore on work machine
+{{- if eq .chezmoi.hostname "work-laptop" }}
+.config/personal/**
+{{- end }}
+EOF
+exit</code></pre>
+
+<h3>Step 3: Verify what's managed vs. ignored</h3>
+
+<p>Chezmoi gives you two commands to inspect the state:</p>
+
+<pre><code># Show all files chezmoi WILL manage on this machine
+chezmoi managed
+
+# Show all files chezmoi is IGNORING on this machine
+chezmoi ignored</code></pre>
+
+<p>On your personal machine, you should see <code>.config/work-tools/vpn.yaml</code> in the ignored list. On your work laptop, <code>.config/personal/backup.yaml</code> would be ignored instead.</p>
+
+<h3>Step 4: Test with a different hostname</h3>
+
+<p>You can preview what would happen on a different machine by overriding template data:</p>
+
+<pre><code># See what the ignore file renders to for a hypothetical machine
+chezmoi execute-template < ~/.local/share/chezmoi/.chezmoiignore</code></pre>
+
+<h3>Step 5: Commit</h3>
+
+<pre><code>chezmoi cd
+git add .chezmoiignore dot_config/
+git commit -m "chore: add machine-conditional ignore rules"
+git push
+exit</code></pre>
+
+<h2>Common Patterns</h2>
+
+<p>Beyond hostname, you can branch on any template variable:</p>
+
+<pre><code># OS-based ignoring
+{{- if eq .chezmoi.os "linux" }}
+Library/**
+{{- end }}
+
+{{- if eq .chezmoi.os "darwin" }}
+.config/i3/**
+.config/polybar/**
+{{- end }}
+
+# Custom data from .chezmoi.toml
+{{- if not .personal }}
+.config/personal/**
+{{- end }}</code></pre>
+
+<p>The <code>.personal</code> variable above would come from your <code>~/.config/chezmoi/chezmoi.toml</code>:</p>
+
+<pre><code>[data]
+  personal = true</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Subdirectory ignores</div>
+  <p>You can place <code>.chezmoiignore</code> files inside source state subdirectories too. A <code>.chezmoiignore</code> inside <code>dot_config/</code> only applies to files within <code>.config/</code>. This keeps your root ignore file from growing unwieldy.</p>
+</div>
+
+<h2>What just happened</h2>
+
+<table>
+  <thead><tr><th>Command</th><th>What it did</th></tr></thead>
+  <tbody>
+    <tr><td><code>.chezmoiignore</code></td><td>Templated list of patterns chezmoi won't manage</td></tr>
+    <tr><td><code>.chezmoiremove</code></td><td>List of patterns chezmoi will actively delete from target</td></tr>
+    <tr><td><code>chezmoi managed</code></td><td>Shows files chezmoi will apply on this machine</td></tr>
+    <tr><td><code>chezmoi ignored</code></td><td>Shows files chezmoi is skipping on this machine</td></tr>
+    <tr><td><code>chezmoi execute-template</code></td><td>Renders a template with current machine data (useful for debugging)</td></tr>
+  </tbody>
+</table>
+
+<h2>Knowledge check</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">What makes <code>.chezmoiignore</code> different from a regular <code>.gitignore</code>?</div>
+  <ul class="quiz-options">
+    <li>It uses regex instead of glob patterns</li>
+    <li>It only applies to binary files</li>
+    <li data-correct="true">It's processed as a Go template, allowing conditional logic per machine</li>
+    <li>It requires a .tmpl extension to work</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. <code>.chezmoiignore</code> is always processed as a template, even without a <code>.tmpl</code> extension. This means you can use <code>{{ if }}</code> blocks to conditionally ignore files based on hostname, OS, or custom data.</div>
+  <div class="quiz-feedback incorrect">Not quite. The key differentiator is that <code>.chezmoiignore</code> is always processed as a Go template — you can use <code>{{ if }}</code> blocks to conditionally ignore different files on different machines. No <code>.tmpl</code> extension required.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">What is the difference between <code>.chezmoiignore</code> and <code>.chezmoiremove</code>?</div>
+  <ul class="quiz-options">
+    <li data-correct="true"><code>.chezmoiignore</code> tells chezmoi to leave a file alone; <code>.chezmoiremove</code> tells chezmoi to delete it from the target</li>
+    <li><code>.chezmoiignore</code> is for source files; <code>.chezmoiremove</code> is for target files</li>
+    <li>They do the same thing but <code>.chezmoiremove</code> is the older syntax</li>
+    <li><code>.chezmoiignore</code> works per-directory; <code>.chezmoiremove</code> is global only</li>
+  </ul>
+  <div class="quiz-feedback correct">Right. Ignore is passive — chezmoi won't touch the file at all (won't create, update, or delete it). Remove is active — chezmoi will delete matching files from your home directory on every apply.</div>
+  <div class="quiz-feedback incorrect">The key distinction is passive vs. active. <code>.chezmoiignore</code> means "pretend this doesn't exist in my source" (leave the target alone). <code>.chezmoiremove</code> means "actively delete this from the target on apply."</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">Do patterns in <code>.chezmoiignore</code> match against source paths or target paths?</div>
+  <ul class="quiz-options">
+    <li>Source paths (e.g., <code>dot_gitconfig</code>)</li>
+    <li data-correct="true">Target paths (e.g., <code>.gitconfig</code>)</li>
+    <li>Both — chezmoi checks against each</li>
+    <li>It depends on whether you use the .tmpl extension</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Patterns always match against the target path — what the file will be called in your home directory. So you write <code>.gitconfig</code>, not <code>dot_gitconfig</code>.</div>
+  <div class="quiz-feedback incorrect">Patterns in <code>.chezmoiignore</code> always match against the target path (e.g., <code>.gitconfig</code>), not the source state name (e.g., <code>dot_gitconfig</code>).</div>
+</div>
+
+<h2>Next up</h2>
+
+<p>You can now keep machine-specific files in one repo without them leaking across machines. In <strong>Lesson 7: Edit Workflow</strong>, you'll learn the day-to-day editing loop — how to modify managed files, preview changes, and keep source and target in sync without surprises.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://www.chezmoi.io/reference/special-files/chezmoiignore/">chezmoi .chezmoiignore reference</a> — The full spec including pattern syntax, subdirectory behavior, and exclude (<code>!</code>) rules. ~3 minute read.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me anything about ignore patterns, conditional logic in templates, or how to structure your ignore file for multiple machines.
+</div>
+
+<div class="lesson-nav">
+  <a href="0005-secrets-and-keychain.html" class="lesson-nav-prev" title="Secrets & Keychain">← Prev</a>
+  <a href="index.html" class="lesson-nav-home" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0007-edit-workflow.html" class="lesson-nav-next" title="Edit Workflow">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
