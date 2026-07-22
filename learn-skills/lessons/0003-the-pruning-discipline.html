@@ -42,57 +42,11 @@
     .decision-tag.keep { background: rgba(48,209,88,0.15); color: #30d158; }
     .decision-tag.relocate { background: rgba(255,159,10,0.15); color: #ff9f0a; }
     .decision-tag.delete { background: rgba(255,59,48,0.15); color: #ff453a; }
-    .skill-excerpt {
-      background: var(--color-code-bg);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius);
-      padding: 1.25rem 1.5rem;
-      margin-bottom: 1.75rem;
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      line-height: 1.55;
-      white-space: pre-wrap;
-    }
-    .skill-excerpt .label {
-      font-family: var(--font-heading);
-      font-weight: 600;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--color-muted);
-      margin-bottom: 0.5rem;
-      display: block;
-    }
-    .before-after {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      margin-bottom: 1.75rem;
-    }
-    .before-after .before h4,
-    .before-after .after h4 {
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 0.3rem 0.6rem;
-      border-radius: 4px;
-      display: inline-block;
-      margin-bottom: 0.75rem;
-    }
-    .before-after .before h4 { background: rgba(255,59,48,0.08); color: var(--color-danger); }
-    .before-after .after h4 { background: rgba(48,209,88,0.08); color: #30d158; }
-    @media (max-width: 600px) {
-      .before-after { grid-template-columns: 1fr; }
-    }
     @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]) .before-after .before h4 { background: rgba(255,59,48,0.12); color: #ff453a; }
-      :root:not([data-theme="light"]) .before-after .after h4 { background: rgba(48,209,88,0.12); color: #30d158; }
       :root:not([data-theme="light"]) .decision-tag.keep { background: rgba(48,209,88,0.2); }
       :root:not([data-theme="light"]) .decision-tag.relocate { background: rgba(255,159,10,0.2); }
       :root:not([data-theme="light"]) .decision-tag.delete { background: rgba(255,59,48,0.2); }
     }
-    [data-theme="dark"] .before-after .before h4 { background: rgba(255,59,48,0.12); color: #ff453a; }
-    [data-theme="dark"] .before-after .after h4 { background: rgba(48,209,88,0.12); color: #30d158; }
     [data-theme="dark"] .decision-tag.keep { background: rgba(48,209,88,0.2); }
     [data-theme="dark"] .decision-tag.relocate { background: rgba(255,159,10,0.2); }
     [data-theme="dark"] .decision-tag.delete { background: rgba(255,59,48,0.2); }

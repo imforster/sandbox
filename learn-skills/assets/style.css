@@ -518,3 +518,75 @@ pre:hover .copy-btn { opacity: 1; }
   .diagram { font-size: 0.68rem; }
   .lesson-nav { font-size: 0.82rem; }
 }
+
+/* ─── Shared Lesson Components (learn-skills) ─── */
+
+.skill-excerpt {
+  background: var(--color-code-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.skill-excerpt .label {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.before-after {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.before-after > div {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.before-after h4 {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.before-after .before h4 { background: rgba(255,59,48,0.08); color: #991b1b; }
+.before-after .after h4 { background: rgba(48,209,88,0.08); color: #065f46; }
+
+.before-after pre {
+  margin: 0;
+  padding: 1rem;
+  font-size: 0.78rem;
+  border-radius: 0;
+  border: none;
+}
+
+@media (max-width: 600px) {
+  .before-after { grid-template-columns: 1fr; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .before-after .before h4 { background: rgba(255,59,48,0.12); color: #ff453a; }
+  :root:not([data-theme="light"]) .before-after .after h4 { background: rgba(48,209,88,0.12); color: #30d158; }
+  :root:not([data-theme="light"]) .skill-excerpt { color: var(--color-text); }
+}
+
+[data-theme="dark"] .before-after .before h4 { background: rgba(255,59,48,0.12); color: #ff453a; }
+[data-theme="dark"] .before-after .after h4 { background: rgba(48,209,88,0.12); color: #30d158; }
+[data-theme="dark"] .skill-excerpt { color: var(--color-text); }
