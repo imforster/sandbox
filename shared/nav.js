@@ -251,6 +251,7 @@
   const links = [
     { label: 'Projects', items: [
       { text: 'Sandbox Home', href: '/sandbox/' },
+      { text: 'Learning', href: '/sandbox/learning/' },
       { text: 'Brain Dump', href: '/sandbox/brain-dump/brain-dump.html' },
       { text: 'DSQL Golden Path', href: '/sandbox/dsql-goldenpath/index.html' },
       { text: 'CIBC Analyzer', href: '/sandbox/cibc-analyzer/index.html' },
