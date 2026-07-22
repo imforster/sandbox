@@ -47,6 +47,33 @@
         }
         .back-link:hover { opacity: 0.7; }
 
+        .hero-image {
+            width: 100%;
+            max-width: 100%;
+            height: 240px;
+            margin-bottom: 2.5rem;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .hero-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .hero-image::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.2) 100%);
+            border-radius: 20px;
+            pointer-events: none;
+        }
+
         .header h1 {
             font-size: 3rem;
             font-weight: 700;
@@ -177,6 +204,7 @@
             .header h1 { font-size: 2.2rem; }
             .grid { grid-template-columns: 1fr; }
             .page { padding: 0 1.25rem; }
+            .hero-image { height: 160px; border-radius: 14px; }
         }
 
         @media (prefers-color-scheme: dark) {
@@ -204,6 +232,11 @@
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 10 4 6 8 2"/></svg>
                 Sandbox
             </a>
+
+            <div class="hero-image">
+                <img src="hero-learning.jpg" alt="Sunlight streaming through tall forest trees along a path" loading="eager">
+            </div>
+
             <h1>Learning</h1>
             <p>Interactive courses on agent skills, infrastructure, version control, and developer tools. Each course includes quizzes, exercises, and a glossary.</p>
         </div>
@@ -296,6 +329,7 @@
 
         <footer class="footer">
             <a href="../" style="color: var(--text-tertiary); text-decoration: none;">← Back to Sandbox</a>
+            <br><span style="margin-top: 0.5rem; display: inline-block;">Photo by <a href="https://unsplash.com/@jplenio" style="color: var(--text-tertiary); text-decoration: underline;">Johannes Plenio</a> on Unsplash</span>
         </footer>
     </div>
     <script src="/sandbox/shared/theme.js"></script>
