@@ -198,6 +198,13 @@
   .event .skilltag{
     font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--trail); margin-top:8px; display:inline-block;
   }
+  .event .gh-link{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.03em;
+    color:var(--sage); text-decoration:none; padding:2px 8px; border-radius:100px;
+    border:1px solid rgba(92,122,99,0.4); margin-left:auto;
+    transition: color .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .event .gh-link:hover{ color:var(--paper); border-color:var(--sage); background:rgba(92,122,99,0.25); }
   .empty-state{
     text-align:center; padding:60px 20px; color:rgba(239,232,216,0.45); font-family:'IBM Plex Mono',monospace; font-size:13px;
   }
@@ -349,12 +356,12 @@ const CATEGORY_META = {
 
 const EVENTS = [
 {d:'2026-02-03', cat:'launch', t:'First commit', desc:'The repo begins as a private grab-bag: a TDD skill note and a "migrate to shoehorn" script. No taxonomy yet — just working notes.'},
-{d:'2026-02-10', cat:'added', t:'git-guardrails', desc:'A script-backed skill to block dangerous git commands lands early — the first sign these skills would carry real guardrails, not just prompts.'},
+{d:'2026-02-10', cat:'added', t:'git-guardrails', desc:'A script-backed skill to block dangerous git commands lands early — the first sign these skills would carry real guardrails, not just prompts.', gh:'https://github.com/mattpocock/skills/tree/main/skills/engineering/git-guardrails'},
 {d:'2026-03-02', cat:'added', t:'prd-to-plan', desc:'An early planning skill — the distant ancestor of what becomes to-tickets five months later.', skill:'to-tickets lineage'},
 {d:'2026-03-13', cat:'launch', t:'The repo becomes a project', desc:'First README, MIT license, and standardized skill metadata (frontmatter cleanup, dropping "-user" suffixes). Public shape starts to form.'},
 {d:'2026-03-16', cat:'added', t:'ubiquitous-language', desc:'A DDD-flavored skill for keeping glossary terms consistent in code. Later deprecated once domain-modeling absorbs the idea.', skill:'later deprecated'},
 {d:'2026-03-26', cat:'philosophy', t:'"Ask one question at a time"', desc:'An early, small instruction added to grill-me — the seed of what becomes an entire interview discipline (grilling) months later.'},
-{d:'2026-04-01', cat:'added', t:'GitHub issue triage brief', desc:'An agent brief and an out-of-scope doc are added for issue triage — the first appearance of the "out of scope" pattern used throughout the repo today.'},
+{d:'2026-04-01', cat:'added', t:'GitHub issue triage brief', desc:'An agent brief and an out-of-scope doc are added for issue triage — the first appearance of the "out of scope" pattern used throughout the repo today.', gh:'https://github.com/mattpocock/skills/tree/main/skills/engineering/triage'},
 {d:'2026-04-17', cat:'renamed', t:'write-a-prd → to-prd, prd-to-issues → to-issues', desc:'The planning skills get their working names. prd-to-plan is removed as redundant. domain-model and a short-lived "caveman" skill are added.'},
 {d:'2026-04-22', cat:'philosophy', t:'"CONTEXT.md is a glossary, not a spec"', desc:'A pivotal clarification: the shared-vocabulary doc should hold meaningful domain terms for humans and agents alike, not implementation detail. This framing survives to today\'s domain-modeling skill.'},
 {d:'2026-04-24', cat:'architecture', t:'LANGUAGE.md — the first shared vocabulary file', desc:'A shared-language file is carved out inside improve-codebase-architecture. This is the literal seed of the codebase-design skill that gets extracted two months later.'},
@@ -363,23 +370,23 @@ const EVENTS = [
 {d:'2026-04-28', cat:'removed', t:'triage-issue deprecated', desc:'Superseded by the new unified triage skill under the new bucket system.'},
 {d:'2026-04-29', cat:'architecture', t:'GitLab becomes first-class', desc:'Issue-tracker abstraction extends past GitHub, plus an out-of-scope note: only mainstream trackers are supported.'},
 {d:'2026-04-30', cat:'architecture', t:'Verify / check mode documented', desc:'A discipline for confirming setup worked, plus a list-skills script — early tooling investment beyond the SKILL.md files themselves.'},
-{d:'2026-05-06', cat:'added', t:'prototype', desc:'Throwaway code for answering a design question — later becomes model-invoked and gets reframed twice more in July.'},
-{d:'2026-05-06', cat:'added', t:'handoff', desc:'Compacting a conversation into a document so another agent session can continue the work.'},
+{d:'2026-05-06', cat:'added', t:'prototype', desc:'Throwaway code for answering a design question — later becomes model-invoked and gets reframed twice more in July.', gh:'https://github.com/mattpocock/skills/tree/main/skills/engineering/prototype'},
+{d:'2026-05-06', cat:'added', t:'handoff', desc:'Compacting a conversation into a document so another agent session can continue the work.', gh:'https://github.com/mattpocock/skills/tree/main/skills/engineering/handoff'},
 {d:'2026-05-10', cat:'added', t:'review (in-progress)', desc:'The first version of what becomes code-review two months later — two-axis review of a diff.'},
 {d:'2026-05-19', cat:'philosophy', t:'Redaction added to handoff', desc:'Security-consciousness enters the handoff skill: sensitive details get redacted before being passed to the next agent session.'},
-{d:'2026-05-27', cat:'added', t:'teach', desc:'A multi-session teaching skill, immediately moved to in-progress — it bounces between productivity and in-progress twice before settling.'},
+{d:'2026-05-27', cat:'added', t:'teach', desc:'A multi-session teaching skill, immediately moved to in-progress — it bounces between productivity and in-progress twice before settling.', gh:'https://github.com/mattpocock/skills/tree/main/skills/productivity/teach'},
 {d:'2026-06-03', cat:'philosophy', t:'"Prefactoring"', desc:'An idea explored around restructuring code before adding a feature, rather than after — feeds into later codebase-design thinking.'},
 {d:'2026-06-08', cat:'added', t:'teach graduates', desc:'Citations, interactivity guidance, and a reusable-components model (build lessons from ./assets/ rather than inlining) land.'},
-{d:'2026-06-10', cat:'added', t:'implement', desc:'The skill that drives red-green-refactor at pre-agreed seams and closes out with code-review before committing.'},
+{d:'2026-06-10', cat:'added', t:'implement', desc:'The skill that drives red-green-refactor at pre-agreed seams and closes out with code-review before committing.', gh:'https://github.com/mattpocock/skills/tree/main/skills/engineering/implement'},
 {d:'2026-06-15', cat:'added', t:'decision-mapping', desc:'The first draft of what becomes wayfinder. Starts in engineering, gets demoted to in-progress almost immediately, then renamed twice before its July promotion.', skill:'→ wayfinding → wayfinder'},
-{d:'2026-06-17', cat:'milestone', t:'v1.0.0 — the ask-matt release', desc:'A major architectural day: ask-matt (router skill) is added; codebase-design and domain-modeling are extracted as standalone shared-vocabulary skills; caveman and zoom-out are removed as unused; write-a-skill becomes writing-great-skills; diagnose becomes diagnosing-bugs; resolving-merge-conflicts is added; and the whole taxonomy is renamed from Commands/Skills to User-invoked/Model-invoked.'},
+{d:'2026-06-17', cat:'milestone', t:'v1.0.0 — the ask-matt release', desc:'A major architectural day: ask-matt (router skill) is added; codebase-design and domain-modeling are extracted as standalone shared-vocabulary skills; caveman and zoom-out are removed as unused; write-a-skill becomes writing-great-skills; diagnose becomes diagnosing-bugs; resolving-merge-conflicts is added; and the whole taxonomy is renamed from Commands/Skills to User-invoked/Model-invoked.', gh:'https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills'},
 {d:'2026-06-18', cat:'architecture', t:'Triage learns to handle pull requests', desc:'PRs now flow through the same state machine as issues, treated as an issue with attached code.'},
 {d:'2026-06-29', cat:'architecture', t:'prototype becomes model-invoked', desc:'The agent can now reach for it autonomously rather than waiting to be asked — description rewritten around the leading word "prototype".'},
-{d:'2026-07-01', cat:'added', t:'research', desc:'A model-invoked skill that spins up a background agent to investigate a question against primary sources and leaves a cited markdown file behind.'},
+{d:'2026-07-01', cat:'added', t:'research', desc:'A model-invoked skill that spins up a background agent to investigate a question against primary sources and leaves a cited markdown file behind.', gh:'https://github.com/mattpocock/skills/tree/main/skills/engineering/research'},
 {d:'2026-07-01', cat:'architecture', t:'ask-matt catches up', desc:'The router is updated to map five skills it had been silently missing: tdd, diagnosing-bugs, domain-modeling, codebase-design, and grilling.'},
 {d:'2026-07-02', cat:'renamed', t:'Planning skills unified into to-tickets', desc:'to-plan and to-issues are merged into a single to-tickets skill; to-prd is renamed to-spec. "Spec" becomes the single through-line term across the repo.'},
-{d:'2026-07-06', cat:'promoted', t:'wayfinder graduates to engineering', desc:'decision-mapping\'s final form. A full reframe around fog-of-war / frontier / destination, a fourth "task" ticket type, HITL vs AFK ticket classification, and native issue-tracker blocking edges so multiple agents can work the frontier at once.', skill:'engineering, user-invoked'},
-{d:'2026-07-06', cat:'promoted', t:'code-review graduates to engineering', desc:'review is renamed code-review and gains an always-on Fowler smell baseline (Mysterious Name, Feature Envy, Shotgun Surgery, and 9 more) alongside repo-specific standards.', skill:'engineering, model-invoked'},
+{d:'2026-07-06', cat:'promoted', t:'wayfinder graduates to engineering', desc:'decision-mapping\'s final form. A full reframe around fog-of-war / frontier / destination, a fourth "task" ticket type, HITL vs AFK ticket classification, and native issue-tracker blocking edges so multiple agents can work the frontier at once.', skill:'engineering, user-invoked', gh:'https://github.com/mattpocock/skills/tree/main/skills/engineering/wayfinder'},
+{d:'2026-07-06', cat:'promoted', t:'code-review graduates to engineering', desc:'review is renamed code-review and gains an always-on Fowler smell baseline (Mysterious Name, Feature Envy, Shotgun Surgery, and 9 more) alongside repo-specific standards.', skill:'engineering, model-invoked', gh:'https://github.com/mattpocock/skills/tree/main/skills/engineering/code-review'},
 {d:'2026-07-07', cat:'philosophy', t:'wayfinder settles as an on-ramp, not the front door', desc:'A deliberate scoping decision: the grill-led idea → spec → tickets → implement chain stays the default entry flow. Crowning wayfinder as the new spine is called out as "a v2-sized move, not a 1.1."'},
 {d:'2026-07-08', cat:'architecture', t:'Fixing a broken indirection', desc:'wayfinder had hardcoded the issue-tracker doc path, silently breaking in repos that keep agent docs elsewhere. Fixed to resolve the path through the same CLAUDE.md pointer every other skill uses.'},
 {d:'2026-07-08', cat:'milestone', t:'v1.1.0 ships', desc:'The version bump that bundles wayfinder\'s graduation, code-review\'s promotion, research, grilling\'s confirmation gate, and the facts-vs-decisions split.'},
@@ -608,7 +615,7 @@ function renderTrail(){
       const el = document.createElement('div');
       el.className='event';
       el.style.setProperty('--cat-color', meta.color);
-      el.innerHTML = `<div class="row1"><span class="date">${ev.d}</span><span class="cat">${meta.label}</span></div>
+      el.innerHTML = `<div class="row1"><span class="date">${ev.d}</span><span class="cat">${meta.label}</span>${ev.gh ? `<a href="${ev.gh}" target="_blank" rel="noopener" class="gh-link" title="View on GitHub">↗ GitHub</a>` : ''}</div>
         <h3>${ev.t}</h3><p>${ev.desc}</p>
         ${ev.skill ? `<span class="skilltag">↳ ${ev.skill}</span>` : ''}`;
       evWrap.appendChild(el);
