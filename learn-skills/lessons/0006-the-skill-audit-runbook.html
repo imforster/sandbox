@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6: The Skill Audit Runbook</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .audit-step {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+      display: grid;
+      grid-template-columns: 3.5rem 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+    .audit-step .time {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--color-accent);
+      font-weight: 600;
+      padding-top: 0.2rem;
+    }
+    .audit-step h4 { margin-top: 0; margin-bottom: 0.3rem; font-size: 0.95rem; }
+    .audit-step p { margin: 0; font-size: 0.9rem; color: var(--color-muted); }
+    .score-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .score-card h3 { margin-top: 0; color: var(--color-accent); }
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .score-item {
+      text-align: center;
+      padding: 0.75rem 0.5rem;
+      border-radius: var(--radius);
+      background: var(--color-code-bg);
+    }
+    .score-item .axis { font-size: 0.75rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+    .score-item .score { font-size: 1.5rem; font-weight: 700; color: var(--color-accent); }
+    .score-item .score.needs-work { color: var(--color-danger); }
+    .score-item .score.solid { color: #ff9f0a; }
+    .score-item .score.exemplary { color: #30d158; }
+    .ref-card {
+      background: var(--color-card-bg);
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+      font-size: 0.85rem;
+    }
+    .ref-card h3 { margin-top: 0; font-size: 1rem; }
+    .ref-card ol { margin-bottom: 0; }
+    .skill-excerpt {
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .skill-excerpt .label {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+    .calendar-table {
+      width: 100%;
+      font-size: 0.85rem;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+    }
+    .calendar-table th, .calendar-table td {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--color-border);
+      text-align: left;
+    }
+    .calendar-table th {
+      background: var(--color-card-bg);
+      font-weight: 600;
+    }
+    @media (max-width: 600px) {
+      .score-grid { grid-template-columns: repeat(2, 1fr); }
+      .audit-step { grid-template-columns: 1fr; }
+      .audit-step .time { padding-top: 0; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .score-item .score.needs-work { color: #ff453a; }
+      :root:not([data-theme="light"]) .score-item .score.exemplary { color: #30d158; }
+      :root:not([data-theme="light"]) .ref-card { border-color: var(--color-border); }
+    }
+    [data-theme="dark"] .score-item .score.needs-work { color: #ff453a; }
+    [data-theme="dark"] .score-item .score.exemplary { color: #30d158; }
+    [data-theme="dark"] .ref-card { border-color: var(--color-border); }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0005-invocation-architecture.html" class="lesson-back-top" title="Invocation Architecture"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span></span></nav>
+
+<h1>The Skill Audit Runbook</h1>
+
+<div class="lesson-meta">
+  Lesson 6 · Building Better Skills & Agents · ~16 minutes
+</div>
+
+<p>This is the capstone. Lessons 1–5 gave you vocabulary (axes), discipline (steering, pruning), perspective (lifecycles), and architecture (invocation). This lesson synthesises all of it into a publishable, repeatable audit method you can run on any skill — yours or someone else's.</p>
+
+<h2>The Two-Minute Audit</h2>
+
+<p>For monthly maintenance. Run this on every skill that's been modified or invoked recently. Total time: 120 seconds per skill.</p>
+
+<div class="audit-step">
+  <div class="time">5s</div>
+  <div>
+    <h4>1. Invocation Check</h4>
+    <p>Is it model-invoked or user-invoked? Is that the right mode? Is the description pulling its weight as a routing signal (model-invoked) or a discovery aid (user-invoked)?</p>
+  </div>
+</div>
+
+<div class="audit-step">
+  <div class="time">10s</div>
+  <div>
+    <h4>2. Hierarchy Scan</h4>
+    <p>Can you find the workflow steps within 3 seconds of opening the file? Is reference material disclosed progressively or sprawled upfront? If you can't find the steps immediately, the agent can't either.</p>
+  </div>
+</div>
+
+<div class="audit-step">
+  <div class="time">60s</div>
+  <div>
+    <h4>3. Steering Sweep</h4>
+    <p>Scan for negations (reframe positively). Check each step's completion criterion — is "done" defined? Look for leading words that cheaply anchor behaviour. Flag any step that could end prematurely.</p>
+  </div>
+</div>
+
+<div class="audit-step">
+  <div class="time">45s</div>
+  <div>
+    <h4>4. Pruning Pass</h4>
+    <p>Run the deletion test on every rule: "If I remove this, what changes?" Flag no-ops and duplicates. Check for sediment from previous skill versions that was never cleaned up.</p>
+  </div>
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">The two-minute target is real</div>
+  <p>With practice, you can audit a skill in under two minutes. The constraint is the point — it forces you to look at structure, not content. If a skill's quality isn't visible in two minutes, it has a hierarchy problem.</p>
+</div>
+
+<h2>The Deep Audit</h2>
+
+<p>For quarterly reviews. Run this on your full portfolio — not skill-by-skill, but portfolio-wide.</p>
+
+<h3>Lifecycle Check</h3>
+<p>For each skill: should it be promoted, renamed, merged, or killed? Use the signals from Lesson 4:</p>
+<ul>
+  <li><strong>Promotion:</strong> proven in use + clear scope + good name</li>
+  <li><strong>Rename:</strong> you explain what it "actually" does</li>
+  <li><strong>Merge:</strong> you hesitate between two skills</li>
+  <li><strong>Kill:</strong> 60+ days since last invocation, no regret</li>
+</ul>
+
+<h3>Context Budget</h3>
+<p>Recalculate: how many model-invoked skills × average description length = total context rent. Has it grown since last quarter? Should any skills switch to user-invoked?</p>
+
+<h3>Cross-Skill Coherence</h3>
+<ul>
+  <li><strong>Term consistency:</strong> Do all skills use the same vocabulary for the same concepts? ("deliverable" vs "output" vs "artifact" — pick one.)</li>
+  <li><strong>Duplication between skills:</strong> Are two skills teaching the same rule? (Both architect and code-review saying "be DRY" — put it in one place.)</li>
+  <li><strong>Dependency alignment:</strong> If skill A depends on skill B's vocabulary, does skill A reference it or redefine it?</li>
+</ul>
+
+<h2>The Scoring Rubric</h2>
+
+<p>Rate each axis 1–3:</p>
+
+<table class="calendar-table">
+  <thead><tr><th>Score</th><th>Invocation</th><th>Hierarchy</th><th>Steering</th><th>Pruning</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>1 — Needs work</strong></td>
+      <td>Wrong mode, or description doesn't route</td>
+      <td>Steps hard to find, reference sprawled</td>
+      <td>Negations, missing completion criteria, no leading words</td>
+      <td>Multiple no-ops, visible sediment, duplication</td>
+    </tr>
+    <tr>
+      <td><strong>2 — Solid</strong></td>
+      <td>Right mode, description adequate</td>
+      <td>Steps findable in 5s, some disclosure</td>
+      <td>Few negations, most criteria clear, some leading words</td>
+      <td>Minor sediment, no obvious no-ops</td>
+    </tr>
+    <tr>
+      <td><strong>3 — Exemplary</strong></td>
+      <td>Right mode, description precisely triggers correct invocation</td>
+      <td>Steps in 3s, progressive disclosure, no sprawl</td>
+      <td>Zero negations, every step has completion criterion, strong leading words</td>
+      <td>Every line is load-bearing, zero duplication</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Worked Example: Auditing <code>write-a-skill</code></h2>
+
+<p>Let's run the full audit on a real skill:</p>
+
+<div class="skill-excerpt"><span class="label">~/.kiro/skills/write-a-skill/SKILL.md</span>
+name: write-a-skill
+description: Create new agent skills with proper structure,
+  progressive disclosure, and bundled resources. Use when user
+  wants to create, write, or build a new skill.
+dependencies: ["writing-great-skills"]
+
+&lt;objective&gt;
+Help the user create a well-structured skill. Gather
+requirements, draft it, review with the user.
+&lt;/objective&gt;
+
+&lt;workflow&gt;
+## 1. Gather requirements
+Ask:
+- What task/domain does the skill cover?
+- What specific use cases should it handle?
+- Does it need executable scripts or just instructions?
+- Any reference materials to include?
+
+## 2. Draft the skill
+Structure:
+  skill-name/
+  ├── SKILL.md
+  ├── REFERENCE.md
+  ├── EXAMPLES.md
+  └── scripts/
+
+## 3. Review with user
+- Does this cover your use cases?
+- Anything missing or unclear?
+- Should any section be more/less detailed?
+&lt;/workflow&gt;</span>
+
+<h3>Audit Results</h3>
+
+<div class="score-card">
+  <h3>write-a-skill — Scores</h3>
+  <div class="score-grid">
+    <div class="score-item">
+      <div class="axis">Invocation</div>
+      <div class="score exemplary">3</div>
+    </div>
+    <div class="score-item">
+      <div class="axis">Hierarchy</div>
+      <div class="score solid">2</div>
+    </div>
+    <div class="score-item">
+      <div class="axis">Steering</div>
+      <div class="score needs-work">1</div>
+    </div>
+    <div class="score-item">
+      <div class="axis">Pruning</div>
+      <div class="score solid">2</div>
+    </div>
+  </div>
+</div>
+
+<table class="calendar-table">
+  <thead><tr><th>Axis</th><th>Finding</th><th>Score</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Invocation</strong></td>
+      <td>User-invoked (correct — skill authoring is a deliberate act). Description has clear triggers ("create, write, or build a new skill"). 26 words — efficient.</td>
+      <td><strong>3</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Hierarchy</strong></td>
+      <td>Steps findable within 5 seconds (numbered workflow). But the "Description requirements", "When to split files", and "Review checklist" sections are mixed into the workflow instead of being progressively disclosed in a REFERENCE.md.</td>
+      <td><strong>2</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Steering</strong></td>
+      <td>No completion criteria on any step. Step 1 asks 4 questions — but when is "gather requirements" done? After all 4? After 2? The agent can end prematurely or keep asking forever. No leading words anchor the drafting style. No branch handling (what if user already has a draft?).</td>
+      <td><strong>1</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Pruning</strong></td>
+      <td>Relatively lean (under 100 lines). But the "Review checklist" partially duplicates the "Description requirements" section (both mention triggers). Minor sediment: the file structure diagram is static reference that could be in REFERENCE.md.</td>
+      <td><strong>2</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Highest-Leverage Improvement</h3>
+<p>Add completion criteria to each workflow step. Step 1 is done when: all 4 questions are answered OR user says "just draft it." Step 2 is done when: SKILL.md is written and shown to user. Step 3 is done when: user confirms or provides revisions. This single change would move Steering from 1 to 2.</p>
+
+<h2>The Maintenance Calendar</h2>
+
+<table class="calendar-table">
+  <thead><tr><th>Cadence</th><th>What</th><th>Time</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Monthly</strong></td><td>Two-Minute Audit on every skill modified or invoked that month</td><td>~30 min for 15 skills</td></tr>
+    <tr><td><strong>Quarterly</strong></td><td>Deep Audit — lifecycle check, context budget, cross-skill coherence</td><td>~2 hours for full portfolio</td></tr>
+    <tr><td><strong>Annual</strong></td><td>Lifecycle review — kill dormant skills, assess if the portfolio structure still matches your workflow</td><td>~1 hour</td></tr>
+  </tbody>
+</table>
+
+<h2>The Reference Card</h2>
+
+<p>A one-page summary of the method, structured for printing or pinning:</p>
+
+<div class="ref-card">
+  <h3>Skill Audit — Quick Reference</h3>
+  <ol>
+    <li><strong>Invocation (5s):</strong> Right mode? Description routes correctly?</li>
+    <li><strong>Hierarchy (10s):</strong> Steps in 3 seconds? Reference disclosed progressively?</li>
+    <li><strong>Steering (60s):</strong> Negations? Completion criteria? Leading words?</li>
+    <li><strong>Pruning (45s):</strong> Deletion test every rule. No-ops? Sediment? Duplication?</li>
+  </ol>
+  <p><strong>Score:</strong> Rate each 1–3. Priority: fix lowest score first.</p>
+  <p><strong>Lifecycle:</strong> Promote (proven + scoped + named) · Rename (name misleads) · Merge (unclear boundary) · Kill (60+ days unused)</p>
+  <p><strong>Context Budget:</strong> model-invoked count × avg description words = total rent</p>
+  <p><strong>Cadence:</strong> Monthly quick audit · Quarterly deep audit · Annual lifecycle cull</p>
+</div>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">You're running a Two-Minute Audit and find a skill with this workflow step: "Write good documentation." There's no completion criterion. What's the primary issue?</div>
+  <ul class="quiz-options">
+    <li>Pruning — it's a no-op that should be deleted</li>
+    <li>Hierarchy — it's in the wrong section</li>
+    <li data-correct="true">Steering — missing completion criterion means the agent doesn't know when "done" is reached</li>
+    <li>Invocation — the description should mention documentation</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. A step without a completion criterion is a steering failure — the agent has no signal for when to stop. "Write good documentation" could mean a one-line README or a 50-page manual. Add a criterion: "Done when: README.md exists with install, usage, and API sections."</div>
+  <div class="quiz-feedback incorrect">This is primarily a steering issue. "Write good documentation" has no completion criterion — the agent doesn't know what "done" looks like. It might also be a no-op (pruning), but the steering failure is more critical because it causes premature completion or endless work.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">During a quarterly Deep Audit, you find that both your "architect" skill and your "code-review" skill say "Apply DRY principles." What's this?</div>
+  <ul class="quiz-options">
+    <li>Acceptable — reinforcement across skills is helpful</li>
+    <li data-correct="true">Cross-skill duplication — the same rule exists in two places, creating a maintenance burden</li>
+    <li>A merge signal — these two skills should be combined</li>
+    <li>A hierarchy issue — DRY should be in a reference file</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Cross-skill duplication means the same rule is maintained in multiple places. If you update how you think about DRY in one skill, you must remember to update the other. The fix: define it in one place (a shared dependency or the user's me.md principles) and reference it.</div>
+  <div class="quiz-feedback incorrect">This is cross-skill duplication — a coherence issue found during deep audits. Having "Apply DRY" in two skills means two maintenance points. It's not a merge signal (the skills serve different purposes) and it's not acceptable reinforcement (repetition between skills creates drift). Put it in one place.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">A skill scores: Invocation 3, Hierarchy 3, Steering 2, Pruning 1. Where do you focus improvement effort?</div>
+  <ul class="quiz-options">
+    <li>Steering — it's lower than Invocation and Hierarchy</li>
+    <li>Invocation — maintain the exemplary score</li>
+    <li data-correct="true">Pruning — fix the lowest score first, it has the highest leverage</li>
+    <li>All four equally — balanced improvement is best</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Fix the lowest score first. A Pruning score of 1 means no-ops, sediment, or duplication are actively diluting the skill's signal. Cleaning those out is the highest-leverage improvement — it makes the steering rules more visible by removing noise around them.</div>
+  <div class="quiz-feedback incorrect">Always fix the lowest score first. Pruning at 1 means the skill has dead weight — no-ops, sediment, or duplication — that actively dilutes everything else. Fixing pruning also improves perceived steering quality because load-bearing instructions become more prominent once noise is removed.</div>
+</div>
+
+<div class="quiz" id="quiz-4">
+  <div class="quiz-question">You run the maintenance calendar for a quarter. Your portfolio grew from 28 to 35 skills. Context budget went from ~1,200 to ~1,800 words. What's the right action?</div>
+  <ul class="quiz-options">
+    <li>Accept the growth — more skills means more capability</li>
+    <li>Convert all new skills to user-invoked</li>
+    <li data-correct="true">Audit the 7 new skills for correct invocation mode, and check if any existing model-invoked skills should switch to user-invoked given the higher budget</li>
+    <li>Set a hard cap at 30 model-invoked skills and remove the rest</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Growth isn't inherently bad, but 50% context budget growth in one quarter demands scrutiny. Audit each new skill's invocation mode. Also revisit existing skills — some that were worth the context rent at 1,200 words might not be at 1,800. The goal is intentional budget allocation, not arbitrary caps.</div>
+  <div class="quiz-feedback incorrect">A 50% context budget increase in one quarter needs investigation, not acceptance or blanket rules. Audit each new skill individually — is model-invocation justified? Then revisit existing ones. Some skills that earned their context rent at lower portfolio sizes may not justify it as the total grows.</div>
+</div>
+
+<h2>Your Exercise</h2>
+
+<ol>
+  <li>Pick your 3 most-used skills (the ones you invoke most often).</li>
+  <li>Run the full Two-Minute Audit on each. Score all four axes 1–3.</li>
+  <li>For each, identify the single highest-leverage improvement (lowest score → highest impact fix).</li>
+  <li>Implement at least one improvement. Re-score after.</li>
+  <li>Run the context budget calculation for your full portfolio. Is it sustainable?</li>
+</ol>
+
+<div class="callout tip">
+  <div class="callout-title">The final insight</div>
+  <p>You now have a methodology. It's not a one-time exercise — it's a maintenance practice. Skills that are audited regularly stay sharp. Skills that aren't drift toward sediment, duplication, and stale invocation modes. The calendar is the mechanism. Publish it, teach it, refine it.</p>
+</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="../reference/agents-at-scale.html">Agents at Scale — Lesson 10: Anti-Patterns</a> — The enterprise governance angle: what happens when skill portfolios are managed across teams, not just individuals. The audit discipline scales from 30 skills to 300.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Send me your 3 audit scorecards and I'll validate your ratings, challenge anything that looks generous, and help you prioritise the fixes.
+</div>
+
+<div class="lesson-nav">
+  <a href="0005-invocation-architecture.html" title="Invocation Architecture">← Prev</a>
+  <a href="index.html" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <span></span>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/theme.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

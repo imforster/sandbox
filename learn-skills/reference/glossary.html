@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glossary — Building Better Skills</title>
+    <style>
+        :root {
+            --bg: #fbfbfd;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #86868b;
+            --accent: #0071e3;
+            --border: rgba(0, 0, 0, 0.06);
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --search-bg: #f5f5f7;
+            --radius: 12px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #000000;
+                --text-primary: #f5f5f7;
+                --text-secondary: #a1a1a6;
+                --text-tertiary: #6e6e73;
+                --accent: #64d2ff;
+                --border: rgba(255, 255, 255, 0.08);
+                --card-bg: rgba(28, 28, 30, 0.72);
+                --search-bg: rgba(28, 28, 30, 0.9);
+            }
+        }
+
+        [data-theme="dark"] {
+            --bg: #000000;
+            --text-primary: #f5f5f7;
+            --text-secondary: #a1a1a6;
+            --text-tertiary: #6e6e73;
+            --accent: #64d2ff;
+            --border: rgba(255, 255, 255, 0.08);
+            --card-bg: rgba(28, 28, 30, 0.72);
+            --search-bg: rgba(28, 28, 30, 0.9);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            line-height: 1.5;
+        }
+
+        .page { max-width: 720px; margin: 0 auto; padding: 0 2rem 4rem; }
+        .back-nav { padding: 1.5rem 0; }
+        .back-nav a { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; font-weight: 400; color: var(--accent); text-decoration: none; transition: opacity 0.2s; }
+        .back-nav a:hover { opacity: 0.7; }
+        .glossary-header { padding: 2rem 0 2.5rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+        .glossary-header h1 { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+        .glossary-header p { font-size: 1.05rem; color: var(--text-secondary); max-width: 540px; }
+        .search-container { position: sticky; top: 0; z-index: 100; background: var(--bg); padding: 1rem 0; }
+        .search-input { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; font-size: 1rem; font-family: inherit; background: var(--search-bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+        .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1); }
+        .search-input::placeholder { color: var(--text-tertiary); }
+        .search-wrapper { position: relative; }
+        .search-icon { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); pointer-events: none; }
+        .search-count { font-size: 0.8rem; color: var(--text-tertiary); margin-top: 0.5rem; min-height: 1.2em; }
+        .letter-group { margin-top: 2rem; }
+        .letter-heading { font-size: 1.4rem; font-weight: 700; color: var(--text-primary); padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); margin-bottom: 0; position: sticky; top: 4.5rem; background: var(--bg); z-index: 50; }
+        .term-entry { padding: 1.25rem 0; border-bottom: 1px solid var(--border); transition: opacity 0.2s; }
+        .term-entry:last-child { border-bottom: none; }
+        .term-entry.hidden { display: none; }
+        .term-name { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.35rem; letter-spacing: -0.01em; }
+        .term-name .failure-badge { font-size: 0.7rem; font-weight: 600; color: #ff3b30; border: 1px solid #ff3b30; border-radius: 100px; padding: 1px 6px; margin-left: 0.5rem; vertical-align: middle; }
+        .term-def { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; }
+        .letter-index { position: fixed; right: 1.5rem; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 0.15rem; z-index: 200; }
+        .letter-index a { font-size: 0.7rem; font-weight: 600; color: var(--text-tertiary); text-decoration: none; padding: 0.15rem 0.4rem; border-radius: 4px; text-align: center; transition: color 0.15s, background 0.15s; }
+        .letter-index a:hover { color: var(--accent); background: var(--search-bg); }
+        .no-results { text-align: center; padding: 3rem 1rem; color: var(--text-tertiary); font-size: 1rem; display: none; }
+        @media (max-width: 900px) { .letter-index { display: none; } }
+        @media (max-width: 600px) { .page { padding: 0 1.25rem 3rem; } .glossary-header h1 { font-size: 2rem; } .letter-heading { top: 4rem; } }
+    </style>
+</head>
+<body>
+
+<div class="page">
+    <nav class="back-nav">
+        <a href="../lessons/index.html">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 10 4 6 8 2"/></svg>
+            Lessons
+        </a>
+    </nav>
+
+    <header class="glossary-header">
+        <h1>Glossary</h1>
+        <p>The vocabulary of skill predictability — invocation, hierarchy, steering, and pruning concepts with their failure modes.</p>
+    </header>
+
+    <div class="search-container">
+        <div class="search-wrapper">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg>
+            <input type="text" class="search-input" placeholder="Filter terms…" id="search" autocomplete="off">
+        </div>
+        <div class="search-count" id="count"></div>
+    </div>
+
+    <div class="no-results" id="no-results">No matching terms found.</div>
+
+    <div id="glossary-content">
+        <div class="letter-group" data-letter="B">
+            <div class="letter-heading">B</div>
+            <div class="term-entry" data-term="branch">
+                <div class="term-name">Branch</div>
+                <div class="term-def">A distinct way a skill can be invoked — a case it handles, so different runs take different paths through the same skill file.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="C">
+            <div class="letter-heading">C</div>
+            <div class="term-entry" data-term="co-location">
+                <div class="term-name">Co-location</div>
+                <div class="term-def">Keeping everything needed at once — a term's definition, rules, caveats — under one heading rather than scattered across the skill file.</div>
+            </div>
+            <div class="term-entry" data-term="cognitive load">
+                <div class="term-name">Cognitive Load</div>
+                <div class="term-def">The cost a user-invoked skill puts on the human — remembering it exists and when to reach for it. The price of human agency, not a bug.</div>
+            </div>
+            <div class="term-entry" data-term="completion criterion">
+                <div class="term-name">Completion Criterion</div>
+                <div class="term-def">The condition that tells the agent a step is done. Clarity resists premature completion; demand sets how much legwork it forces. Must be observable — not vague like "thoroughly" or "shared understanding."</div>
+            </div>
+            <div class="term-entry" data-term="context load">
+                <div class="term-name">Context Load</div>
+                <div class="term-def">The always-on cost a model-invoked skill spends: its description, every turn, whether needed or not. With 30+ skills, this becomes a budget problem.</div>
+            </div>
+            <div class="term-entry" data-term="context pointer">
+                <div class="term-name">Context Pointer</div>
+                <div class="term-def">A reference held in context naming out-of-context material. Its wording decides when — and how reliably — the agent reaches for it.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="D">
+            <div class="letter-heading">D</div>
+            <div class="term-entry" data-term="deletion test">
+                <div class="term-name">Deletion Test</div>
+                <div class="term-def">The pruning heuristic: "If I remove this line, what changes in the agent's behaviour?" If nothing changes, the line is a no-op — delete it.</div>
+            </div>
+            <div class="term-entry" data-term="duplication">
+                <div class="term-name">Duplication <span class="failure-badge">Failure mode</span></div>
+                <div class="term-def">The same meaning stated in more than one place. Costs maintenance and tokens, and inflates the duplicated idea's apparent importance to the model.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="E">
+            <div class="letter-heading">E</div>
+            <div class="term-entry" data-term="external reference">
+                <div class="term-name">External Reference</div>
+                <div class="term-def">Reference living outside the skill system entirely — a plain file any skill can point at, including two user-invoked skills that can't invoke each other.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="G">
+            <div class="letter-heading">G</div>
+            <div class="term-entry" data-term="granularity">
+                <div class="term-name">Granularity</div>
+                <div class="term-def">How finely you split skills. Split further and you spend either context load (more descriptions) or cognitive load (more for the human to track). There's no free lunch.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="L">
+            <div class="letter-heading">L</div>
+            <div class="term-entry" data-term="leading word">
+                <div class="term-name">Leading Word</div>
+                <div class="term-def">A compact concept already in the model's pretraining (e.g. "bisect," "fog of war," "tracer bullet") that anchors behaviour in the fewest tokens. Coined words cost more — they carry no free priors.</div>
+            </div>
+            <div class="term-entry" data-term="legwork">
+                <div class="term-name">Legwork</div>
+                <div class="term-def">The work an agent does within a step — exploring, digging, verifying — rather than offloading it back to the user. More legwork = the agent earns its keep.</div>
+            </div>
+            <div class="term-entry" data-term="lifecycle">
+                <div class="term-name">Lifecycle</div>
+                <div class="term-def">The path a skill walks from creation to retirement: Draft → Promote → Rename/Reframe → Merge → Deprecate/Remove. Skills that never move are stagnating.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="M">
+            <div class="letter-heading">M</div>
+            <div class="term-entry" data-term="model-invoked">
+                <div class="term-name">Model-Invoked</div>
+                <div class="term-def">A skill that keeps its description loaded so the agent can fire it autonomously. Always pays context load; appropriate when the agent should reach for it without being told.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="N">
+            <div class="letter-heading">N</div>
+            <div class="term-entry" data-term="negation">
+                <div class="term-name">Negation <span class="failure-badge">Failure mode</span></div>
+                <div class="term-def">Steering by prohibition — naming what not to do drags it into the frame and makes it more available, not less. Cure: state the positive target instead. Exception: hard guardrails where violation has severe consequences.</div>
+            </div>
+            <div class="term-entry" data-term="no-op">
+                <div class="term-name">No-Op <span class="failure-badge">Failure mode</span></div>
+                <div class="term-def">An instruction that changes nothing because the model already does it by default — you pay context tokens to say what would've happened anyway. Detected by the deletion test.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="P">
+            <div class="letter-heading">P</div>
+            <div class="term-entry" data-term="post-completion steps">
+                <div class="term-name">Post-Completion Steps</div>
+                <div class="term-def">Steps that follow the current one. When visible, they pull the agent forward — the stronger the pull, the more likely premature completion of the current step.</div>
+            </div>
+            <div class="term-entry" data-term="premature completion">
+                <div class="term-name">Premature Completion <span class="failure-badge">Failure mode</span></div>
+                <div class="term-def">Ending a step before it's genuinely done because attention slips ahead. Cured first by sharpening the completion criterion, only then by hiding later steps via progressive disclosure.</div>
+            </div>
+            <div class="term-entry" data-term="progressive disclosure">
+                <div class="term-name">Progressive Disclosure</div>
+                <div class="term-def">Pushing reference out of the skill file's top-level and behind a pointer, licensed by which branches actually need it — keeping the top of the file legible and reducing sprawl.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="R">
+            <div class="letter-heading">R</div>
+            <div class="term-entry" data-term="reference">
+                <div class="term-name">Reference</div>
+                <div class="term-def">Material referred to on demand: definitions, examples, parameters. Secondary to steps, or the whole content when there are no steps.</div>
+            </div>
+            <div class="term-entry" data-term="relevance">
+                <div class="term-name">Relevance</div>
+                <div class="term-def">Whether a line still bears on what the skill does — either it never mattered, or it drifted stale as the world it describes changed.</div>
+            </div>
+            <div class="term-entry" data-term="router skill">
+                <div class="term-name">Router Skill</div>
+                <div class="term-def">A user-invoked skill whose job is pointing at your other user-invoked skills, so the human has one thing to remember instead of many. Example: ask-matt from the trail-map.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="S">
+            <div class="letter-heading">S</div>
+            <div class="term-entry" data-term="sediment">
+                <div class="term-name">Sediment <span class="failure-badge">Failure mode</span></div>
+                <div class="term-def">Layers of old content that never get cleared because adding feels safe and removing feels risky. The default fate of any skill without a pruning discipline.</div>
+            </div>
+            <div class="term-entry" data-term="single source of truth">
+                <div class="term-name">Single Source of Truth</div>
+                <div class="term-def">Each meaning lives in exactly one authoritative place, so a behaviour change is a change in one place. The antidote to duplication.</div>
+            </div>
+            <div class="term-entry" data-term="sprawl">
+                <div class="term-name">Sprawl <span class="failure-badge">Failure mode</span></div>
+                <div class="term-def">A skill that's simply too long, independent of staleness or repetition. Cured by pushing reference down the hierarchy via progressive disclosure and splitting by branch.</div>
+            </div>
+            <div class="term-entry" data-term="steps">
+                <div class="term-name">Steps</div>
+                <div class="term-def">The ordered actions the agent performs — the primary tier of a skill's information hierarchy. When a skill has them, they're what the agent reads first.</div>
+            </div>
+        </div>
+
+        <div class="letter-group" data-letter="U">
+            <div class="letter-heading">U</div>
+            <div class="term-entry" data-term="user-invoked">
+                <div class="term-name">User-Invoked</div>
+                <div class="term-def">A skill with its description stripped — reachable only by a human typing its name. Zero context load, but invisible to other skills. Appropriate for deliberate acts like handoff or teach.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<nav class="letter-index" id="letter-index">
+    <a href="#" data-letter="B">B</a>
+    <a href="#" data-letter="C">C</a>
+    <a href="#" data-letter="D">D</a>
+    <a href="#" data-letter="E">E</a>
+    <a href="#" data-letter="G">G</a>
+    <a href="#" data-letter="L">L</a>
+    <a href="#" data-letter="M">M</a>
+    <a href="#" data-letter="N">N</a>
+    <a href="#" data-letter="P">P</a>
+    <a href="#" data-letter="R">R</a>
+    <a href="#" data-letter="S">S</a>
+    <a href="#" data-letter="U">U</a>
+</nav>
+
+<script>
+(function() {
+    const search = document.getElementById('search');
+    const count = document.getElementById('count');
+    const noResults = document.getElementById('no-results');
+    const entries = document.querySelectorAll('.term-entry');
+    const groups = document.querySelectorAll('.letter-group');
+    const total = entries.length;
+
+    search.addEventListener('input', function() {
+        const q = this.value.toLowerCase().trim();
+        let visible = 0;
+
+        entries.forEach(entry => {
+            const term = entry.dataset.term;
+            const def = entry.querySelector('.term-def').textContent.toLowerCase();
+            const match = !q || term.includes(q) || def.includes(q);
+            entry.classList.toggle('hidden', !match);
+            if (match) visible++;
+        });
+
+        groups.forEach(group => {
+            const hasVisible = group.querySelector('.term-entry:not(.hidden)');
+            group.style.display = hasVisible ? '' : 'none';
+        });
+
+        count.textContent = q ? `${visible} of ${total} terms` : '';
+        noResults.style.display = visible === 0 ? 'block' : 'none';
+    });
+
+    document.getElementById('letter-index').addEventListener('click', function(e) {
+        if (e.target.tagName === 'A') {
+            e.preventDefault();
+            const letter = e.target.dataset.letter;
+            const group = document.querySelector(`.letter-group[data-letter="${letter}"]`);
+            if (group) {
+                group.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    });
+})();
+</script>
+
+<script src="/sandbox/shared/theme.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

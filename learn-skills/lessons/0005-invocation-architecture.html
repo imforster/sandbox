@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5: Invocation Architecture</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .invocation-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .invocation-card h3 {
+      margin-top: 0;
+      font-size: 1.1rem;
+    }
+    .inv-tag {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .inv-tag.model { background: rgba(10,132,255,0.15); color: #0a84ff; }
+    .inv-tag.user { background: rgba(175,82,222,0.15); color: #af52de; }
+    .inv-tag.router { background: rgba(255,159,10,0.15); color: #ff9f0a; }
+    .budget-table {
+      width: 100%;
+      font-size: 0.85rem;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+    }
+    .budget-table th, .budget-table td {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--color-border);
+      text-align: left;
+    }
+    .budget-table th {
+      background: var(--color-card-bg);
+      font-weight: 600;
+    }
+    .budget-table .cost-high { color: var(--color-danger); font-weight: 600; }
+    .budget-table .cost-low { color: #30d158; }
+    .skill-excerpt {
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .skill-excerpt .label {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+    .desc-analysis {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .desc-analysis .desc-text {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      background: var(--color-code-bg);
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .inv-tag.model { background: rgba(10,132,255,0.2); }
+      :root:not([data-theme="light"]) .inv-tag.user { background: rgba(175,82,222,0.2); }
+      :root:not([data-theme="light"]) .inv-tag.router { background: rgba(255,159,10,0.2); }
+    }
+    [data-theme="dark"] .inv-tag.model { background: rgba(10,132,255,0.2); }
+    [data-theme="dark"] .inv-tag.user { background: rgba(175,82,222,0.2); }
+    [data-theme="dark"] .inv-tag.router { background: rgba(255,159,10,0.2); }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0004-skill-lifecycles.html" class="lesson-back-top" title="Skill Lifecycles"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0006-the-skill-audit-runbook.html" class="lesson-next-top" title="The Skill Audit Runbook">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Invocation Architecture</h1>
+
+<div class="lesson-meta">
+  Lesson 5 · Building Better Skills & Agents · ~14 minutes
+</div>
+
+<p>With 30+ skills, you face a systems design problem: how do you make the right skill fire at the right time without drowning your agent in context or yourself in memorization? This lesson covers the invocation tradeoff, context budgeting, and the art of writing descriptions that route correctly.</p>
+
+<h2>The Core Tradeoff</h2>
+
+<div class="invocation-card">
+  <h3><span class="inv-tag model">Model-Invoked</span> The agent reaches for it autonomously</h3>
+  <p><strong>Cost:</strong> Context load — the skill's description lives in the system prompt on every turn, whether needed or not. With 30 model-invoked skills averaging 50 words each, that's 1,500 words of descriptions consuming context before the conversation even starts.</p>
+  <p><strong>Benefit:</strong> The agent fires the skill when appropriate without the human needing to remember it exists.</p>
+  <p><strong>Good for:</strong> Skills the agent needs mid-task — code-review during implementation, diagnose during debugging, ponytail during any build task.</p>
+</div>
+
+<div class="invocation-card">
+  <h3><span class="inv-tag user">User-Invoked</span> The human types its name deliberately</h3>
+  <p><strong>Cost:</strong> Cognitive load — you must remember the skill exists and know when to use it. It's invisible to the agent otherwise.</p>
+  <p><strong>Benefit:</strong> Zero context cost. The skill is loaded only when explicitly called. Your context window stays clean.</p>
+  <p><strong>Good for:</strong> Skills that represent deliberate human actions — handoff (session management), teach (pedagogical mode), grill-me (stress testing), ask-the-board (advisory).</p>
+</div>
+
+<h2>Context Budgeting</h2>
+
+<p>Let's do the math. Your system prompt includes a list of all model-invoked skills with their descriptions. Each description is the <em>only</em> thing the agent sees when deciding whether to load a skill.</p>
+
+<table class="budget-table">
+  <thead><tr><th>Scenario</th><th>Skills</th><th>Avg Description</th><th>Context Cost</th><th>Impact</th></tr></thead>
+  <tbody>
+    <tr><td>Conservative</td><td>10 model-invoked</td><td>40 words</td><td>~400 words</td><td class="cost-low">Manageable</td></tr>
+    <tr><td>Moderate</td><td>20 model-invoked</td><td>50 words</td><td>~1,000 words</td><td>Noticeable</td></tr>
+    <tr><td>Aggressive</td><td>35 model-invoked</td><td>60 words</td><td class="cost-high">~2,100 words</td><td class="cost-high">Significant — 5-10% of usable context consumed by skill routing alone</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">The budget rule</div>
+  <p>Every model-invoked skill must justify its per-turn context rent. If the agent wouldn't autonomously reach for a skill in normal workflow, make it user-invoked. The skill still exists — it just doesn't occupy space until called.</p>
+</div>
+
+<h2>The Taxonomy Shift</h2>
+
+<p>Early skill systems used "Commands" vs "Skills" as categories — an implementation distinction (slash-command vs auto-loaded). The better taxonomy is <strong>invocation mode</strong>: who decides when it fires?</p>
+
+<table class="budget-table">
+  <thead><tr><th>Old Taxonomy</th><th>New Taxonomy</th><th>What Changed</th></tr></thead>
+  <tbody>
+    <tr><td>Command (slash-triggered)</td><td><span class="inv-tag user">User-Invoked</span></td><td>Same mechanism, better framing — focuses on who initiates</td></tr>
+    <tr><td>Skill (auto-loaded)</td><td><span class="inv-tag model">Model-Invoked</span></td><td>Clarifies the cost: you're paying context rent</td></tr>
+    <tr><td>—</td><td><span class="inv-tag router">Router</span></td><td>New category: one entry point that maps to many</td></tr>
+  </tbody>
+</table>
+
+<h2>Decision Framework: Which Mode?</h2>
+
+<p>Ask one question: <strong>"Does the agent need to reach for this autonomously during a task?"</strong></p>
+
+<table class="budget-table">
+  <thead><tr><th>If yes → Model-Invoked</th><th>If no → User-Invoked</th></tr></thead>
+  <tbody>
+    <tr><td>code-review (during implementation)</td><td>handoff (deliberate session end)</td></tr>
+    <tr><td>diagnose (during debugging)</td><td>teach (pedagogical mode switch)</td></tr>
+    <tr><td>ponytail (during any build)</td><td>grill-me (stress-test a plan)</td></tr>
+    <tr><td>assess (during exploration)</td><td>ask-the-board (advisory consultation)</td></tr>
+    <tr><td></td><td>write-a-skill (meta-authoring)</td></tr>
+    <tr><td></td><td>today (daily planning ritual)</td></tr>
+  </tbody>
+</table>
+
+<h2>Router Skills</h2>
+
+<p>A router skill is a single user-invoked entry point that maps to multiple sub-skills. It reduces cognitive load (remember one name instead of many) while keeping context cost low (only loads what's needed).</p>
+
+<div class="skill-excerpt"><span class="label">Router pattern example</span>
+name: ponytail-help
+description: Quick-reference card for all ponytail modes,
+  skills, and commands. Use when user says "ponytail help",
+  "what ponytail commands", or "how do I use ponytail".
+
+# What it routes to:
+- ponytail (full mode)
+- ponytail-review (review for over-engineering)
+- ponytail-audit (whole-repo audit)
+- ponytail-debt (harvest ponytail: comments)</div>
+
+<p>The <code>ponytail</code> family is a natural router cluster: one concept (simplicity), multiple applications. The user remembers "ponytail" and the agent routes to the right variant based on context.</p>
+
+<h2>Description as Context Pointer</h2>
+
+<p>For model-invoked skills, the description is everything. It's the <strong>only</strong> text the agent sees when deciding whether to load your skill. Bad wording means the skill never fires, or fires too often.</p>
+
+<div class="desc-analysis">
+  <h4>Example: <code>code-review</code></h4>
+  <div class="desc-text">Reviews code against operating principles — DRY, simplicity, surgical changes, backwards compatibility. Use when the user wants a code review.</div>
+  <p><strong>Analysis:</strong> Clear trigger ("user wants a code review"). Names the principles it checks — helps the agent decide if this is the right tool vs a generic review. Concise (26 words).</p>
+  <p><strong>Verdict:</strong> ✅ Good — fires when appropriate, stays quiet otherwise.</p>
+</div>
+
+<div class="desc-analysis">
+  <h4>Example: <code>ponytail</code></h4>
+  <div class="desc-text">Forces the laziest solution that actually works — simplest, shortest, most minimal. Channels a senior dev who has seen everything. Question whether the task needs to exist (YAGNI), reach for stdlib before custom code, native platform features before dependencies. Use when user says "ponytail", "be lazy", "lazy mode", "simplest solution", "minimal solution", "yagni", "do less", or "shortest path".</div>
+  <p><strong>Analysis:</strong> Highly specific triggers (9 phrases). The agent knows exactly when to fire. But at 67 words, it's paying significant context rent.</p>
+  <p><strong>Verdict:</strong> ⚠️ Trade-off — the specificity is valuable, but consider whether 5 trigger phrases would route just as accurately as 9.</p>
+</div>
+
+<div class="desc-analysis">
+  <h4>Example: <code>assess</code></h4>
+  <div class="desc-text">Evaluates a codebase or system and recommends the single highest-leverage improvement. Use when the user needs a technical assessment.</div>
+  <p><strong>Analysis:</strong> Has <code>disable-model-invocation: true</code> — it's user-invoked despite having a description. The description serves human discovery (reading the skill list), not agent routing. Zero context cost.</p>
+  <p><strong>Verdict:</strong> ✅ Correct invocation mode — "assess this codebase" is a deliberate human action, not something the agent should do unprompted.</p>
+</div>
+
+<h2>Granularity: When to Split vs Merge</h2>
+
+<p>Every split adds either context load (if model-invoked) or cognitive load (if user-invoked). Every merge makes the resulting skill harder to maintain and its description harder to write precisely.</p>
+
+<table class="budget-table">
+  <thead><tr><th>Split when...</th><th>Merge when...</th></tr></thead>
+  <tbody>
+    <tr><td>The workflows are genuinely different (different steps, different outputs)</td><td>You hesitate about which to invoke</td></tr>
+    <tr><td>The triggers are distinct and non-overlapping</td><td>They share 50%+ of their steps</td></tr>
+    <tr><td>The skill exceeds 100 lines and has distinct domains</td><td>One is a strict subset of the other</td></tr>
+    <tr><td>Different invocation modes are needed (one model-invoked, one user-invoked)</td><td>Maintaining both costs more than maintaining one</td></tr>
+  </tbody>
+</table>
+
+<h2>Categorizing Your Portfolio</h2>
+
+<p>Here's how a real 30+ skill portfolio breaks down by invocation mode, with reasoning:</p>
+
+<table class="budget-table">
+  <thead><tr><th>Skill</th><th>Mode</th><th>Rationale</th></tr></thead>
+  <tbody>
+    <tr><td>code-review</td><td><span class="inv-tag model">Model</span></td><td>Agent should apply during implementation without being asked</td></tr>
+    <tr><td>ponytail</td><td><span class="inv-tag model">Model</span></td><td>Simplicity mode should activate on trigger phrases mid-task</td></tr>
+    <tr><td>diagnose</td><td><span class="inv-tag model">Model</span></td><td>Agent should shift to diagnosis mode when hitting errors</td></tr>
+    <tr><td>architect</td><td><span class="inv-tag user">User</span></td><td>Design is a deliberate activity — the user knows when they want architecture</td></tr>
+    <tr><td>handoff</td><td><span class="inv-tag user">User</span></td><td>Session management is a human decision</td></tr>
+    <tr><td>grill-me</td><td><span class="inv-tag user">User</span></td><td>Stress-testing is opted into, never imposed</td></tr>
+    <tr><td>teach</td><td><span class="inv-tag user">User</span></td><td>Pedagogical mode is a deliberate switch</td></tr>
+    <tr><td>assess</td><td><span class="inv-tag user">User</span></td><td>"Evaluate this" is a deliberate request, not mid-task</td></tr>
+    <tr><td>ponytail-help</td><td><span class="inv-tag router">Router</span></td><td>Entry point to the ponytail family</td></tr>
+  </tbody>
+</table>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">You have a skill called "format-output" that reformats the agent's response into a specific template. The agent should apply it automatically whenever producing a deliverable. Currently it's user-invoked. What's wrong?</div>
+  <ul class="quiz-options">
+    <li>Nothing — user-invoked is correct because formatting is a preference</li>
+    <li data-correct="true">It should be model-invoked — the agent needs to reach for it autonomously when producing deliverables</li>
+    <li>It should be a router skill that maps to format variants</li>
+    <li>It should be merged into whatever skill produces the deliverable</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. If the agent "should apply it automatically whenever producing a deliverable," that's the definition of model-invoked. The human shouldn't need to remember to invoke formatting every time — the agent should reach for it autonomously.</div>
+  <div class="quiz-feedback incorrect">The key signal is "should apply automatically." If you want the agent to fire it without being asked, it must be model-invoked. User-invoked means you'd have to remember to type "format-output" every single time you want a deliverable formatted — that defeats the purpose.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">A model-invoked skill has this description: "Helps with various tasks." It almost never fires. Why?</div>
+  <ul class="quiz-options">
+    <li>The skill's workflow is too complex for the agent to execute</li>
+    <li>Model-invoked skills fire less often than user-invoked ones</li>
+    <li data-correct="true">The description has no specific triggers — the agent can't determine when to reach for it</li>
+    <li>The description is too short — it needs to be at least 50 words</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The description is the agent's only routing signal. "Helps with various tasks" matches everything and nothing — the agent has no way to distinguish when THIS skill is the right one vs any other. It needs specific triggers: "Use when [exact situation]."</div>
+  <div class="quiz-feedback incorrect">The problem is specificity, not length. "Helps with various tasks" gives the agent no signal about WHEN to load this skill. Compare with: "Reviews code against DRY, simplicity, surgical changes. Use when the user wants a code review." — the agent knows exactly when to fire.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">You have 35 model-invoked skills averaging 60 words per description. A colleague suggests making them all user-invoked to save context. What's the right response?</div>
+  <ul class="quiz-options">
+    <li>Agree — context savings are more important than autonomous invocation</li>
+    <li>Disagree — all skills should be model-invoked for maximum agent capability</li>
+    <li data-correct="true">Audit each skill individually — some genuinely need model-invocation, others should be user-invoked. The goal is to find the right mode for each, not a blanket switch.</li>
+    <li>Convert to router skills to get both benefits</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. A blanket switch in either direction is wrong. Each skill has a correct invocation mode based on whether the agent needs autonomous access. The fix is to audit: move user-deliberate actions to user-invoked (saving context), keep genuinely autonomous skills as model-invoked.</div>
+  <div class="quiz-feedback incorrect">The answer is never "all one way." Some skills genuinely need model-invocation (code-review during builds, diagnose during errors). Others are deliberate human actions (handoff, teach, grill-me). The audit finds the natural boundary and moves each skill to its correct mode.</div>
+</div>
+
+<h2>Your Exercise</h2>
+
+<ol>
+  <li>List all your skills. For each, note: model-invoked or user-invoked?</li>
+  <li>For each model-invoked skill, ask: "Does the agent need to reach for this autonomously?" If not, switch it to user-invoked.</li>
+  <li>For each user-invoked skill, ask: "Do I keep forgetting to invoke this when I should?" If yes, consider switching to model-invoked.</li>
+  <li>Calculate your theoretical context load: count model-invoked skills × average description length.</li>
+  <li>Look for router opportunities: are there clusters of related skills that could share one entry point?</li>
+</ol>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="trail-map.html">trail-map.html — Field Guide → Invocation axis</a> — The full taxonomy with decision trees for model-invoked vs user-invoked routing, plus the router skill pattern.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Paste your skill list (just names and descriptions) and I'll help you categorize each by invocation mode, identify context budget issues, and spot router opportunities.
+</div>
+
+<div class="lesson-nav">
+  <a href="0004-skill-lifecycles.html" title="Skill Lifecycles">← Prev</a>
+  <a href="index.html" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0006-the-skill-audit-runbook.html" title="The Skill Audit Runbook">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/theme.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

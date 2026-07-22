@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3: The Pruning Discipline</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .cost-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .cost-card h3 {
+      margin-top: 0;
+      font-size: 1.1rem;
+      color: var(--color-accent);
+    }
+    .failure-mode {
+      background: var(--color-card-bg);
+      border-left: 4px solid var(--color-danger);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .failure-mode h3 {
+      margin-top: 0;
+      color: var(--color-danger);
+      font-size: 1rem;
+    }
+    .decision-tag {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .decision-tag.keep { background: rgba(48,209,88,0.15); color: #30d158; }
+    .decision-tag.relocate { background: rgba(255,159,10,0.15); color: #ff9f0a; }
+    .decision-tag.delete { background: rgba(255,59,48,0.15); color: #ff453a; }
+    .skill-excerpt {
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .skill-excerpt .label {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+    .before-after {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+    .before-after .before h4,
+    .before-after .after h4 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 0.75rem;
+    }
+    .before-after .before h4 { background: rgba(255,59,48,0.08); color: var(--color-danger); }
+    .before-after .after h4 { background: rgba(48,209,88,0.08); color: #30d158; }
+    @media (max-width: 600px) {
+      .before-after { grid-template-columns: 1fr; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .before-after .before h4 { background: rgba(255,59,48,0.12); color: #ff453a; }
+      :root:not([data-theme="light"]) .before-after .after h4 { background: rgba(48,209,88,0.12); color: #30d158; }
+      :root:not([data-theme="light"]) .decision-tag.keep { background: rgba(48,209,88,0.2); }
+      :root:not([data-theme="light"]) .decision-tag.relocate { background: rgba(255,159,10,0.2); }
+      :root:not([data-theme="light"]) .decision-tag.delete { background: rgba(255,59,48,0.2); }
+    }
+    [data-theme="dark"] .before-after .before h4 { background: rgba(255,59,48,0.12); color: #ff453a; }
+    [data-theme="dark"] .before-after .after h4 { background: rgba(48,209,88,0.12); color: #30d158; }
+    [data-theme="dark"] .decision-tag.keep { background: rgba(48,209,88,0.2); }
+    [data-theme="dark"] .decision-tag.relocate { background: rgba(255,159,10,0.2); }
+    [data-theme="dark"] .decision-tag.delete { background: rgba(255,59,48,0.2); }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0002-steering-deep-dive.html" class="lesson-back-top" title="Steering Deep Dive"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-skill-lifecycles.html" class="lesson-next-top" title="Skill Lifecycles">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>The Pruning Discipline</h1>
+
+<div class="lesson-meta">
+  Lesson 3 · Building Better Skills & Agents · ~15 minutes
+</div>
+
+<p>Every line in a skill file has a cost. Not just the obvious cost (tokens consumed) but two hidden costs that compound silently: maintenance burden and <strong>inflated importance</strong>. This lesson gives you the discipline to cut — confidently, methodically, and without fear of breaking what works.</p>
+
+<h2>The Cost Model</h2>
+
+<p>A single line in a skill file pays three costs simultaneously:</p>
+
+<div class="cost-card">
+  <h3>1. Token Cost</h3>
+  <p>Every line occupies context window space. With 30+ skills, each unnecessary line is multiplied across every session. A 10-line no-op section across 30 skills is 300 lines of dead weight — every turn.</p>
+</div>
+
+<div class="cost-card">
+  <h3>2. Maintenance Cost</h3>
+  <p>Every line must be kept consistent with the rest. When you change the skill's behaviour, you must update every line that references that behaviour. More lines = more places to forget.</p>
+</div>
+
+<div class="cost-card">
+  <h3>3. Inflated Importance</h3>
+  <p>The model treats all content with roughly equal weight. A no-op instruction sitting next to a critical steering rule dilutes the critical rule's signal. The more noise, the less the agent attends to what matters.</p>
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">The math is simple</div>
+  <p>If you can remove a line without changing behaviour, keeping it <em>actively hurts</em> the skill. It's not neutral — it's negative value. You're paying three costs for zero benefit.</p>
+</div>
+
+<h2>Three Failure Modes</h2>
+
+<p>Lines accumulate in skills through three distinct mechanisms. Recognising which one you're looking at determines the remedy.</p>
+
+<div class="failure-mode">
+  <h3>Sediment</h3>
+  <p><strong>Definition:</strong> Old content that was relevant once but never got cleared. It accumulates because adding feels safe while removing feels risky.</p>
+  <p><strong>How to spot it:</strong> Read each line and ask "Does this reflect how the skill currently works?" If it reflects a <em>previous</em> version of the skill's behaviour, it's sediment.</p>
+  <p><strong>Pattern to grep for:</strong> Rules that contradict other rules. Instructions that reference features or workflows that no longer exist. Caveats about edge cases you've since handled differently.</p>
+</div>
+
+<div class="failure-mode">
+  <h3>Duplication</h3>
+  <p><strong>Definition:</strong> The same meaning expressed in multiple places. Often one in the objective, another in the workflow, a third in the rules.</p>
+  <p><strong>How to spot it:</strong> The single-source test — "Is this meaning stated anywhere else in this file?" If yes, pick one location and delete the rest.</p>
+  <p><strong>Pattern to grep for:</strong> Paraphrased versions of the same instruction. An objective that restates what the workflow already says step-by-step. Rules that echo what the success criteria already require.</p>
+</div>
+
+<div class="failure-mode">
+  <h3>No-Op</h3>
+  <p><strong>Definition:</strong> An instruction that changes nothing because the model already does it by default. You pay token cost for zero behavioural change.</p>
+  <p><strong>How to spot it:</strong> The deletion test — "If I remove this line, what changes?" If the answer is "nothing, the model would do this anyway," it's a no-op.</p>
+  <p><strong>Pattern to grep for:</strong> "Write clean code", "Be helpful", "Follow best practices", "Use proper error handling", "Think step by step", "Be thorough".</p>
+</div>
+
+<h2>The Two Tests</h2>
+
+<h3>The Deletion Test</h3>
+<p>For every line: <em>"If I remove this, what changes in the skill's output?"</em></p>
+<ul>
+  <li><strong>Something changes</strong> → line is load-bearing. Keep it.</li>
+  <li><strong>Nothing changes</strong> → it's a no-op or it's duplicated elsewhere. Delete it.</li>
+  <li><strong>Something breaks but shouldn't</strong> → the line is compensating for a deeper structural problem. Fix the root cause, then delete the compensation.</li>
+</ul>
+
+<h3>The Single-Source Test</h3>
+<p>For every line: <em>"Is this meaning stated anywhere else in this skill?"</em></p>
+<ul>
+  <li><strong>No</strong> → it's the single source. Keep it where it has the most impact.</li>
+  <li><strong>Yes</strong> → pick the stronger location (usually the workflow step), delete the other(s).</li>
+</ul>
+
+<h2>Live Example: The <code>architect</code> Skill</h2>
+
+<p>Let's apply pruning discipline to a real skill. Here's an excerpt from the <code>architect</code> skill's workflow "During the session" section:</p>
+
+<div class="skill-excerpt"><span class="label">~/.kiro/skills/architect/SKILL.md — "During the session" rules</span>
+- **Challenge assumptions** — When the user assumes a technology or
+  pattern, ask why. There may be a simpler path.
+- **Deletion over addition** — Propose removing existing complexity
+  when simpler alternatives exist.
+- **AWS-native by default** — Reach for AWS managed services before
+  custom implementations. A managed service you don't operate is
+  always simpler than one you do.
+- **Ask which language** — Confirm the implementation language before
+  designing. Don't assume.
+- **Cross-reference with code** — When the user states how something
+  works, check whether the code agrees.
+- **Update CONTEXT.md** — When new terms or bounded contexts emerge,
+  capture them immediately.
+- **Offer ADRs** — When a design decision is hard to reverse,
+  surprising without context, and the result of a real trade-off.
+- **Mark deliberate simplifications** — Note where the design is
+  intentionally simple with the ceiling and upgrade path.</span>
+
+<p>Let's classify each rule:</p>
+
+<table>
+  <thead><tr><th>Rule</th><th>Test Result</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>"Challenge assumptions"</td>
+      <td>Deletion test: would the model challenge assumptions without this? Partially — but the specific framing "ask why, there may be a simpler path" steers toward a behaviour the model might not default to.</td>
+      <td><span class="decision-tag keep">Keep</span> Load-bearing — shapes a specific conversational behaviour.</td>
+    </tr>
+    <tr>
+      <td>"Deletion over addition"</td>
+      <td>Single-source test: Is this stated elsewhere? Yes — the architecture ladder step 1 ("Does this component need to exist?") and the ponytail dependency both convey this principle.</td>
+      <td><span class="decision-tag delete">Delete</span> Duplication — the ladder already embodies this principle structurally.</td>
+    </tr>
+    <tr>
+      <td>"AWS-native by default"</td>
+      <td>Deletion test: Without this, would the model reach for AWS services? Only if the user context implies it. This rule creates a default preference.</td>
+      <td><span class="decision-tag keep">Keep</span> Load-bearing — sets a default that wouldn't exist otherwise.</td>
+    </tr>
+    <tr>
+      <td>"Ask which language"</td>
+      <td>Deletion test: Would the model ask? Maybe. But this is a one-liner that prevents a common failure (assuming Go). High value per token.</td>
+      <td><span class="decision-tag keep">Keep</span> Load-bearing — prevents a specific, known failure.</td>
+    </tr>
+    <tr>
+      <td>"Cross-reference with code"</td>
+      <td>Deletion test: Would the model verify claims against code? Not reliably. This makes verification a habit, not an afterthought.</td>
+      <td><span class="decision-tag keep">Keep</span> Load-bearing — models often accept user claims at face value.</td>
+    </tr>
+    <tr>
+      <td>"Update CONTEXT.md"</td>
+      <td>Deletion test: Would the model proactively update CONTEXT.md? No — this is a side-effect instruction that creates a valuable habit.</td>
+      <td><span class="decision-tag relocate">Relocate</span> Right content, wrong place — should be a workflow step, not a bullet in "during the session."</td>
+    </tr>
+    <tr>
+      <td>"Offer ADRs"</td>
+      <td>Same as above — a proactive side-effect. But the criteria are clear and specific: "hard to reverse, surprising, real trade-off."</td>
+      <td><span class="decision-tag keep">Keep</span> Load-bearing — specific trigger criteria the model wouldn't infer.</td>
+    </tr>
+    <tr>
+      <td>"Mark deliberate simplifications"</td>
+      <td>Single-source test: The output format template already has a "Deliberate Simplifications" table with columns for Ceiling and Upgrade When.</td>
+      <td><span class="decision-tag delete">Delete</span> Duplication — the output template already enforces this.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>The Pruning Decision Framework</h2>
+
+<p>Every line gets one of three verdicts:</p>
+
+<table>
+  <thead><tr><th>Verdict</th><th>Meaning</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td><span class="decision-tag keep">Keep</span></td><td>Load-bearing — removing it changes behaviour for the worse</td><td>Leave it. Ensure it's in the right location.</td></tr>
+    <tr><td><span class="decision-tag relocate">Relocate</span></td><td>Right content, wrong place — it belongs in a different section</td><td>Move it. Often: from rules → workflow step, or from inline → REFERENCE.md</td></tr>
+    <tr><td><span class="decision-tag delete">Delete</span></td><td>No-op, sediment, or duplicate — paying cost for no value</td><td>Remove it. If nervous, check the deletion test one more time.</td></tr>
+  </tbody>
+</table>
+
+<h2>Before & After</h2>
+
+<p>Here's the architect's "During the session" section after pruning:</p>
+
+<div class="before-after">
+  <div class="before">
+    <h4>Before (8 rules, ~120 words)</h4>
+    <div class="skill-excerpt">- Challenge assumptions
+- Deletion over addition
+- AWS-native by default
+- Ask which language
+- Cross-reference with code
+- Update CONTEXT.md
+- Offer ADRs
+- Mark deliberate simplifications</div>
+  </div>
+  <div class="after">
+    <h4>After (5 rules, ~80 words)</h4>
+    <div class="skill-excerpt">- Challenge assumptions
+- AWS-native by default
+- Ask which language
+- Cross-reference with code
+- Offer ADRs</div>
+  </div>
+</div>
+
+<p>Three lines removed (37% reduction). "Update CONTEXT.md" was relocated to a workflow step. "Deletion over addition" and "Mark deliberate simplifications" were deleted as duplication. The remaining rules are all load-bearing — each one changes the model's behaviour in a way it wouldn't default to.</p>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">A skill contains this rule: "Always validate user input before processing." You also have an objective that says "Process user requests safely and correctly." What failure mode is the rule?</div>
+  <ul class="quiz-options">
+    <li>Sediment — it was relevant to an older version of the skill</li>
+    <li>Negation — it names what not to do by implication</li>
+    <li data-correct="true">No-Op — the model validates input by default; the objective already implies safe processing</li>
+    <li>Duplication — but both should be kept for emphasis</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Input validation is default model behaviour. The objective already implies it. This rule pays three costs (tokens, maintenance, dilution) for zero behavioural change. Delete it.</div>
+  <div class="quiz-feedback incorrect">This is a No-Op. The model already validates input by default, and the objective covers "safe processing." The rule doesn't change behaviour — it just occupies space that dilutes the load-bearing rules around it.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">Given this excerpt from a skill:<br><br><code>&lt;objective&gt; Produce concise, actionable code reviews. &lt;/objective&gt;</code><br><br><code>Rules: - Keep reviews concise and actionable</code><br><br>What's the correct pruning verdict for the rule?</div>
+  <ul class="quiz-options">
+    <li><span class="decision-tag keep">Keep</span> — the rule reinforces the objective</li>
+    <li><span class="decision-tag relocate">Relocate</span> — move it to the workflow</li>
+    <li data-correct="true"><span class="decision-tag delete">Delete</span> — it's duplication of the objective</li>
+    <li><span class="decision-tag keep">Keep</span> — repetition helps the model</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The single-source test catches this: the same meaning ("concise, actionable") is stated in both the objective and the rules. Pick one — the objective is the stronger location because it frames the entire skill. Delete the rule.</div>
+  <div class="quiz-feedback incorrect">This is Duplication. The rule restates what the objective already says. "Reinforcement" is a myth — repetition doesn't make the model comply more, it just inflates the token cost and dilutes the surrounding content. One strong statement beats two weak ones.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">Your <code>architect</code> skill has a rule: "Always consider scalability." Two months later you added the architecture ladder which explicitly asks "Does this handle real-world load?" at step 3. What's the old rule now?</div>
+  <ul class="quiz-options">
+    <li data-correct="true">Sediment — it was load-bearing once, but the ladder made it redundant</li>
+    <li>No-Op — the model always considers scalability</li>
+    <li>Duplication — but it was always a duplicate</li>
+    <li>Load-bearing — keep both for safety</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. This is sediment — it was genuinely useful before the ladder existed, but now the ladder structurally embodies the same concern in a stronger way. Sediment is content that was once load-bearing but got obsoleted by a better mechanism. Delete the old rule.</div>
+  <div class="quiz-feedback incorrect">This is Sediment. It was legitimately load-bearing when first written, but the ladder's step 3 now handles scalability structurally. The old rule is now a leftover layer — it accumulated because adding the ladder didn't trigger a cleanup pass on existing rules.</div>
+</div>
+
+<div class="quiz" id="quiz-4">
+  <div class="quiz-question">You run the deletion test on this rule in a code-review skill: "Check the tests — Untested code is unfinished code. Missing tests for new logic is always a finding." Without this line, the model would sometimes skip test review. What's the verdict?</div>
+  <ul class="quiz-options">
+    <li><span class="decision-tag delete">Delete</span> — it's too obvious to need stating</li>
+    <li><span class="decision-tag relocate">Relocate</span> — move it to an external reference</li>
+    <li data-correct="true"><span class="decision-tag keep">Keep</span> — the deletion test shows behaviour changes without it</li>
+    <li><span class="decision-tag delete">Delete</span> — it's a no-op because the model reviews tests by default</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The deletion test is decisive: "If I remove this, what changes?" — the model sometimes skips test review. That means this line is load-bearing. It changes behaviour. Keep it.</div>
+  <div class="quiz-feedback incorrect">The deletion test gives a clear answer here: removing the line changes behaviour (model skips test review). That makes it load-bearing. The rule earns its token cost by preventing a known failure. Keep it.</div>
+</div>
+
+<h2>Your Exercise</h2>
+
+<ol>
+  <li>Pick your longest skill (by line count). Run <code>wc -l ~/.kiro/skills/*/SKILL.md | sort -rn | head -5</code> to find it.</li>
+  <li>For every rule or instruction, apply the deletion test: "If I remove this, what changes?"</li>
+  <li>For anything that survives, apply the single-source test: "Is this meaning stated elsewhere?"</li>
+  <li>Classify every line as <span class="decision-tag keep">Keep</span>, <span class="decision-tag relocate">Relocate</span>, or <span class="decision-tag delete">Delete</span>.</li>
+  <li>Target a 20% line reduction. If you can't reach 20%, either your skill is already well-pruned or you're being too conservative with the deletion test.</li>
+</ol>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills">writing-great-skills GLOSSARY.md — Pruning section</a> — Matt Pocock. The definitions of Sediment, Duplication, No-Op, Single Source of Truth, and Relevance. ~3 min read.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Paste any skill excerpt and I'll run the deletion test on every line — showing you which are load-bearing and which are paying rent for nothing.
+</div>
+
+<div class="lesson-nav">
+  <a href="0002-steering-deep-dive.html" title="Steering Deep Dive">← Prev</a>
+  <a href="index.html" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0004-skill-lifecycles.html" title="Skill Lifecycles">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/theme.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

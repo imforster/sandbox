@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Trail Map — mattpocock/skills</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#161d1a;
+    --paper:#efe8d8;
+    --paper-dim:#e2d9c3;
+    --trail:#b9622b;
+    --trail-dim:#8a5027;
+    --sage:#5c7a63;
+    --sage-dim:#3d5342;
+    --slate:#2c3733;
+    --line:rgba(22,29,26,0.14);
+    --warn:#a13c2b;
+    --shadow: 0 8px 24px rgba(22,29,26,0.18);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--ink);color:var(--paper);font-family:'Inter',sans-serif;}
+  ::selection{background:var(--trail);color:var(--paper);}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    padding:64px 8vw 48px;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(185,98,43,0.14), transparent 45%),
+      radial-gradient(circle at 85% 0%, rgba(92,122,99,0.16), transparent 40%),
+      var(--ink);
+    border-bottom:1px solid rgba(239,232,216,0.12);
+    overflow:hidden;
+  }
+  .hero-eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    font-size:11px;
+    color:var(--trail);
+    margin-bottom:18px;
+  }
+  .hero h1{
+    font-family:'Fraunces',serif;
+    font-optical-sizing:auto;
+    font-weight:600;
+    font-size:clamp(34px,5.2vw,64px);
+    line-height:1.02;
+    margin:0 0 18px;
+    letter-spacing:-0.01em;
+  }
+  .hero h1 em{
+    font-style:italic;
+    font-weight:400;
+    color:var(--trail);
+  }
+  .hero p.lede{
+    max-width:640px;
+    font-size:16px;
+    line-height:1.6;
+    color:rgba(239,232,216,0.72);
+    margin:0 0 32px;
+  }
+  .stat-strip{
+    display:flex;
+    gap:0;
+    flex-wrap:wrap;
+    border-top:1px solid rgba(239,232,216,0.16);
+    max-width:820px;
+  }
+  .stat{
+    padding:16px 28px 0 0;
+    margin-right:28px;
+    border-right:1px solid rgba(239,232,216,0.14);
+    min-width:110px;
+  }
+  .stat:last-child{border-right:none;}
+  .stat .n{font-family:'Fraunces',serif;font-size:28px;font-weight:600;color:var(--paper);}
+  .stat .l{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:rgba(239,232,216,0.5);margin-top:4px;}
+
+  /* elevation profile behind hero */
+  .elev{
+    position:absolute; right:0; bottom:0; left:0; height:100px; opacity:0.55;
+    pointer-events:none;
+  }
+
+  /* ---------- NAV ---------- */
+  .nav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(22,29,26,0.94);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid rgba(239,232,216,0.14);
+    display:flex; align-items:center; gap:4px;
+    padding:0 8vw;
+  }
+  .nav button{
+    background:none;border:none;cursor:pointer;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px; letter-spacing:0.05em; text-transform:uppercase;
+    color:rgba(239,232,216,0.55);
+    padding:16px 18px;
+    border-bottom:2px solid transparent;
+    transition:color .15s ease, border-color .15s ease;
+  }
+  .nav button:hover{color:var(--paper);}
+  .nav button.active{color:var(--trail); border-bottom-color:var(--trail);}
+  .nav .spacer{flex:1;}
+  .nav .tag{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:rgba(239,232,216,0.35);}
+
+  main{padding:40px 8vw 100px;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ---------- FILTER BAR ---------- */
+  .filterbar{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    margin-bottom:36px;
+  }
+  .chip{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px; letter-spacing:0.03em;
+    padding:7px 13px; border-radius:100px;
+    border:1px solid rgba(239,232,216,0.25);
+    background:transparent; color:rgba(239,232,216,0.7);
+    cursor:pointer; transition:all .15s ease;
+    white-space:nowrap;
+  }
+  .chip:hover{border-color:var(--trail);}
+  .chip.on{background:var(--trail); border-color:var(--trail); color:var(--ink); font-weight:600;}
+  .searchwrap{
+    margin-left:auto; position:relative; min-width:220px;
+  }
+  .searchwrap input{
+    width:100%;
+    background:rgba(239,232,216,0.06);
+    border:1px solid rgba(239,232,216,0.22);
+    border-radius:8px;
+    color:var(--paper);
+    padding:9px 12px 9px 32px;
+    font-family:'Inter',sans-serif; font-size:13px;
+  }
+  .searchwrap input::placeholder{color:rgba(239,232,216,0.4);}
+  .searchwrap svg{position:absolute; left:10px; top:50%; transform:translateY(-50%); opacity:0.5;}
+
+  /* ---------- TIMELINE ---------- */
+  .trailwrap{position:relative; padding-left:44px;}
+  .trailline{
+    position:absolute; left:14px; top:6px; bottom:20px; width:2px;
+    background:repeating-linear-gradient(to bottom, var(--trail-dim) 0 6px, transparent 6px 12px);
+  }
+  .month-waypoint{
+    position:relative; margin-bottom:6px; padding-top:26px;
+  }
+  .month-waypoint:first-child{padding-top:0;}
+  .month-waypoint .dot{
+    position:absolute; left:-44px; top:26px; width:26px; height:26px;
+    border-radius:50%; background:var(--slate); border:2px solid var(--trail);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .month-waypoint:first-child .dot{top:0;}
+  .month-label{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.1em;
+    text-transform:uppercase; color:var(--trail);
+    display:flex; align-items:center; gap:10px; margin-bottom:14px;
+  }
+  .month-label .bar{height:5px; background:var(--trail); border-radius:3px; opacity:0.5;}
+  .month-label .count{color:rgba(239,232,216,0.4); font-size:10px;}
+
+  .event{
+    position:relative;
+    margin:0 0 14px 22px;
+    background:rgba(239,232,216,0.045);
+    border:1px solid rgba(239,232,216,0.12);
+    border-left:3px solid var(--cat-color, var(--sage));
+    border-radius:6px;
+    padding:14px 18px;
+    transition:background .15s ease, transform .15s ease;
+    cursor:pointer;
+  }
+  .event:hover{background:rgba(239,232,216,0.08); transform:translateX(2px);}
+  .event::before{
+    content:''; position:absolute; left:-25px; top:20px; width:8px; height:8px;
+    border-radius:50%; background:var(--cat-color, var(--sage));
+  }
+  .event .row1{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .event .date{font-family:'IBM Plex Mono',monospace; font-size:11px; color:rgba(239,232,216,0.45);}
+  .event .cat{
+    font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase;
+    padding:2px 8px; border-radius:100px; color:var(--ink); font-weight:600;
+    background:var(--cat-color, var(--sage));
+  }
+  .event h3{
+    font-family:'Fraunces',serif; font-weight:600; font-size:17px; margin:8px 0 4px; color:var(--paper);
+  }
+  .event p{margin:0; font-size:13.5px; line-height:1.55; color:rgba(239,232,216,0.68); max-width:66ch;}
+  .event .skilltag{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--trail); margin-top:8px; display:inline-block;
+  }
+  .empty-state{
+    text-align:center; padding:60px 20px; color:rgba(239,232,216,0.45); font-family:'IBM Plex Mono',monospace; font-size:13px;
+  }
+
+  /* ---------- LIFECYCLE ---------- */
+  .lane-legend{display:flex; gap:22px; margin-bottom:28px; flex-wrap:wrap; font-family:'IBM Plex Mono',monospace; font-size:11px; color:rgba(239,232,216,0.55);}
+  .lane-legend span{display:flex; align-items:center; gap:6px;}
+  .swatch{width:11px; height:11px; border-radius:3px; display:inline-block;}
+  .lane{
+    margin-bottom:34px; padding-bottom:28px; border-bottom:1px dashed rgba(239,232,216,0.15);
+  }
+  .lane:last-child{border-bottom:none;}
+  .lane-title{
+    font-family:'Fraunces',serif; font-size:19px; font-weight:600; margin-bottom:4px; color:var(--paper);
+  }
+  .lane-sub{font-family:'IBM Plex Mono',monospace; font-size:11px; color:rgba(239,232,216,0.4); margin-bottom:16px;}
+  .lane-track{position:relative; display:flex; align-items:center; overflow-x:auto; padding:10px 0 26px;}
+  .lane-track::before{
+    content:''; position:absolute; left:0; right:0; top:24px; height:2px; background:rgba(239,232,216,0.18);
+  }
+  .lane-stop{
+    position:relative; flex:0 0 auto; min-width:190px; padding-right:26px;
+  }
+  .lane-stop .node{
+    width:16px; height:16px; border-radius:50%; border:3px solid var(--ink); position:relative; z-index:2;
+    margin-bottom:10px;
+  }
+  .lane-stop .stopdate{font-family:'IBM Plex Mono',monospace; font-size:10px; color:rgba(239,232,216,0.45); margin-bottom:3px;}
+  .lane-stop .stoptitle{font-size:13.5px; font-weight:600; color:var(--paper); margin-bottom:3px;}
+  .lane-stop .stopdesc{font-size:12px; color:rgba(239,232,216,0.6); line-height:1.5; max-width:220px;}
+  .bucket-tag{
+    display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:9.5px; text-transform:uppercase;
+    letter-spacing:0.05em; padding:1px 7px; border-radius:100px; margin-top:6px;
+  }
+
+  /* ---------- CONCEPTS ---------- */
+  .axis-block{margin-bottom:44px;}
+  .axis-head{
+    display:flex; align-items:baseline; gap:14px; margin-bottom:18px;
+    border-bottom:1px solid rgba(239,232,216,0.15); padding-bottom:10px;
+  }
+  .axis-head h2{font-family:'Fraunces',serif; font-size:22px; font-weight:600; margin:0;}
+  .axis-head .axis-desc{font-size:12.5px; color:rgba(239,232,216,0.5); max-width:50ch;}
+  .concept-grid{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px;
+  }
+  .concept-card{
+    background:rgba(239,232,216,0.045); border:1px solid rgba(239,232,216,0.13);
+    border-radius:8px; padding:16px 18px;
+  }
+  .concept-card.failure{
+    border-color:rgba(161,60,43,0.5); background:rgba(161,60,43,0.08);
+  }
+  .concept-card h4{
+    font-family:'Fraunces',serif; font-size:15.5px; margin:0 0 8px; display:flex; align-items:center; gap:8px;
+  }
+  .concept-card .fm-badge{
+    font-family:'IBM Plex Mono',monospace; font-size:8.5px; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--warn); border:1px solid var(--warn); border-radius:100px; padding:1px 7px;
+  }
+  .concept-card p{margin:0; font-size:12.5px; line-height:1.55; color:rgba(239,232,216,0.68);}
+
+  /* footer note */
+  .footnote{
+    margin-top:60px; padding-top:20px; border-top:1px solid rgba(239,232,216,0.12);
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:rgba(239,232,216,0.35);
+  }
+
+  @media (max-width:640px){
+    .hero, .nav, main{padding-left:5vw; padding-right:5vw;}
+    .lane-stop{min-width:150px;}
+  }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow">Field notes · mattpocock/skills · Feb – Jul 2026</div>
+  <h1>The trail this<br><em>skill set</em> has walked.</h1>
+  <p class="lede">A route through 314 commits of one solo-maintained agent-skills repo — where each skill was born, renamed, promoted, merged, or left for dead, and the vocabulary of "what makes a skill predictable" that got discovered along the way.</p>
+  <div class="stat-strip">
+    <div class="stat"><div class="n">314</div><div class="l">commits</div></div>
+    <div class="stat"><div class="n">6</div><div class="l">months</div></div>
+    <div class="stat"><div class="n">27</div><div class="l">live skills</div></div>
+    <div class="stat"><div class="n">153</div><div class="l">commits in July</div></div>
+    <div class="stat"><div class="n">1</div><div class="l">maintainer</div></div>
+  </div>
+  <svg class="elev" viewBox="0 0 600 100" preserveAspectRatio="none">
+    <polyline points="0,90 60,84 120,80 180,60 240,66 300,30 360,42 420,10 480,20 540,4 600,14" fill="none" stroke="#b9622b" stroke-width="2"/>
+  </svg>
+</section>
+
+<nav class="nav">
+  <button class="tab active" data-view="trail">Trail</button>
+  <button class="tab" data-view="lifecycle">Skill Lifecycles</button>
+  <button class="tab" data-view="concepts">Field Guide</button>
+  <div class="spacer"></div>
+  <span class="tag" id="visible-count"></span>
+</nav>
+
+<main>
+
+  <!-- ============ TRAIL VIEW ============ -->
+  <div class="view active" id="view-trail">
+    <div class="filterbar" id="filterbar"></div>
+    <div class="trailwrap">
+      <div class="trailline"></div>
+      <div id="trail-content"></div>
+    </div>
+  </div>
+
+  <!-- ============ LIFECYCLE VIEW ============ -->
+  <div class="view" id="view-lifecycle">
+    <div class="lane-legend">
+      <span><span class="swatch" style="background:#8a5027"></span>in-progress</span>
+      <span><span class="swatch" style="background:#5c7a63"></span>engineering / productivity (promoted)</span>
+      <span><span class="swatch" style="background:#3d5342"></span>renamed / reframed</span>
+      <span><span class="swatch" style="background:#a13c2b"></span>removed / deprecated</span>
+    </div>
+    <div id="lanes"></div>
+  </div>
+
+  <!-- ============ CONCEPTS VIEW ============ -->
+  <div class="view" id="view-concepts">
+    <div class="filterbar">
+      <div class="searchwrap" style="margin-left:0;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#efe8d8"><circle cx="11" cy="11" r="7" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke-width="2"/></svg>
+        <input id="concept-search" placeholder="Search the vocabulary (e.g. sprawl, negation, leading word)…">
+      </div>
+    </div>
+    <div id="concepts-content"></div>
+  </div>
+
+  <div class="footnote">Built from the public commit history of github.com/mattpocock/skills. Categories and groupings are one reading of the log, not an official taxonomy.</div>
+</main>
+
+<script>
+const CATEGORY_META = {
+  launch:      {label:'Launch',        color:'#b9622b'},
+  added:       {label:'Skill Added',   color:'#5c7a63'},
+  promoted:    {label:'Promoted',      color:'#7a9a80'},
+  renamed:     {label:'Renamed',       color:'#3d5342'},
+  removed:     {label:'Removed',       color:'#a13c2b'},
+  architecture:{label:'Architecture',  color:'#6f7f9b'},
+  philosophy:  {label:'Philosophy',    color:'#c9974a'},
+  distribution:{label:'Distribution',  color:'#8a5cab'},
+  milestone:   {label:'Milestone',     color:'#b9622b'},
+};
+
+const EVENTS = [
+{d:'2026-02-03', cat:'launch', t:'First commit', desc:'The repo begins as a private grab-bag: a TDD skill note and a "migrate to shoehorn" script. No taxonomy yet — just working notes.'},
+{d:'2026-02-10', cat:'added', t:'git-guardrails', desc:'A script-backed skill to block dangerous git commands lands early — the first sign these skills would carry real guardrails, not just prompts.'},
+{d:'2026-03-02', cat:'added', t:'prd-to-plan', desc:'An early planning skill — the distant ancestor of what becomes to-tickets five months later.', skill:'to-tickets lineage'},
+{d:'2026-03-13', cat:'launch', t:'The repo becomes a project', desc:'First README, MIT license, and standardized skill metadata (frontmatter cleanup, dropping "-user" suffixes). Public shape starts to form.'},
+{d:'2026-03-16', cat:'added', t:'ubiquitous-language', desc:'A DDD-flavored skill for keeping glossary terms consistent in code. Later deprecated once domain-modeling absorbs the idea.', skill:'later deprecated'},
+{d:'2026-03-26', cat:'philosophy', t:'"Ask one question at a time"', desc:'An early, small instruction added to grill-me — the seed of what becomes an entire interview discipline (grilling) months later.'},
+{d:'2026-04-01', cat:'added', t:'GitHub issue triage brief', desc:'An agent brief and an out-of-scope doc are added for issue triage — the first appearance of the "out of scope" pattern used throughout the repo today.'},
+{d:'2026-04-17', cat:'renamed', t:'write-a-prd → to-prd, prd-to-issues → to-issues', desc:'The planning skills get their working names. prd-to-plan is removed as redundant. domain-model and a short-lived "caveman" skill are added.'},
+{d:'2026-04-22', cat:'philosophy', t:'"CONTEXT.md is a glossary, not a spec"', desc:'A pivotal clarification: the shared-vocabulary doc should hold meaningful domain terms for humans and agents alike, not implementation detail. This framing survives to today\'s domain-modeling skill.'},
+{d:'2026-04-24', cat:'architecture', t:'LANGUAGE.md — the first shared vocabulary file', desc:'A shared-language file is carved out inside improve-codebase-architecture. This is the literal seed of the codebase-design skill that gets extracted two months later.'},
+{d:'2026-04-26', cat:'launch', t:'README becomes a pitch', desc:'The README is rewritten to explain agent failure modes to a public audience and links a newsletter — the repo shifts from personal notes to a product other engineers install.'},
+{d:'2026-04-28', cat:'launch', t:'The Great Restructure', desc:'The single biggest day in the repo\'s life: skills move into ./skills, the bucket taxonomy (engineering / productivity / misc / personal / deprecated) is established, setup-matt-pocock-skills is added, github-triage is renamed to triage, and GitLab support ships alongside GitHub.'},
+{d:'2026-04-28', cat:'removed', t:'triage-issue deprecated', desc:'Superseded by the new unified triage skill under the new bucket system.'},
+{d:'2026-04-29', cat:'architecture', t:'GitLab becomes first-class', desc:'Issue-tracker abstraction extends past GitHub, plus an out-of-scope note: only mainstream trackers are supported.'},
+{d:'2026-04-30', cat:'architecture', t:'Verify / check mode documented', desc:'A discipline for confirming setup worked, plus a list-skills script — early tooling investment beyond the SKILL.md files themselves.'},
+{d:'2026-05-06', cat:'added', t:'prototype', desc:'Throwaway code for answering a design question — later becomes model-invoked and gets reframed twice more in July.'},
+{d:'2026-05-06', cat:'added', t:'handoff', desc:'Compacting a conversation into a document so another agent session can continue the work.'},
+{d:'2026-05-10', cat:'added', t:'review (in-progress)', desc:'The first version of what becomes code-review two months later — two-axis review of a diff.'},
+{d:'2026-05-19', cat:'philosophy', t:'Redaction added to handoff', desc:'Security-consciousness enters the handoff skill: sensitive details get redacted before being passed to the next agent session.'},
+{d:'2026-05-27', cat:'added', t:'teach', desc:'A multi-session teaching skill, immediately moved to in-progress — it bounces between productivity and in-progress twice before settling.'},
+{d:'2026-06-03', cat:'philosophy', t:'"Prefactoring"', desc:'An idea explored around restructuring code before adding a feature, rather than after — feeds into later codebase-design thinking.'},
+{d:'2026-06-08', cat:'added', t:'teach graduates', desc:'Citations, interactivity guidance, and a reusable-components model (build lessons from ./assets/ rather than inlining) land.'},
+{d:'2026-06-10', cat:'added', t:'implement', desc:'The skill that drives red-green-refactor at pre-agreed seams and closes out with code-review before committing.'},
+{d:'2026-06-15', cat:'added', t:'decision-mapping', desc:'The first draft of what becomes wayfinder. Starts in engineering, gets demoted to in-progress almost immediately, then renamed twice before its July promotion.', skill:'→ wayfinding → wayfinder'},
+{d:'2026-06-17', cat:'milestone', t:'v1.0.0 — the ask-matt release', desc:'A major architectural day: ask-matt (router skill) is added; codebase-design and domain-modeling are extracted as standalone shared-vocabulary skills; caveman and zoom-out are removed as unused; write-a-skill becomes writing-great-skills; diagnose becomes diagnosing-bugs; resolving-merge-conflicts is added; and the whole taxonomy is renamed from Commands/Skills to User-invoked/Model-invoked.'},
+{d:'2026-06-18', cat:'architecture', t:'Triage learns to handle pull requests', desc:'PRs now flow through the same state machine as issues, treated as an issue with attached code.'},
+{d:'2026-06-29', cat:'architecture', t:'prototype becomes model-invoked', desc:'The agent can now reach for it autonomously rather than waiting to be asked — description rewritten around the leading word "prototype".'},
+{d:'2026-07-01', cat:'added', t:'research', desc:'A model-invoked skill that spins up a background agent to investigate a question against primary sources and leaves a cited markdown file behind.'},
+{d:'2026-07-01', cat:'architecture', t:'ask-matt catches up', desc:'The router is updated to map five skills it had been silently missing: tdd, diagnosing-bugs, domain-modeling, codebase-design, and grilling.'},
+{d:'2026-07-02', cat:'renamed', t:'Planning skills unified into to-tickets', desc:'to-plan and to-issues are merged into a single to-tickets skill; to-prd is renamed to-spec. "Spec" becomes the single through-line term across the repo.'},
+{d:'2026-07-06', cat:'promoted', t:'wayfinder graduates to engineering', desc:'decision-mapping\'s final form. A full reframe around fog-of-war / frontier / destination, a fourth "task" ticket type, HITL vs AFK ticket classification, and native issue-tracker blocking edges so multiple agents can work the frontier at once.', skill:'engineering, user-invoked'},
+{d:'2026-07-06', cat:'promoted', t:'code-review graduates to engineering', desc:'review is renamed code-review and gains an always-on Fowler smell baseline (Mysterious Name, Feature Envy, Shotgun Surgery, and 9 more) alongside repo-specific standards.', skill:'engineering, model-invoked'},
+{d:'2026-07-07', cat:'philosophy', t:'wayfinder settles as an on-ramp, not the front door', desc:'A deliberate scoping decision: the grill-led idea → spec → tickets → implement chain stays the default entry flow. Crowning wayfinder as the new spine is called out as "a v2-sized move, not a 1.1."'},
+{d:'2026-07-08', cat:'architecture', t:'Fixing a broken indirection', desc:'wayfinder had hardcoded the issue-tracker doc path, silently breaking in repos that keep agent docs elsewhere. Fixed to resolve the path through the same CLAUDE.md pointer every other skill uses.'},
+{d:'2026-07-08', cat:'milestone', t:'v1.1.0 ships', desc:'The version bump that bundles wayfinder\'s graduation, code-review\'s promotion, research, grilling\'s confirmation gate, and the facts-vs-decisions split.'},
+{d:'2026-07-10', cat:'philosophy', t:'"Capture the prototype, don\'t dispose of it"', desc:'A reversal: prototype code used to be explicitly throwaway. Now it\'s reframed around primary vs. secondary source and kept, not deleted.'},
+{d:'2026-07-10', cat:'architecture', t:'Friendlier setup + local ticket format', desc:'setup-matt-pocock-skills gets a smoother flow; the local (no-tracker) option moves to one file per ticket instead of a single tickets.md.'},
+{d:'2026-07-10', cat:'added', t:'setup-ts-deep-modules (in-progress)', desc:'An entry-points model over a single barrel file, for TypeScript projects — still in draft.'},
+{d:'2026-07-13', cat:'distribution', t:'Shipped as a native Claude Code plugin', desc:'.claude-plugin manifests added so the promoted skill set can be installed as a read-only, always-updating bundle. A Codex-native plugin is deliberately deferred — its manifest can\'t express "these two bucket folders, not those four," and it drops symlinks on install.'},
+{d:'2026-07-13', cat:'renamed', t:'"design tree" → "decision tree"', desc:'A repo-wide terminology correction, plus wayfinder\'s planning unit gets a settled name: the "decision ticket".'},
+{d:'2026-07-13', cat:'architecture', t:'wayfinder burns research tickets with subagents', desc:'AFK-classified tickets can now be resolved by background subagents rather than waiting on the human.'},
+{d:'2026-07-13', cat:'architecture', t:'YAGNI scoping for improve-codebase-architecture', desc:'The architecture scan is narrowed to only where a change is actually landing, instead of scanning the whole codebase every time.'},
+{d:'2026-07-13', cat:'distribution', t:'Codex metadata added to every skill', desc:'agents/openai.yaml added across the board so skills.sh keeps serving Codex users properly even while the native Codex plugin waits.'},
+{d:'2026-07-14', cat:'added', t:'to-questionnaire (in-progress)', desc:'A templated questionnaire-structure skill, still in draft.'},
+{d:'2026-07-16', cat:'added', t:'batch-grill-me (in-progress)', desc:'Granular fact-finding for grilling sessions that doesn\'t block the whole round on one slow answer — the newest idea in the pipeline.'},
+{d:'2026-07-21', cat:'architecture', t:'Pruning to-tickets', desc:'Redundant ticket-implementation instructions removed — the ongoing discipline of cutting sediment even from mature, promoted skills.'},
+];
+
+const LANES = [
+  {
+    title:'decision-mapping → wayfinding → wayfinder',
+    sub:'Three names, two bucket moves, one full reframe — this skill took the longest road of any in the repo.',
+    stops:[
+      {d:'2026-06-15', t:'decision-mapping added', desc:'First cut, filed straight into engineering.', bucket:'engineering', color:'#5c7a63'},
+      {d:'2026-06-15', t:'Demoted to in-progress', desc:'Not ready — moved back to the drafts bucket almost immediately.', bucket:'in-progress', color:'#8a5027'},
+      {d:'~2026-06-20', t:'Renamed: wayfinding', desc:'"Decision map" read as jargon; first attempt at a better frame.', bucket:'in-progress', color:'#8a5027'},
+      {d:'~2026-07-03', t:'Renamed again: wayfinder', desc:'Settles on fog-of-war / frontier / destination as the coherent metaphor.', bucket:'in-progress', color:'#8a5027'},
+      {d:'2026-07-06', t:'Graduates to engineering', desc:'Full reframe complete: destination field, HITL/AFK tickets, native blocking edges, collaborative shared map.', bucket:'engineering · user-invoked', color:'#3d5342'},
+    ]
+  },
+  {
+    title:'review → code-review',
+    sub:'A straightforward promotion once the two-axis review model proved itself.',
+    stops:[
+      {d:'2026-05-10', t:'review added', desc:'Two-axis review of a diff: Standards and Spec.', bucket:'in-progress', color:'#8a5027'},
+      {d:'2026-07-06', t:'Promoted & renamed: code-review', desc:'Gains a Fowler smell baseline (~12 curated smells) as a fixed addition alongside repo-specific standards.', bucket:'engineering · model-invoked', color:'#3d5342'},
+    ]
+  },
+  {
+    title:'diagnose → diagnosing-bugs',
+    sub:'A same-bucket rename for clarity, part of the June 17 taxonomy sweep.',
+    stops:[
+      {d:'2026-04-28', t:'diagnose added', desc:'Reproduce → minimise → hypothesise → instrument → fix → regression-test.', bucket:'engineering', color:'#5c7a63'},
+      {d:'2026-06-17', t:'Renamed: diagnosing-bugs', desc:'Verb-first naming convention applied across the v1.0.0 sweep.', bucket:'engineering', color:'#5c7a63'},
+    ]
+  },
+  {
+    title:'to-prd + to-plan + to-issues → to-spec + to-tickets',
+    sub:'Three planning skills consolidated into two, with a shared through-line term ("spec") and a native-tracker publishing model.',
+    stops:[
+      {d:'2026-03-02', t:'prd-to-plan added', desc:'Earliest planning skill.', bucket:'—', color:'#8a5027'},
+      {d:'2026-04-17', t:'Renamed to to-prd / to-issues', desc:'prd-to-plan removed as redundant.', bucket:'engineering', color:'#5c7a63'},
+      {d:'2026-07-01', t:'to-plan added (sequential)', desc:'A short-lived third planning skill.', bucket:'engineering', color:'#5c7a63'},
+      {d:'2026-07-02', t:'Merged into to-spec + to-tickets', desc:'to-plan and to-issues merge into to-tickets; to-prd is renamed to-spec. Tickets carry blocking edges natively on real trackers.', bucket:'engineering · user-invoked', color:'#3d5342'},
+    ]
+  },
+  {
+    title:'write-a-skill → writing-great-skills',
+    sub:'From a short how-to into a full glossary of skill-writing failure modes.',
+    stops:[
+      {d:'~2026-05', t:'write-a-skill exists', desc:'An early, thinner how-to guide.', bucket:'productivity', color:'#5c7a63'},
+      {d:'2026-06-17', t:'Replaced by writing-great-skills', desc:'A GLOSSARY.md of predictability, steering, and pruning concepts is added alongside it.', bucket:'productivity · user-invoked', color:'#3d5342'},
+    ]
+  },
+  {
+    title:'teach',
+    sub:'The only skill to bounce between buckets twice before settling in productivity.',
+    stops:[
+      {d:'2026-05-27', t:'Added, then moved to in-progress', desc:'Filed and immediately demoted in the same day.', bucket:'in-progress', color:'#8a5027'},
+      {d:'2026-06-08', t:'Graduates to productivity', desc:'Citations and interactivity guidance land.', bucket:'productivity', color:'#5c7a63'},
+      {d:'2026-06-10 – 06-10', t:'Reuse-first rewrite', desc:'Lessons now built from reusable ./assets/ components rather than inlined each time.', bucket:'productivity', color:'#5c7a63'},
+    ]
+  },
+  {
+    title:'Removed entirely',
+    sub:'Skills that were tried and deliberately cut — sediment removed, not left to rot.',
+    stops:[
+      {d:'2026-04-17', t:'caveman added', desc:'A duplicate of another skill under test.', bucket:'added', color:'#8a5027'},
+      {d:'2026-06-17', t:'caveman & zoom-out removed', desc:'caveman was never meant to be public; zoom-out went unused in practice.', bucket:'removed', color:'#a13c2b'},
+      {d:'2026-03-16', t:'ubiquitous-language added', desc:'DDD glossary-consistency skill.', bucket:'added', color:'#8a5027'},
+      {d:'—', t:'Later deprecated', desc:'Superseded once domain-modeling absorbed the idea.', bucket:'deprecated', color:'#a13c2b'},
+    ]
+  },
+];
+
+const CONCEPT_AXES = [
+  {
+    key:'invocation', name:'Invocation', desc:'How a skill is reached, and the load you pay for that reach.',
+    items:[
+      {t:'Model-Invoked', fm:false, d:'Keeps its description so the agent can fire it on its own. Always pays a context load; any other skill can invoke it too.'},
+      {t:'User-Invoked', fm:false, d:'Description stripped — reachable only by a human typing its name. Zero context load, but invisible to other skills.'},
+      {t:'Description', fm:false, d:'The one context pointer a model-invoked skill is forced to keep loaded on every turn. Its presence is the invocation axis.'},
+      {t:'Context Pointer', fm:false, d:'A reference held in context naming out-of-context material. Its wording decides when — and how reliably — the agent reaches for it.'},
+      {t:'Context Load', fm:false, d:'The always-on cost a model-invoked skill spends: its description, every turn, whether needed or not.'},
+      {t:'Cognitive Load', fm:false, d:'The cost a user-invoked skill puts on the human — remembering it exists and when to reach for it. The price of human agency, not a bug.'},
+      {t:'Router Skill', fm:false, d:'A user-invoked skill whose job is pointing at your other user-invoked skills, so the human has one thing to remember instead of many.'},
+      {t:'Granularity', fm:false, d:'How finely you split skills. Split further and you spend either context load (more descriptions) or cognitive load (more for the human to track).'},
+    ]
+  },
+  {
+    key:'hierarchy', name:'Information Hierarchy', desc:'How a skill\'s content is arranged, from primary steps down to disclosed reference.',
+    items:[
+      {t:'Steps', fm:false, d:'The ordered actions the agent performs — the primary tier, when a skill has them at all.'},
+      {t:'Reference', fm:false, d:'Material referred to on demand: definitions, examples, parameters. Secondary to steps, or the whole content when there are none.'},
+      {t:'External Reference', fm:false, d:'Reference living outside the skill system entirely — a plain file any skill can point at, including two user-invoked skills that can\'t invoke each other.'},
+      {t:'Progressive Disclosure', fm:false, d:'Pushing reference out of SKILL.md and behind a pointer, licensed by which branches actually need it — keeping the top of the file legible.'},
+      {t:'Co-location', fm:false, d:'Keeping everything needed at once — a term\'s definition, rules, caveats — under one heading rather than scattered.'},
+      {t:'Sprawl', fm:true, d:'A skill that\'s simply too long, independent of staleness or repetition. Cured by pushing reference down the hierarchy and splitting by branch.'},
+    ]
+  },
+  {
+    key:'steering', name:'Steering', desc:'The levers that shape the agent\'s runtime behaviour toward predictability.',
+    items:[
+      {t:'Branch', fm:false, d:'A distinct way a skill can be invoked — a case it handles, so different runs take different paths.'},
+      {t:'Leading Word', fm:false, d:'A compact concept already in the model\'s pretraining (e.g. "tracer bullets," "fog of war") that anchors behaviour in the fewest tokens. Coined words cost more — they carry no free priors.'},
+      {t:'Completion Criterion', fm:false, d:'The condition that tells the agent a step is done. Clarity resists premature completion; demand sets how much legwork it forces.'},
+      {t:'Legwork', fm:false, d:'The work an agent does within a step — exploring, digging, verifying — rather than offloading it back to the user.'},
+      {t:'Post-Completion Steps', fm:false, d:'Steps that follow the current one. Visible, they pull the agent forward — the stronger the pull, the more of them are in view.'},
+      {t:'Premature Completion', fm:true, d:'Ending a step before it\'s genuinely done because attention slips ahead. Cured first by sharpening the completion criterion, only then by hiding later steps.'},
+      {t:'Negation', fm:true, d:'Steering by prohibition — naming what not to do drags it into the frame and makes it more available, not less. Cure: state the positive target instead.'},
+    ]
+  },
+  {
+    key:'pruning', name:'Pruning', desc:'Keeping a skill lean — each remedy paired with the failure it exists to cure.',
+    items:[
+      {t:'Single Source of Truth', fm:false, d:'Each meaning lives in exactly one authoritative place, so a behaviour change is a change in one place.'},
+      {t:'Duplication', fm:true, d:'The same meaning stated in more than one place. Costs maintenance and tokens, and inflates the duplicated idea\'s apparent importance.'},
+      {t:'Relevance', fm:false, d:'Whether a line still bears on what the skill does — either it never mattered, or it drifted stale as the world it describes changed.'},
+      {t:'Sediment', fm:true, d:'Layers of old content that never get cleared because adding feels safe and removing feels risky. The default fate of any skill without a pruning discipline.'},
+      {t:'No-Op', fm:true, d:'An instruction that changes nothing because the model already does it by default — you pay context to say what would\'ve happened anyway.'},
+    ]
+  }
+];
+
+/* ---------------- RENDER: TRAIL ---------------- */
+let activeFilters = new Set();
+let searchTerm = '';
+
+function monthKey(d){return d.slice(0,7);}
+function monthLabel(k){
+  const [y,m]=k.split('-');
+  return new Date(y, m-1, 1).toLocaleString('en-US',{month:'long', year:'numeric'});
+}
+
+function buildFilterbar(){
+  const bar = document.getElementById('filterbar');
+  bar.innerHTML='';
+  const allChip = document.createElement('button');
+  allChip.className='chip on';
+  allChip.textContent='All';
+  allChip.onclick=()=>{ activeFilters.clear(); renderTrail(); };
+  bar.appendChild(allChip);
+  Object.entries(CATEGORY_META).forEach(([key,meta])=>{
+    const c=document.createElement('button');
+    c.className='chip';
+    c.textContent=meta.label;
+    c.style.setProperty('--chip-color', meta.color);
+    c.onclick=()=>{
+      if(activeFilters.has(key)) activeFilters.delete(key); else activeFilters.add(key);
+      renderTrail();
+    };
+    c.dataset.key=key;
+    bar.appendChild(c);
+  });
+  const sw=document.createElement('div');
+  sw.className='searchwrap';
+  sw.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#efe8d8"><circle cx="11" cy="11" r="7" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke-width="2"/></svg><input id="trail-search" placeholder="Search events…">`;
+  bar.appendChild(sw);
+  document.getElementById('trail-search').addEventListener('input', e=>{
+    searchTerm = e.target.value.toLowerCase();
+    renderTrail();
+  });
+}
+
+function renderTrail(){
+  // update chip states
+  document.querySelectorAll('#filterbar .chip[data-key]').forEach(c=>{
+    c.classList.toggle('on', activeFilters.has(c.dataset.key));
+    if(activeFilters.has(c.dataset.key)){
+      c.style.background = CATEGORY_META[c.dataset.key].color;
+      c.style.borderColor = CATEGORY_META[c.dataset.key].color;
+      c.style.color = '#161d1a';
+    } else {
+      c.style.background='transparent';
+      c.style.borderColor='rgba(239,232,216,0.25)';
+      c.style.color='rgba(239,232,216,0.7)';
+    }
+  });
+  document.querySelector('#filterbar .chip:not([data-key])').classList.toggle('on', activeFilters.size===0);
+
+  const filtered = EVENTS.filter(ev=>{
+    const catOk = activeFilters.size===0 || activeFilters.has(ev.cat);
+    const q = searchTerm.trim();
+    const searchOk = !q || (ev.t+' '+ev.desc+' '+(ev.skill||'')).toLowerCase().includes(q);
+    return catOk && searchOk;
+  });
+
+  document.getElementById('visible-count').textContent = filtered.length + ' / ' + EVENTS.length + ' waypoints';
+
+  const groups = {};
+  filtered.forEach(ev=>{
+    const mk = monthKey(ev.d.replace('~',''));
+    groups[mk] = groups[mk] || [];
+    groups[mk].push(ev);
+  });
+
+  const monthCounts = {};
+  EVENTS.forEach(ev=>{ const mk=monthKey(ev.d.replace('~','')); monthCounts[mk]=(monthCounts[mk]||0)+1; });
+  const maxCount = Math.max(...Object.values(monthCounts));
+
+  const container = document.getElementById('trail-content');
+  container.innerHTML='';
+
+  if(filtered.length===0){
+    container.innerHTML = '<div class="empty-state">No waypoints match that combination. Try clearing a filter.</div>';
+    return;
+  }
+
+  Object.keys(groups).sort().forEach(mk=>{
+    const wp = document.createElement('div');
+    wp.className='month-waypoint';
+    const barWidth = 10 + (monthCounts[mk]/maxCount)*60;
+    wp.innerHTML = `<div class="dot"></div>
+      <div class="month-label">${monthLabel(mk)}<div class="bar" style="width:${barWidth}px"></div><span class="count">${monthCounts[mk]} total</span></div>`;
+    const evWrap = document.createElement('div');
+    groups[mk].forEach(ev=>{
+      const meta = CATEGORY_META[ev.cat];
+      const el = document.createElement('div');
+      el.className='event';
+      el.style.setProperty('--cat-color', meta.color);
+      el.innerHTML = `<div class="row1"><span class="date">${ev.d}</span><span class="cat">${meta.label}</span></div>
+        <h3>${ev.t}</h3><p>${ev.desc}</p>
+        ${ev.skill ? `<span class="skilltag">↳ ${ev.skill}</span>` : ''}`;
+      evWrap.appendChild(el);
+    });
+    wp.appendChild(evWrap);
+    container.appendChild(wp);
+  });
+}
+
+/* ---------------- RENDER: LIFECYCLE ---------------- */
+function renderLifecycle(){
+  const wrap = document.getElementById('lanes');
+  wrap.innerHTML='';
+  LANES.forEach(lane=>{
+    const laneEl = document.createElement('div');
+    laneEl.className='lane';
+    laneEl.innerHTML = `<div class="lane-title">${lane.title}</div><div class="lane-sub">${lane.sub}</div>`;
+    const track = document.createElement('div');
+    track.className='lane-track';
+    lane.stops.forEach(s=>{
+      const stop = document.createElement('div');
+      stop.className='lane-stop';
+      stop.innerHTML = `<div class="node" style="background:${s.color}; border-color:#161d1a;"></div>
+        <div class="stopdate">${s.d}</div>
+        <div class="stoptitle">${s.t}</div>
+        <div class="stopdesc">${s.desc}</div>
+        <span class="bucket-tag" style="background:${s.color}; color:#161d1a;">${s.bucket}</span>`;
+      track.appendChild(stop);
+    });
+    laneEl.appendChild(track);
+    wrap.appendChild(laneEl);
+  });
+}
+
+/* ---------------- RENDER: CONCEPTS ---------------- */
+function renderConcepts(filter=''){
+  const wrap = document.getElementById('concepts-content');
+  wrap.innerHTML='';
+  const q = filter.trim().toLowerCase();
+  CONCEPT_AXES.forEach(axis=>{
+    const items = axis.items.filter(it => !q || (it.t+' '+it.d).toLowerCase().includes(q));
+    if(items.length===0) return;
+    const block = document.createElement('div');
+    block.className='axis-block';
+    block.innerHTML = `<div class="axis-head"><h2>${axis.name}</h2><div class="axis-desc">${axis.desc}</div></div>`;
+    const grid = document.createElement('div');
+    grid.className='concept-grid';
+    items.forEach(it=>{
+      const card = document.createElement('div');
+      card.className='concept-card'+(it.fm?' failure':'');
+      card.innerHTML = `<h4>${it.t} ${it.fm?'<span class="fm-badge">Failure mode</span>':''}</h4><p>${it.d}</p>`;
+      grid.appendChild(card);
+    });
+    block.appendChild(grid);
+    wrap.appendChild(block);
+  });
+  if(wrap.innerHTML===''){
+    wrap.innerHTML = '<div class="empty-state">No concepts match that search.</div>';
+  }
+}
+
+/* ---------------- NAV ---------------- */
+document.querySelectorAll('.nav .tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav .tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view==='trail'){ document.getElementById('visible-count').textContent = EVENTS.length+' / '+EVENTS.length+' waypoints'; }
+    else document.getElementById('visible-count').textContent='';
+  });
+});
+
+document.getElementById('concept-search').addEventListener('input', e=>renderConcepts(e.target.value));
+
+buildFilterbar();
+renderTrail();
+renderLifecycle();
+renderConcepts();
+</script>
+</body>
+</html>

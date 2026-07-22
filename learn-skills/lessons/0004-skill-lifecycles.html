@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4: Skill Lifecycles</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .lifecycle-stage {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+    .lifecycle-stage h3 {
+      margin-top: 0;
+      font-size: 1rem;
+    }
+    .lifecycle-stage .stage-label {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-right: 0.5rem;
+    }
+    .stage-draft { background: rgba(255,159,10,0.15); color: #ff9f0a; }
+    .stage-promote { background: rgba(48,209,88,0.15); color: #30d158; }
+    .stage-rename { background: rgba(10,132,255,0.15); color: #0a84ff; }
+    .stage-merge { background: rgba(175,82,222,0.15); color: #af52de; }
+    .stage-kill { background: rgba(255,59,48,0.15); color: #ff453a; }
+    .trace-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .trace-card h4 {
+      margin-top: 0;
+      font-size: 0.95rem;
+      color: var(--color-accent);
+    }
+    .trace-card .trace-path {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    .trace-card .trace-path span {
+      color: var(--color-accent);
+    }
+    .skill-excerpt {
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .skill-excerpt .label {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .stage-draft { background: rgba(255,159,10,0.2); }
+      :root:not([data-theme="light"]) .stage-promote { background: rgba(48,209,88,0.2); }
+      :root:not([data-theme="light"]) .stage-rename { background: rgba(10,132,255,0.2); }
+      :root:not([data-theme="light"]) .stage-merge { background: rgba(175,82,222,0.2); }
+      :root:not([data-theme="light"]) .stage-kill { background: rgba(255,59,48,0.2); }
+    }
+    [data-theme="dark"] .stage-draft { background: rgba(255,159,10,0.2); }
+    [data-theme="dark"] .stage-promote { background: rgba(48,209,88,0.2); }
+    [data-theme="dark"] .stage-rename { background: rgba(10,132,255,0.2); }
+    [data-theme="dark"] .stage-merge { background: rgba(175,82,222,0.2); }
+    [data-theme="dark"] .stage-kill { background: rgba(255,59,48,0.2); }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0003-the-pruning-discipline.html" class="lesson-back-top" title="The Pruning Discipline"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-invocation-architecture.html" class="lesson-next-top" title="Invocation Architecture">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Skill Lifecycles</h1>
+
+<div class="lesson-meta">
+  Lesson 4 · Building Better Skills & Agents · ~12 minutes
+</div>
+
+<p>Skills are not static artifacts. They draft, promote, rename, merge, and die. Treating them as living things — with an expected lifespan and lifecycle — means you actively maintain a portfolio rather than letting it rot in place.</p>
+
+<p>This lesson maps the lifecycle stages, shows you seven real evolution traces from a production skill portfolio, and gives you the decision framework to know when a skill should move to the next stage.</p>
+
+<h2>The Lifecycle Stages</h2>
+
+<div class="lifecycle-stage">
+  <h3><span class="stage-label stage-draft">Draft</span> In-progress</h3>
+  <p>A skill that exists but hasn't proven itself. Maybe it's half-written, maybe it works but hasn't been invoked enough to validate its shape. Drafts are experimental — they have permission to be messy.</p>
+</div>
+
+<div class="lifecycle-stage">
+  <h3><span class="stage-label stage-promote">Promote</span> Earning its place</h3>
+  <p>The skill has been used in real work, its scope is clear, and its name fits. Promotion means it's graduated from experiment to tool — worthy of maintenance investment and the context/cognitive load it imposes.</p>
+</div>
+
+<div class="lifecycle-stage">
+  <h3><span class="stage-label stage-rename">Rename / Reframe</span> The name stopped fitting</h3>
+  <p>The skill's concept solidified but its name didn't keep up. Or the framing shifted — what started as a verb ("review") became a discipline ("code-review"). Renaming is a signal of maturity, not instability.</p>
+</div>
+
+<div class="lifecycle-stage">
+  <h3><span class="stage-label stage-merge">Merge</span> Consolidation</h3>
+  <p>Multiple skills that overlap get folded into fewer, stronger ones. The merged skill covers more surface with less maintenance cost and less cognitive/context load. Three weak skills become two strong ones.</p>
+</div>
+
+<div class="lifecycle-stage">
+  <h3><span class="stage-label stage-kill">Deprecate / Remove</span> Deliberate death</h3>
+  <p>The skill didn't earn its place, or its purpose was absorbed by another skill, or the workflow it served no longer exists. Removal is active maintenance, not neglect.</p>
+</div>
+
+<h2>Seven Real Lifecycle Traces</h2>
+
+<p>These are real evolutions from a production skill portfolio. Each trace shows a skill moving through one or more lifecycle stages:</p>
+
+<div class="trace-card">
+  <h4>1. decision-mapping → wayfinding → wayfinder</h4>
+  <div class="trace-path"><span>Draft</span> → <span>Rename</span> → <span>Rename</span> → <span>Promote</span></div>
+  <p>Three names, two bucket moves, full reframe. Started as "decision-mapping" (too narrow — it wasn't just about decisions). Renamed to "wayfinding" (better metaphor, broader scope). Then to "wayfinder" (noun form, consistent with agent naming convention). Each rename reflected a deepening understanding of what the skill actually did.</p>
+</div>
+
+<div class="trace-card">
+  <h4>2. review → code-review</h4>
+  <div class="trace-path"><span>Draft</span> → <span>Rename</span> → <span>Promote</span></div>
+  <p>Straightforward promotion. "review" was too generic — could mean document review, PR review, design review. "code-review" scoped it precisely. The skill's content didn't change much; the name caught up with reality.</p>
+</div>
+
+<div class="trace-card">
+  <h4>3. diagnose → diagnosing-bugs</h4>
+  <div class="trace-path"><span>Draft</span> → <span>Rename</span> → <span>Promote</span></div>
+  <p>Same-bucket rename for clarity. "diagnose" was ambiguous (diagnose what?). "diagnosing-bugs" made the trigger obvious. Later simplified back to "diagnose" once its description made the scope clear — proving that names can simplify once the description does the heavy lifting.</p>
+</div>
+
+<div class="trace-card">
+  <h4>4. to-prd + to-plan + to-issues → to-spec + to-tickets</h4>
+  <div class="trace-path"><span>Three Drafts</span> → <span>Merge</span> → <span>Two Promoted</span></div>
+  <p>Three overlapping skills consolidated into two. "to-prd" and "to-plan" had blurry boundaries — both produced planning documents. Merged into "to-spec" (one output format). "to-issues" became "to-tickets" (clearer name). Net: less maintenance, less confusion about which to invoke.</p>
+</div>
+
+<div class="trace-card">
+  <h4>5. write-a-skill → writing-great-skills</h4>
+  <div class="trace-path"><span>Draft</span> → <span>Promote</span> → <span>Reframe</span></div>
+  <p>Thin how-to became a full reference glossary. "write-a-skill" was a simple scaffolding helper. Over time it accumulated vocabulary definitions, quality criteria, and anti-patterns until it outgrew the how-to format. Reframed as "writing-great-skills" — now a reference dependency that other skills point to, not just a one-off generator.</p>
+</div>
+
+<div class="trace-card">
+  <h4>6. teach</h4>
+  <div class="trace-path"><span>Draft</span> → <span>Move</span> → <span>Move</span> → <span>Promote</span></div>
+  <p>Bounced between buckets twice before settling. Started in "productivity", moved to "meta", moved to "learning", finally settled back in its own category. The wandering reflected genuine uncertainty about what kind of skill it was — a productivity tool? A meta-skill? It was neither; it was a pedagogical mode.</p>
+</div>
+
+<div class="trace-card">
+  <h4>7. caveman & zoom-out</h4>
+  <div class="trace-path"><span>Draft</span> → <span>Kill</span></div>
+  <p>Tried and deliberately cut. "caveman" was an experiment in ultra-simplified communication. "zoom-out" provided broader context on unfamiliar code. Both were used a few times, never became habitual, and their value didn't justify the cognitive/context load. Killed — not because they were bad ideas, but because they didn't earn their place.</p>
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">Pattern recognition</div>
+  <p>Notice that most skills rename at least once. This is normal and healthy — it means you're learning what the skill actually does through use, not through upfront design. Resist the urge to get the name "right" on the first try.</p>
+</div>
+
+<h2>The Decision Framework</h2>
+
+<h3>Promotion Criteria</h3>
+<p>A skill earns promotion when all three hold:</p>
+<ol>
+  <li><strong>Proven in use</strong> — you've invoked it in real work at least 3-5 times and it produced the expected result</li>
+  <li><strong>Clear scope</strong> — you can state what it does in one sentence without hedging ("it kind of...")</li>
+  <li><strong>Named well</strong> — someone seeing the name in a list can guess what it does without reading the description</li>
+</ol>
+
+<h3>Rename Signals</h3>
+<p>A skill needs renaming when:</p>
+<ul>
+  <li>You find yourself explaining what it <em>actually</em> does because the name misleads</li>
+  <li>The name violates a convention you've since adopted (verb-first, noun-form, etc.)</li>
+  <li>A better metaphor emerged through usage ("decision-mapping" → "wayfinder")</li>
+  <li>The scope shifted but the name stayed — the name describes the old version</li>
+</ul>
+
+<h3>Merge Triggers</h3>
+<p>Multiple skills should merge when:</p>
+<ul>
+  <li>You hesitate about which one to invoke — the boundary between them is unclear</li>
+  <li>They share 50%+ of their workflow steps</li>
+  <li>One is a strict subset of the other</li>
+  <li>Maintaining both costs more than maintaining one that covers both</li>
+</ul>
+
+<h3>Kill Signals</h3>
+<p>A skill should die when:</p>
+<ul>
+  <li>You haven't invoked it in 60+ days and don't miss it</li>
+  <li>Its purpose was absorbed by another skill or by the base model improving</li>
+  <li>It never graduated from draft — after a month of existence, it's still not invoked</li>
+  <li>The workflow it served no longer exists in your daily practice</li>
+</ul>
+
+<h2>The Courage to Kill</h2>
+
+<p>Removing a skill feels like losing capability. It's not. It's reclaiming attention. Every skill in your portfolio imposes cost — either context load (model-invoked) or cognitive load (user-invoked). A skill that exists but never fires is paying rent for an empty room.</p>
+
+<div class="skill-excerpt"><span class="label">The deletion reframe</span>
+Before: "I might need this someday."
+After:  "If I need this again, I can recreate it in 10 minutes.
+         Meanwhile, it's costing me attention every day it exists."</div>
+
+<p>Skills are cheap to recreate and expensive to maintain. The bias should be toward killing, not keeping. A lean portfolio of 20 sharp skills outperforms a bloated portfolio of 40 where half are stale.</p>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">You have a skill called "plan" that you always have to explain: "No, not project planning — it generates implementation plans from specs." What lifecycle action does this need?</div>
+  <ul class="quiz-options">
+    <li><span class="stage-label stage-kill">Kill</span> — delete it and fold into another skill</li>
+    <li><span class="stage-label stage-merge">Merge</span> — combine with the spec-writing skill</li>
+    <li data-correct="true"><span class="stage-label stage-rename">Rename</span> — the name misleads; it needs a more specific name</li>
+    <li><span class="stage-label stage-promote">Promote</span> — just improve the description</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. If you're explaining what a skill "actually" does because the name misleads, that's a rename signal. "plan" is too generic. Something like "impl-plan" or "spec-to-plan" would eliminate the confusion.</div>
+  <div class="quiz-feedback incorrect">This is a rename signal. The skill works fine — you just have to explain it every time because "plan" is too ambiguous. The cure is a more specific name, not deletion or merging.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">You have three skills: "to-prd", "to-plan", and "to-spec". When deciding which to invoke, you frequently hesitate between to-prd and to-plan because both produce planning documents. What's the right lifecycle action?</div>
+  <ul class="quiz-options">
+    <li>Rename all three to be more distinct</li>
+    <li>Kill to-plan since it's the newest</li>
+    <li data-correct="true">Merge to-prd and to-plan into one skill with a clear name</li>
+    <li>Keep all three but improve their descriptions</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Hesitation about which to invoke is the primary merge trigger. If the boundary between two skills is unclear to you (the author), it's invisible to the model. Merge them. Better descriptions can't fix a fundamentally blurry scope boundary.</div>
+  <div class="quiz-feedback incorrect">When you hesitate about which skill to use, the boundary between them is too blurry. Better descriptions won't fix this — the skills genuinely overlap. Merge them into one that covers both use cases. That's what happened with to-prd + to-plan → to-spec.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">A skill has existed for 45 days. You've invoked it once (it worked), but you haven't reached for it since. What does the lifecycle framework say?</div>
+  <ul class="quiz-options">
+    <li>Promote it — it worked when invoked</li>
+    <li data-correct="true">It's approaching the kill threshold — if it doesn't get invoked in the next 15 days, it hasn't earned its place</li>
+    <li>Rename it — maybe the name isn't triggering you to use it</li>
+    <li>Keep it as a draft indefinitely — one invocation means it has value</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The kill signal is 60+ days without invocation. At 45 days with only one use, it's approaching the threshold. One successful invocation doesn't prove ongoing value — it proves the skill can work, but not that it earns its ongoing maintenance and attention costs.</div>
+  <div class="quiz-feedback incorrect">The kill threshold is 60+ days without meaningful use. At 45 days with a single invocation, this skill is on notice. Working once doesn't mean it earns its ongoing costs. If you don't miss it, it's not pulling weight. Skills that "might be useful someday" are paying rent on an empty room.</div>
+</div>
+
+<h2>Your Exercise</h2>
+
+<ol>
+  <li>List 5 of your skills (pick a mix of frequently-used and rarely-used).</li>
+  <li>For each, identify its current lifecycle stage: Draft, Promoted, needs Rename, merge candidate, or kill candidate.</li>
+  <li>For any in Draft: do they meet all three promotion criteria? If not, what's missing?</li>
+  <li>For any rarely-used: when did you last invoke them? Are they approaching the 60-day kill threshold?</li>
+  <li>Identify one merge opportunity and one kill candidate. Act on at least one of them.</li>
+</ol>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="trail-map.html">trail-map.html — Skill Lifecycles view</a> — The full evolution history of a production skill portfolio showing every rename, merge, and removal with dates and rationale.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Show me your skill list and I'll help you identify which are due for promotion, renaming, merging, or removal. Lifecycle decisions are easier with a second opinion.
+</div>
+
+<div class="lesson-nav">
+  <a href="0003-the-pruning-discipline.html" title="The Pruning Discipline">← Prev</a>
+  <a href="index.html" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <a href="0005-invocation-architecture.html" title="Invocation Architecture">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/theme.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
