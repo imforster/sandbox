@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 2: Steering Deep Dive</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .before-after {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .before-after > div {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .before-after h4 {
+      margin: 0;
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .before-after .before h4 {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+    .before-after .after h4 {
+      background: #ecfdf5;
+      color: #065f46;
+    }
+    .before-after pre {
+      margin: 0;
+      padding: 1rem;
+      font-size: 0.78rem;
+      border-radius: 0;
+      border: none;
+    }
+    .steering-diagram {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      line-height: 1.5;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    @media (max-width: 600px) {
+      .before-after { grid-template-columns: 1fr; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .before-after .before h4 { background: rgba(255,59,48,0.12); color: #ff453a; }
+      :root:not([data-theme="light"]) .before-after .after h4 { background: rgba(48,209,88,0.12); color: #30d158; }
+    }
+    [data-theme="dark"] .before-after .before h4 { background: rgba(255,59,48,0.12); color: #ff453a; }
+    [data-theme="dark"] .before-after .after h4 { background: rgba(48,209,88,0.12); color: #30d158; }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0001-four-axes-of-skill-quality.html" class="lesson-back-top" title="The Four Axes of Skill Quality"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span></span></nav>
+
+<h1>Steering Deep Dive</h1>
+
+<div class="lesson-meta">
+  Lesson 2 · Building Better Skills & Agents · ~15 minutes
+</div>
+
+<p>Steering is the axis that determines <strong>runtime predictability</strong> — whether the agent does what you meant, every time, or drifts. Lesson 1 gave you the vocabulary. This lesson teaches you to wield three specific levers and cure two failure modes.</p>
+
+<h2>The Three Levers</h2>
+
+<h3>1. Leading Words</h3>
+
+<p>A <strong>leading word</strong> is a concept already in the model's pretraining that anchors behaviour cheaply. It buys you reliable steering without spending tokens explaining what you mean.</p>
+
+<div class="callout tip">
+  <div class="callout-title">The insight</div>
+  <p>The model already knows what "bisect" means, what "tracer bullet" means, what "fog of war" means. Using these costs fewer tokens and gets more reliable behaviour than inventing your own vocabulary. Coined words carry no free priors — you have to pay to explain them.</p>
+</div>
+
+<p>Look at your <code>diagnose</code> skill. It's packed with leading words:</p>
+
+<pre><code>## Phase 1 — Build a feedback loop
+**This is the skill.** If you have a fast, deterministic pass/fail signal,
+you will find the cause. If you don't, no amount of staring at code will save you.</code></pre>
+
+<p>The phrase <strong>"feedback loop"</strong> does enormous work. The model already associates it with: iteration, fast cycles, measurable signal, tight cause-and-effect. One term anchors an entire phase's behaviour. Compare that to writing "repeatedly run the test and check if it passes" — same meaning, worse steering, more tokens.</p>
+
+<p>More leading words in the same skill: "bisect", "regression test", "property/fuzz loop", "differential loop", "falsifiable hypothesis". Each one compresses paragraphs of instruction into a concept the model already owns.</p>
+
+<h3>2. Completion Criteria</h3>
+
+<p>A <strong>completion criterion</strong> tells the agent when a step is genuinely done. Without one, the agent decides for itself — and it will decide too early.</p>
+
+<p>Contrast two skills:</p>
+
+<div class="before-after">
+  <div class="before">
+    <h4>Weak (grill-me)</h4>
+    <pre><code>7. Continue until all branches
+   are explored and shared
+   understanding is reached</code></pre>
+  </div>
+  <div class="after">
+    <h4>Strong (diagnose)</h4>
+    <pre><code>Cannot build a loop? Stop and
+say so. List what you tried.
+Ask for: (a) access to the
+reproducing environment,
+(b) captured artifacts, or
+(c) permission for temporary
+instrumentation.</code></pre>
+  </div>
+</div>
+
+<p>The <code>grill-me</code> criterion — "shared understanding is reached" — is unfalsifiable. The agent can declare it done at any point. It has no way to verify the claim.</p>
+
+<p>The <code>diagnose</code> criterion is crystal clear: you either have a pass/fail signal or you don't. If you don't, the skill tells you <em>exactly</em> what to do (stop, list, ask). There's no room for premature completion.</p>
+
+<div class="callout">
+  <div class="callout-title">Writing strong completion criteria</div>
+  <p>Ask: "Could the agent declare this done fraudulently?" If yes, your criterion is too vague. Make it observable: a file exists, a test passes, a list has N items, the user explicitly confirmed.</p>
+</div>
+
+<h3>3. Legwork</h3>
+
+<p><strong>Legwork</strong> is the work the agent does within a step instead of offloading it to the user. More legwork = the agent earns its keep.</p>
+
+<p>In <code>grill-me</code>, step 4 from quick_start says:</p>
+
+<pre><code>If a question can be answered by exploring the codebase,
+explore the codebase instead</code></pre>
+
+<p>This is excellent legwork instruction — it tells the agent to do the work rather than asking the user. But it's buried in a "quick start" section with no completion criterion. When does the agent stop exploring? What counts as "answered"?</p>
+
+<h2>The Two Failure Modes</h2>
+
+<h3>Premature Completion</h3>
+
+<p>The agent ends a step before it's genuinely done because attention slips ahead to the next step. Cure: sharpen the completion criterion, and only if that's insufficient, hide later steps via progressive disclosure.</p>
+
+<p>Your <code>grill-me</code> skill is susceptible. Its workflow lists all 7 steps upfront. By step 3, the agent can see step 7 ("shared understanding reached") pulling it forward. The <strong>post-completion steps</strong> are visible and attractive — the agent wants to finish.</p>
+
+<div class="steering-diagram">
+Premature Completion — cause chain:
+
+  Vague criterion ──┐
+                    ├──▶ Agent declares "done" early
+  Visible finish ──┘
+
+Fix path:
+
+  1. Sharpen criterion (make it observable)
+  2. Still completing early? Hide later steps (progressive disclosure)
+  3. Still? Add a confirmation gate: "Confirm with user before proceeding"</div>
+
+<h3>Negation</h3>
+
+<p>Naming what NOT to do drags it into the model's attention frame. The prohibited action becomes <em>more</em> available, not less.</p>
+
+<p>From your <code>handoff</code> skill (lesson 1):</p>
+
+<div class="before-after">
+  <div class="before">
+    <h4>Negation</h4>
+    <pre><code>Do not duplicate content already
+in PRDs, plans, ADRs, issues,
+commits, or diffs</code></pre>
+  </div>
+  <div class="after">
+    <h4>Positive reframe</h4>
+    <pre><code>Reference existing artifacts by
+path or URL instead of restating
+their content</code></pre>
+  </div>
+</div>
+
+<p>The reframe gives the agent a <em>target</em> (reference by path) instead of an <em>avoidance</em> (don't duplicate). The model now knows what to do, not what to avoid.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Not all "don't" is negation</div>
+  <p>"Do NOT push to main" is a guardrail — a hard boundary. That's different from "don't duplicate content" which is a quality preference. Guardrails can stay negative because the consequences of violation are severe. Quality preferences should be reframed positively.</p>
+</div>
+
+<h2>Live Refactor: Strengthening <code>grill-me</code></h2>
+
+<p>Let's apply what we've learned. Here's the current <code>grill-me</code> workflow:</p>
+
+<pre><code>1. Identify the plan or design being discussed
+2. Map the decision tree — what are the major branches?
+3. For each branch, ask targeted questions that expose assumptions
+4. Provide a recommended answer with each question
+5. Wait for user response before proceeding
+6. Resolve dependencies between decisions sequentially
+7. Continue until all branches are explored and shared understanding is reached</code></pre>
+
+<p>Problems:</p>
+<ul>
+  <li><strong>No leading word</strong> — "decision tree" is decent but underused. The trail-map shows Pocock reframed his equivalent skill around "fog of war / frontier / destination" — vivid, pretraining-rich metaphors.</li>
+  <li><strong>Step 7 completion is unfalsifiable</strong> — "shared understanding" can't be observed.</li>
+  <li><strong>Steps 4-5 are mechanical</strong> — they describe HOW to ask, not a phase of the grilling. They'd be better as rules.</li>
+</ul>
+
+<p>Proposed refactor:</p>
+
+<pre><code>&lt;workflow&gt;
+1. Identify the plan or design under examination
+2. Map the decision tree — enumerate the major branches
+   (completion: a numbered list of branches is stated to the user)
+3. For each branch, ask targeted questions that expose unstated assumptions
+   - Provide a recommended answer with each question
+   - Wait for user response before the next question
+   - If the question can be answered by exploring the codebase, do the legwork
+   (completion: user explicitly confirms the branch is resolved, or says "skip")
+4. After all branches: state the resolved design as a single summary
+   (completion: user confirms the summary or requests corrections)
+&lt;/workflow&gt;</code></pre>
+
+<p>What changed:</p>
+<ul>
+  <li><strong>Inline completion criteria</strong> for every step — observable, user-gated</li>
+  <li><strong>Mechanical steps (4-5) absorbed</strong> as sub-rules of step 3</li>
+  <li><strong>Legwork instruction</strong> moved into the step where it applies</li>
+  <li><strong>Final confirmation gate</strong> (step 4) replaces the vague "shared understanding"</li>
+</ul>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">A skill step says: "Research the topic thoroughly." What's the primary steering problem?</div>
+  <ul class="quiz-options">
+    <li>Negation — it's stating what not to do by implication</li>
+    <li data-correct="true">No completion criterion — "thoroughly" is unfalsifiable</li>
+    <li>No leading word — "research" isn't in the model's pretraining</li>
+    <li>No legwork — it offloads work to the user</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. "Thoroughly" is a weasel word that the agent can satisfy at any point. Rewrite with an observable criterion: "Research until you have 3 cited sources that address the question" or "Research until you can state the answer without hedging."</div>
+  <div class="quiz-feedback incorrect">The main problem is the completion criterion. "Thoroughly" can't be observed or verified — the agent can declare itself done at any depth. "Research" is actually a fine leading word (the model knows what research means). The fix is making the endpoint observable.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">You write: "Avoid using global state." What's the most effective reframe?</div>
+  <ul class="quiz-options">
+    <li data-correct="true">Pass dependencies explicitly through function parameters</li>
+    <li>Do not use global variables under any circumstances</li>
+    <li>Global state is an anti-pattern and should be eliminated</li>
+    <li>Consider whether global state is appropriate for this case</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The positive reframe gives a target: "pass dependencies explicitly." The agent now knows what TO do. The other options either repeat the negation, strengthen it (which makes it worse), or hedge with "consider" (which steers nowhere).</div>
+  <div class="quiz-feedback incorrect">The strongest reframe is "Pass dependencies explicitly through function parameters." It gives the agent a positive target — what to DO — rather than what to avoid. Negation ("avoid", "do not") makes the prohibited thing more salient. "Consider" steers nowhere.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">Your skill uses the term "semantic coherence verification" — a phrase you invented. What concept from the Steering axis applies?</div>
+  <ul class="quiz-options">
+    <li>Completion Criterion — the term defines when the agent is done</li>
+    <li>Legwork — the term describes work the agent should do</li>
+    <li data-correct="true">Leading Word (failure) — coined words carry no free priors and cost more to steer with</li>
+    <li>Branch — the term names a distinct path through the skill</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. A coined phrase has no pretraining signal — the model doesn't "know" what it means, so you'd need to explain it, spending tokens. Use a pretraining-rich equivalent: "check that the changes form a logical unit" leverages concepts the model already owns.</div>
+  <div class="quiz-feedback incorrect">This is a leading word problem. "Semantic coherence verification" is invented jargon — the model has no pretraining signal for it, so it carries no free behavioural priors. Using established concepts ("logical unit", "cohesion", "single responsibility") gives you steering for free.</div>
+</div>
+
+<h2>Your Exercise</h2>
+
+<p>Open <code>~/.kiro/skills/grill-me/SKILL.md</code> and apply the refactor from this lesson. Then pick one more skill and:</p>
+
+<ol>
+  <li>Find every step that lacks an observable completion criterion — add one</li>
+  <li>Find any negations — reframe positively</li>
+  <li>Identify the strongest leading word in the skill — could you use more?</li>
+</ol>
+
+<div class="primary-source">
+  <div class="primary-source-label">📖 Primary Source</div>
+  <p><a href="https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills">writing-great-skills GLOSSARY.md</a> — Matt Pocock. Read the "Steering" section entries: Branch, Leading Word, Completion Criterion, Legwork, Premature Completion, Negation. ~3 min read.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Bring me a skill and I'll identify its steering weaknesses. Or if you're unsure whether something is a negation vs a guardrail, I can help you draw that line.
+</div>
+
+<div class="lesson-nav">
+  <a href="0001-four-axes-of-skill-quality.html" title="The Four Axes of Skill Quality">← Prev</a>
+  <a href="index.html" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <span></span>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="../assets/copy-button.js"></script>
+<script src="/sandbox/shared/theme.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
