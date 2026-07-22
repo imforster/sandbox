@@ -15,6 +15,7 @@ Demos, prototypes & experiments.
 - **[Learn Codex](./learn-codex/)** — Use Codex alongside Kiro CLI and Claude as an independent implementation and review partner.
 - **[Learn Cloudflare Workers](./learn-cloudflare/)** — 8-lesson course on building beyond static sites with Cloudflare's free tier.
 - **[Learn chezmoi](./learn-chezmoi/)** — 10-lesson course on managing dotfiles across multiple macOS machines.
+- **[Learn Skills](./learn-skills/)** — Building predictably excellent agent skills — vocabulary, audit discipline, and refactoring patterns.
 
 ## External
 

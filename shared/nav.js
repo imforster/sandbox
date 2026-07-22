@@ -262,6 +262,7 @@
       { text: 'Learn Codex', href: '/sandbox/learn-codex/' },
       { text: 'Learn Cloudflare Workers', href: '/sandbox/learn-cloudflare/' },
       { text: 'Learn chezmoi', href: '/sandbox/learn-chezmoi/' },
+      { text: 'Learn Skills', href: '/sandbox/learn-skills/' },
       { text: 'Learn Strands Agents', href: '/sandbox/learn-strands/' },
       { text: 'Learn SkillOpt & Harnesses', href: '/sandbox/learn-skillopt-harness/' },
       { text: 'Agents at Scale', href: '/sandbox/agents-at-scale/' },

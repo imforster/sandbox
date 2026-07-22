@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1: The Four Axes of Skill Quality</title>
+  <link rel="stylesheet" href="/sandbox/shared/style.css">
+  <style>
+    .axis-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .axis-card h3 {
+      margin-top: 0;
+      font-size: 1.1rem;
+      color: var(--color-accent);
+    }
+    .axis-card .axis-desc {
+      font-size: 0.9rem;
+      color: var(--color-muted);
+      margin-bottom: 0.75rem;
+    }
+    .term-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    .term-grid .term {
+      font-size: 0.85rem;
+      padding: 0.4rem 0.6rem;
+      background: var(--color-code-bg);
+      border-radius: 6px;
+    }
+    .term-grid .term.failure {
+      background: #fef2f2;
+      border: 1px solid var(--color-danger);
+      color: var(--color-danger);
+    }
+    .skill-excerpt {
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .skill-excerpt .label {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+    @media (max-width: 600px) {
+      .term-grid { grid-template-columns: 1fr; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .term-grid .term.failure {
+        background: rgba(255, 59, 48, 0.1);
+      }
+    }
+    [data-theme="dark"] .term-grid .term.failure {
+      background: rgba(255, 59, 48, 0.1);
+    }
+  </style>
+</head>
+<body>
+
+<nav class="lesson-top-nav">
+  <span></span>
+  <a href="index.html" class="lesson-home-top" title="All Lessons">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <span></span>
+</nav>
+
+<h1>The Four Axes of Skill Quality</h1>
+
+<div class="lesson-meta">
+  Lesson 1 · Building Better Skills & Agents · ~12 minutes
+</div>
+
+<p>You have 30+ skills in production. They work. But "works" isn't the bar anymore — <strong>predictable</strong> is. This lesson gives you the vocabulary to reason about <em>why</em> a skill steers well or drifts, and a framework for auditing any skill file in under two minutes.</p>
+
+<p>The vocabulary comes from Matt Pocock's <a href="https://github.com/mattpocock/skills">skills repo</a> — 314 commits over 6 months of one person discovering, through iteration, what makes a skill predictable. He distilled it into four axes.</p>
+
+<h2>The Four Axes</h2>
+
+<p>Every skill can be evaluated along four independent dimensions. Each axis has concepts (tools) and failure modes (anti-patterns). Think of them as lenses — you rotate through all four when auditing.</p>
+
+<div class="axis-card">
+  <h3>1. Invocation</h3>
+  <div class="axis-desc">How a skill is reached, and the load you pay for that reach.</div>
+  <div class="term-grid">
+    <div class="term"><strong>Model-Invoked</strong> — agent fires it autonomously (pays context load)</div>
+    <div class="term"><strong>User-Invoked</strong> — human types its name (pays cognitive load)</div>
+    <div class="term"><strong>Context Load</strong> — the always-on cost of a description, every turn</div>
+    <div class="term"><strong>Cognitive Load</strong> — human must remember it exists</div>
+    <div class="term"><strong>Router Skill</strong> — one entry point that maps to many</div>
+    <div class="term"><strong>Granularity</strong> — how finely you split (more splits = more load)</div>
+  </div>
+</div>
+
+<div class="axis-card">
+  <h3>2. Information Hierarchy</h3>
+  <div class="axis-desc">How a skill's content is arranged, from primary steps down to disclosed reference.</div>
+  <div class="term-grid">
+    <div class="term"><strong>Steps</strong> — ordered actions (primary tier)</div>
+    <div class="term"><strong>Reference</strong> — material referred to on demand (secondary)</div>
+    <div class="term"><strong>External Reference</strong> — lives outside the skill system entirely</div>
+    <div class="term"><strong>Progressive Disclosure</strong> — push detail behind a pointer</div>
+    <div class="term"><strong>Co-location</strong> — keep related info under one heading</div>
+    <div class="term failure"><strong>Sprawl</strong> — simply too long; cure by disclosure + splitting</div>
+  </div>
+</div>
+
+<div class="axis-card">
+  <h3>3. Steering</h3>
+  <div class="axis-desc">The levers that shape runtime behaviour toward predictability.</div>
+  <div class="term-grid">
+    <div class="term"><strong>Branch</strong> — a distinct case the skill handles</div>
+    <div class="term"><strong>Leading Word</strong> — a concept from pretraining that anchors behaviour cheaply</div>
+    <div class="term"><strong>Completion Criterion</strong> — what tells the agent a step is done</div>
+    <div class="term"><strong>Legwork</strong> — work the agent does within a step (not offloaded to user)</div>
+    <div class="term failure"><strong>Premature Completion</strong> — ending before genuinely done</div>
+    <div class="term failure"><strong>Negation</strong> — naming what NOT to do makes it more available</div>
+  </div>
+</div>
+
+<div class="axis-card">
+  <h3>4. Pruning</h3>
+  <div class="axis-desc">Keeping a skill lean — each remedy paired with the failure it exists to cure.</div>
+  <div class="term-grid">
+    <div class="term"><strong>Single Source of Truth</strong> — each meaning in one place</div>
+    <div class="term"><strong>Relevance</strong> — does this line still bear on what the skill does?</div>
+    <div class="term failure"><strong>Duplication</strong> — same meaning in multiple places</div>
+    <div class="term failure"><strong>Sediment</strong> — old content never cleared; adding feels safe, removing feels risky</div>
+    <div class="term failure"><strong>No-Op</strong> — instruction that changes nothing (model does it by default)</div>
+  </div>
+</div>
+
+<h2>Applying the Axes: A Live Audit</h2>
+
+<p>Let's audit a real skill from your repo. Here's your <code>handoff</code> skill:</p>
+
+<div class="skill-excerpt"><span class="label">~/.kiro/skills/handoff/SKILL.md (description)</span>
+Compact the current conversation into a handoff document
+for another agent session to pick up. Use when ending a
+session, switching context, or preparing work for a fresh agent.</div>
+
+<div class="skill-excerpt"><span class="label">~/.kiro/skills/handoff/SKILL.md (workflow)</span>
+1. Save the handoff to a path produced by `mktemp -t handoff-XXXXXX.md`
+2. Suggest which skills the next session should use
+3. Do not duplicate content already in PRDs, plans, ADRs,
+   issues, commits, or diffs — reference them by path or URL instead
+4. Redact any sensitive information, such as API keys,
+   passwords, or personally identifiable information
+5. If the user passed arguments, treat them as a description
+   of what the next session will focus on and tailor the doc accordingly</div>
+
+<h3>Axis-by-axis reading</h3>
+
+<table>
+  <thead><tr><th>Axis</th><th>Observation</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Invocation</strong></td>
+      <td><code>disable-model-invocation: true</code> — user-invoked. Zero context load. Human must remember to use it.</td>
+      <td>✅ Appropriate — handoff is a deliberate action, not something the agent should do autonomously.</td>
+    </tr>
+    <tr>
+      <td><strong>Hierarchy</strong></td>
+      <td>Has an Interface table (reference) + a Workflow (steps). Reference comes before steps.</td>
+      <td>⚠️ The Interface table is useful but sits above the workflow. A reader (the agent) hits 10 lines of schema before knowing what to <em>do</em>. Consider whether the table is needed at all — the workflow's step 1 implies the shape.</td>
+    </tr>
+    <tr>
+      <td><strong>Steering</strong></td>
+      <td>Step 3 is a <strong>negation</strong>: "Do not duplicate…". Step 4 is a positive instruction: "Redact". Step 5 is a branch (if user passed args).</td>
+      <td>⚠️ Step 3 uses negation — names what not to do, which drags duplication into the frame. Reframe positively: "Reference existing artifacts by path or URL." Step 5 is a clear branch — good.</td>
+    </tr>
+    <tr>
+      <td><strong>Pruning</strong></td>
+      <td>Compact skill (5 steps). No obvious sediment. But: the Interface table partially duplicates the workflow steps (both say "summary", "next_steps", etc.).</td>
+      <td>⚠️ Mild duplication between table and workflow. The table is a form of reference; if the agent already knows what fields to produce from the objective, the table may be a no-op.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">Key insight</div>
+  <p>The handoff skill is solid — but the audit found two micro-improvements in 30 seconds: reframe the negation in step 3, and evaluate whether the Interface table earns its lines. This is the power of having vocabulary: you see what you can name.</p>
+</div>
+
+<h2>The Audit Discipline</h2>
+
+<p>Now you have a repeatable method. For any skill, in under two minutes:</p>
+
+<ol>
+  <li><strong>Invocation:</strong> Is it model-invoked or user-invoked? Does that match how it should be reached? Is the description pulling its weight?</li>
+  <li><strong>Hierarchy:</strong> Can you find the steps in 3 seconds? Is reference disclosed progressively, or does it sprawl upfront?</li>
+  <li><strong>Steering:</strong> Scan for negations (flag them). Check each step's completion criterion — is it clear when the agent is "done"? Look for leading words that anchor behaviour.</li>
+  <li><strong>Pruning:</strong> Any line that says what the model would do anyway? Any meaning stated twice? Anything stale?</li>
+</ol>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">A skill has the instruction: "Never use console.log for debugging." What failure mode does this exhibit?</div>
+  <ul class="quiz-options">
+    <li>Sprawl — the skill is too long and needs splitting</li>
+    <li data-correct="true">Negation — naming what not to do makes it more available</li>
+    <li>No-Op — the model already avoids this by default</li>
+    <li>Premature Completion — the step ends before it's done</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Negation drags the prohibited action into the model's attention. Reframe positively: "Use the debugger or structured logging for debugging." The model now has a target instead of an avoidance.</div>
+  <div class="quiz-feedback incorrect">Not quite. This is negation — the instruction says what NOT to do, which makes the prohibited thing more salient. It's not sprawl (length) or no-op (default behaviour). The cure is to state the positive target instead.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">You add "Always write clean code" to a skill's rules. Which failure mode is this?</div>
+  <ul class="quiz-options">
+    <li>Duplication — the same meaning exists elsewhere in the skill</li>
+    <li>Sediment — layers of old content that never get cleared</li>
+    <li data-correct="true">No-Op — the model already does this by default; you pay context for nothing</li>
+    <li>Negation — you're naming what not to do by implication</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. "Write clean code" changes nothing — the model already optimises for this. You spend context tokens to say what would have happened anyway. Delete it.</div>
+  <div class="quiz-feedback incorrect">This is a No-Op. The instruction doesn't change behaviour because the model already aims for clean code by default. It costs context tokens without adding steering value.</div>
+</div>
+
+<div class="quiz" id="quiz-3">
+  <div class="quiz-question">A model-invoked skill has a 200-word description that the agent loads on every turn. What concept describes the cost of keeping this loaded?</div>
+  <ul class="quiz-options">
+    <li data-correct="true">Context Load — the always-on cost a model-invoked skill pays per turn</li>
+    <li>Cognitive Load — the cost on the human remembering the skill exists</li>
+    <li>Sprawl — the skill file is simply too long overall</li>
+    <li>Progressive Disclosure — reference should be pushed behind a pointer</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Context Load is what model-invoked skills pay: their description occupies space on every single turn, whether they're needed or not. If the skill is rarely used, it's paying rent for an empty room.</div>
+  <div class="quiz-feedback incorrect">This is Context Load — the specific cost that model-invoked skills pay by keeping their description in the agent's context every turn. Cognitive Load is the human-side equivalent. Sprawl refers to the full skill length, not just the description.</div>
+</div>
+
+<h2>Your Exercise</h2>
+
+<p>Pick any skill from <code>~/.kiro/skills/</code> and run the four-axis audit. Write down one finding per axis. If you find a negation, rewrite it as a positive instruction. Bring your notes to the next session — we'll refactor one together.</p>
+
+<div class="primary-source">
+  <div class="primary-source-label">Recommended Reading</div>
+  <p><a href="https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills">writing-great-skills (SKILL.md + GLOSSARY.md)</a> — Matt Pocock. The meta-skill and glossary where these concepts are defined. ~5 min read.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Ask me anything that's unclear — the vocabulary, how to apply an axis to a tricky skill, or whether a specific instruction in your skills is a no-op. I'm your teacher.
+</div>
+
+<div class="lesson-nav">
+  <span></span>
+  <a href="index.html" title="All Lessons">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+  </a>
+  <span></span>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+      }
+    });
+  });
+});
+</script>
+
+<script src="/sandbox/shared/theme.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
