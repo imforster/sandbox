@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4: Slice and Run Your First Print</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <style>:root { --color-accent: #ff6b35; --color-accent-light: #fff0e8; }</style>
+</head>
+<body>
+<nav class="lesson-top-nav"><a href="0003-set-up-a-safe-printing-corner.html" class="lesson-back-top" title="Set Up a Safe Printing Corner"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Previous</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-pick-useful-starter-projects.html" class="lesson-next-top" title="Pick Useful Starter Projects">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Slice and Run Your First Print</h1>
+<div class="lesson-meta">Lesson 4 · Learn 3D Printing · ~10 minutes</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary source</div>
+  <p>Prusa's <a href="https://help.prusa3d.com/article/printer-handbooks_125045">printer handbooks</a> cover the full path from setup and calibration through slicing, printing, and troubleshooting. Even if you buy another brand, the sequence is useful.</p>
+</div>
+
+<p>Slicing is translation. A model file says what shape you want. The slicer decides how the printer will build it: layer height, walls, infill, supports, temperature, speed, and movement path.</p>
+
+<pre class="diagram">model file -> slicer profile -> preview layers -> printer file -> first layer -> finished part -> inspection</pre>
+
+<h2>Your first-print loop</h2>
+<ol>
+  <li>Use the manufacturer setup guide and a known-good PLA profile.</li>
+  <li>Choose a small model with many successful user photos, not a complicated trophy print.</li>
+  <li>Slice with default settings and preview the layers before printing.</li>
+  <li>Watch the first layer. Stop early if it is not sticking or looks like loose spaghetti.</li>
+  <li>After printing, inspect bottom surface, walls, top surface, and dimensions.</li>
+  <li>Change one variable at a time on the next attempt.</li>
+</ol>
+
+<h2>What to inspect</h2>
+<table>
+  <thead><tr><th>Symptom</th><th>Likely area</th><th>Beginner response</th></tr></thead>
+  <tbody>
+    <tr><td>Part detaches</td><td>Bed adhesion</td><td>Clean plate, check first layer, avoid drafts</td></tr>
+    <tr><td>Stringing</td><td>Temperature or retraction</td><td>Use known material profile before tuning</td></tr>
+    <tr><td>Blobby corners</td><td>Speed or cooling</td><td>Print slower or use default profile</td></tr>
+    <tr><td>Wrong size</td><td>Model, shrinkage, or calibration</td><td>Measure, then adjust model tolerance</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">The beginner discipline</div>
+  <p>Do not tune ten settings after one failed print. First prove the printer works with a known-good model and default profile.</p>
+</div>
+
+<h2>Check Your Understanding</h2>
+<div class="quiz">
+  <div class="quiz-question">What is the slicer's job?</div>
+  <ul class="quiz-options">
+    <li data-correct="true">Translate model to instructions</li>
+    <li>Invent a better model</li>
+    <li>Fix every print flaw</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The slicer turns shape into printable toolpaths and settings.</div>
+  <div class="quiz-feedback incorrect">Not quite. A slicer translates and configures the print; it does not replace modeling or diagnosis.</div>
+</div>
+
+<h2>Do This Now</h2>
+<p>Find one small Printables model with user photos and write down: estimated print time, material, whether it needs supports, and what success should look like.</p>
+
+<div class="ask-teacher"><strong>Ask the teacher:</strong> Send the model link before printing and I will sanity-check whether it is a good first print.</div>
+
+<div class="lesson-nav"><a href="0003-set-up-a-safe-printing-corner.html" class="lesson-nav-prev" title="Set Up a Safe Printing Corner">← Previous</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-pick-useful-starter-projects.html" class="lesson-nav-next" title="Pick Useful Starter Projects">Next →</a></div>
+<script src="../assets/lesson.js"></script>
+<script src="../../shared/theme.js"></script>
+<script src="../../shared/nav.js"></script>
+</body>
+</html>

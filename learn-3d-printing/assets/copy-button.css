@@ -1,0 +1,22 @@
+/* Copy button for code blocks */
+pre { position: relative; }
+
+.copy-btn {
+  position: absolute;
+  top: .6rem;
+  right: .6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: .4rem;
+  border: 0;
+  border-radius: 6px;
+  background: rgb(0 0 0 / .04);
+  color: var(--color-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .2s, background .2s, transform .15s;
+}
+pre:hover .copy-btn, .copy-btn:focus-visible { opacity: 1; }
+.copy-btn:hover { transform: scale(1.1); background: rgb(0 113 227 / .08); color: var(--color-accent); }
+.copy-btn.copied { background: rgb(52 199 89 / .1); color: var(--color-success); }
