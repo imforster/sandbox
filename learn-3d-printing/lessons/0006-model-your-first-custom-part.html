@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6: Model Your First Custom Part</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <style>:root { --color-accent: #ff6b35; --color-accent-light: #fff0e8; }</style>
+</head>
+<body>
+<nav class="lesson-top-nav"><a href="0005-pick-useful-starter-projects.html" class="lesson-back-top" title="Pick Useful Starter Projects"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Previous</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span class="lesson-nav-disabled">Next soon</span></nav>
+
+<h1>Model Your First Custom Part</h1>
+<div class="lesson-meta">Lesson 6 · Learn 3D Printing · ~10 minutes</div>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary source</div>
+  <p><a href="https://www.tinkercad.com/">Tinkercad</a> is the right first CAD tool for this course because it keeps the modeling loop visual: combine simple solids, measure, export STL, slice, print, inspect.</p>
+</div>
+
+<p>The first custom part should be almost embarrassingly simple. Your goal is not beautiful CAD. Your goal is to close the loop between a measured real-world need and a physical object that fits.</p>
+
+<h2>The first custom-part recipe</h2>
+<ol>
+  <li><strong>Pick a boring need:</strong> spacer, shim, cable label, simple hook, drawer stop, or replacement knob.</li>
+  <li><strong>Measure only what matters:</strong> width, height, hole diameter, clearance, and load direction.</li>
+  <li><strong>Model from primitives:</strong> boxes, cylinders, holes, and rounded edges if needed.</li>
+  <li><strong>Add tolerance:</strong> do not model press-fit parts at exactly the measured size.</li>
+  <li><strong>Print a test coupon:</strong> print the smallest piece that proves the fit.</li>
+  <li><strong>Iterate once:</strong> change the model from evidence, not vibes.</li>
+</ol>
+
+<pre class="diagram">measure -> simple model -> export STL -> slice -> small test -> inspect fit -> revise</pre>
+
+<h2>Beginner tolerances</h2>
+<table>
+  <thead><tr><th>Fit</th><th>Starting allowance</th><th>Use for</th></tr></thead>
+  <tbody>
+    <tr><td>Loose clearance</td><td>+0.5 mm</td><td>Slides over an object easily</td></tr>
+    <tr><td>Light fit</td><td>+0.2 mm</td><td>Fits without force</td></tr>
+    <tr><td>Press fit</td><td>Test first</td><td>Needs material, printer, and orientation evidence</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">The coupon move</div>
+  <p>If only one hole or slot matters, print a small slice of the part with that feature first. A ten-minute coupon can save a two-hour failed print.</p>
+</div>
+
+<h2>Check Your Understanding</h2>
+<div class="quiz">
+  <div class="quiz-question">What should you print before a large custom part with a critical hole?</div>
+  <ul class="quiz-options">
+    <li>The full part twice</li>
+    <li data-correct="true">A small fit coupon</li>
+    <li>A decorative benchy</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. A fit coupon tests the risky feature quickly.</div>
+  <div class="quiz-feedback incorrect">Not quite. Test the critical feature cheaply before printing the whole part.</div>
+</div>
+
+<h2>Do This Now</h2>
+<p>Find one small annoyance in your home or workspace and write: object, measurement needed, first model shape, and what fit would count as success.</p>
+
+<div class="ask-teacher"><strong>Ask the teacher:</strong> Send a photo or measurements and I will help reduce it to a first Tinkercad model.</div>
+
+<div class="lesson-nav"><a href="0005-pick-useful-starter-projects.html" class="lesson-nav-prev" title="Pick Useful Starter Projects">← Previous</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span class="lesson-nav-disabled">Next soon</span></div>
+<script src="../assets/lesson.js"></script>
+<script src="../../shared/theme.js"></script>
+<script src="../../shared/nav.js"></script>
+</body>
+</html>
