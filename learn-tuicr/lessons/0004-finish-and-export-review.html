@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Finish and Export Review</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0003-place-review-comments.html">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-agent-review-loop.html">Next</a>
+    </nav>
+
+    <h1>Finish and Export Review</h1>
+    <p class="lesson-meta">Time: 6 minutes. Tangible win: choose the correct finishing path for the review.</p>
+
+    <p>Finishing is a separate skill from finding issues. `tuicr` lets you track progress inside the TUI, copy structured markdown, pipe output to another process, or submit a real review to a forge.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      The <a href="https://github.com/agavra/tuicr">tuicr README</a> documents clipboard/stdout export and forge submission targets. GitHub's <a href="https://docs.github.com/en/pull-requests/reference/pull-request-reviews">PR review reference</a> explains Comment, Approve, and Request changes decisions.
+    </section>
+
+    <h2>Finish map</h2>
+    <table class="command-table">
+      <tr><th>Situation</th><th>Action</th></tr>
+      <tr><td>You want to remember what you already inspected.</td><td>Use <code>r</code> for file reviewed or <code>R</code> for hunk reviewed.</td></tr>
+      <tr><td>You want to paste feedback into an agent.</td><td>Press <code>y</code> to copy structured markdown.</td></tr>
+      <tr><td>You want markdown in a file or script.</td><td>Run <code>tuicr --stdout</code>.</td></tr>
+      <tr><td>You want the review posted to the forge.</td><td>Run <code>:submit</code> and choose the review decision.</td></tr>
+    </table>
+
+    <h2>Useful stdout patterns</h2>
+    <pre><code>tuicr --stdout &gt; review.md
+tuicr --stdout | pbcopy</code></pre>
+
+    <section class="callout tip">
+      <span class="callout-title">Agent handoff habit</span>
+      Before pasting exported comments into an agent, scan the markdown once. Make sure each comment still has enough file and line context to be actionable.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You want a coding agent to address review comments before anything is posted publicly. Which finish path fits best?</p>
+      <div class="quiz-options">
+        <button data-correct="false">:submit</button>
+        <button data-correct="true">Copy</button>
+        <button data-correct="false">Approve</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Copy structured markdown with <code>y</code> and give it to the agent.</p>
+      <p class="quiz-feedback incorrect">Not quite. Use <code>y</code> to copy structured markdown before asking an agent to act.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Name the review decision you would submit: comment, approve, or request changes.</li>
+      <li>Explain why that decision matches the comments you left.</li>
+      <li>Export the review to clipboard or stdout on a low-risk practice change.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent to inspect exported review markdown and turn it into an implementation checklist.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0003-place-review-comments.html">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-agent-review-loop.html">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

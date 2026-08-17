@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open the Right Review</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-navigate-without-getting-lost.html">Next</a>
+    </nav>
+
+    <h1>Open the Right Review</h1>
+    <p class="lesson-meta">Time: 5 minutes. Tangible win: choose the right launch command before a review starts.</p>
+
+    <p>`tuicr` is a terminal UI for code review. The first useful skill is deciding what review target you want: uncommitted work, a commit range, a pull request, a merge request, or markdown output for another tool.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      Read the README quick start in <a href="https://github.com/agavra/tuicr">agavra/tuicr</a>. It lists the canonical launch commands and says `tuicr` works with git, jj, and mercurial.
+    </section>
+
+    <h2>The launch map</h2>
+    <pre><code>tuicr                 # pick from a commit selector
+tuicr -w              # review uncommitted changes
+tuicr -r main..HEAD   # review a commit range
+tuicr pr 125          # review a GitHub or Bitbucket PR
+tuicr mr 125          # review a GitLab MR
+tuicr --stdout        # print review markdown to stdout</code></pre>
+
+    <section class="callout tip">
+      <span class="callout-title">Mental model</span>
+      Start with the shape of the work, then choose the command. Local unfinished work points to <code>-w</code>. A branch stack points to <code>-r</code>. Remote review points to <code>pr</code> or <code>mr</code>.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You want to review your current uncommitted working-tree changes. Which command opens the right target?</p>
+      <div class="quiz-options">
+        <button data-correct="false">tuicr pr 125</button>
+        <button data-correct="true">tuicr -w</button>
+        <button data-correct="false">tuicr --stdout</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. <code>-w</code> skips the selector and opens uncommitted changes.</p>
+      <p class="quiz-feedback incorrect">Not quite. Use <code>tuicr -w</code> for uncommitted working-tree changes.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Pick one repo you review often.</li>
+      <li>Name the review target you usually care about: working tree, range, PR, or MR.</li>
+      <li>Say the matching command from memory before looking at the field guide.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent to help map your real repo workflow to a default `tuicr` command.
+    </section>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-navigate-without-getting-lost.html">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

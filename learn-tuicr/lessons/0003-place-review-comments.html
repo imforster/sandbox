@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Place Review Comments</title>
+  <link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0002-navigate-without-getting-lost.html">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-finish-and-export-review.html">Next</a>
+    </nav>
+
+    <h1>Place Review Comments</h1>
+    <p class="lesson-meta">Time: 7 minutes. Tangible win: match each piece of feedback to the right comment target.</p>
+
+    <p>High-signal reviews put feedback where the author can act on it. `tuicr` supports line, range, file, and review-level comments, matching the same broad model used in pull request reviews.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      GitHub's docs distinguish general PR feedback from line and file comments, and `tuicr` maps those ideas into terminal actions. See <a href="https://docs.github.com/en/pull-requests/how-tos/review-pull-requests/commenting-on-a-pull-request">Commenting on a pull request</a>.
+    </section>
+
+    <h2>Pick the smallest useful target</h2>
+    <table class="command-table">
+      <tr><th>Feedback shape</th><th>Target</th><th>`tuicr` action</th></tr>
+      <tr><td>A specific line is wrong or unclear.</td><td>Line</td><td><code>c</code></td></tr>
+      <tr><td>A block works or fails as a unit.</td><td>Range</td><td><code>v</code>, select, <code>c</code></td></tr>
+      <tr><td>The concern is about the file overall.</td><td>File</td><td><code>C</code></td></tr>
+      <tr><td>The concern is about merge readiness.</td><td>Review</td><td><code>&lt;leader&gt;c</code></td></tr>
+    </table>
+
+    <section class="callout warning">
+      <span class="callout-title">Avoid comment drift</span>
+      If a comment would force the author to hunt for the affected code, its target is probably too broad.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You want to comment on a four-line block where the control flow breaks together. Which target fits best?</p>
+      <div class="quiz-options">
+        <button data-correct="false">File</button>
+        <button data-correct="true">Range</button>
+        <button data-correct="false">Review</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A range comment keeps the feedback attached to the whole block.</p>
+      <p class="quiz-feedback incorrect">Not quite. Use a range comment when several adjacent lines form the issue.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Find one changed line and imagine a direct question for the author.</li>
+      <li>Find one changed block and decide whether a range comment is clearer.</li>
+      <li>Write one review-level summary sentence, even if you do not submit it.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent to rewrite one of your review comments to be more specific and actionable.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0002-navigate-without-getting-lost.html">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-finish-and-export-review.html">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

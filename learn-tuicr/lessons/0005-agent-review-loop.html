@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Review Loop</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0004-finish-and-export-review.html">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Agent Review Loop</h1>
+    <p class="lesson-meta">Time: 8 minutes. Tangible win: understand how a coding agent can attach to a `tuicr` review session.</p>
+
+    <p>The TUI is where the human reviews code. The review CLI is how an agent can discover an active session, read human comments, or add clearly labeled agent findings when that workflow is intended.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      Read the <a href="https://raw.githubusercontent.com/agavra/tuicr/main/skills/tuicr/SKILL.md">tuicr review workflow skill</a> and <a href="https://raw.githubusercontent.com/agavra/tuicr/main/docs/REVIEW_CLI.md">Review Session CLI docs</a>. They define session selection, comment JSON, and agent safety rules.
+    </section>
+
+    <h2>The loop</h2>
+    <pre class="diagram">human opens TUI
+  -> tuicr creates a persisted review session
+  -> agent lists sessions and finds the active slug
+  -> human writes comments in the TUI
+  -> agent reads comments as JSON
+  -> agent fixes, answers, or adds approved findings
+  -> human submits or exports the final review</pre>
+
+    <h2>The three CLI moves</h2>
+    <pre><code>tuicr review list --repo .
+tuicr review comments --session &lt;slug&gt;
+tuicr review add --session &lt;slug&gt; --target-file src/main.rs --line 42 --side new --type issue --username "Codex" "Handle the empty case here."</code></pre>
+
+    <section class="callout danger">
+      <span class="callout-title">Boundary rule</span>
+      In a user-led review, the agent reads and acts on the user's comments. It should not impersonate the user's feedback. Agent-authored comments should be explicit and labeled with <code>--username</code>.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>The user says they wrote comments in the active TUI session. What should the agent run first?</p>
+      <div class="quiz-options">
+        <button data-correct="false">review add</button>
+        <button data-correct="true">review list</button>
+        <button data-correct="false">review submit</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. List sessions first so the agent can identify the correct active slug.</p>
+      <p class="quiz-feedback incorrect">Not quite. The agent should identify the active session with <code>tuicr review list</code> before reading comments.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Open `tuicr` on a safe repo or practice branch.</li>
+      <li>Add one local comment in the TUI.</li>
+      <li>Ask the agent to list review sessions and read your comment.</li>
+      <li>Confirm whether you want the agent to fix code, answer questions, or add labeled findings.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent to run a dry-run review loop with you: you write one comment, it reads it, then it explains exactly what action it would take.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0004-finish-and-export-review.html">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
