@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Navigate Without Getting Lost</title>
+  <link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0001-open-the-right-review.html">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-place-review-comments.html">Next</a>
+    </nav>
+
+    <h1>Navigate Without Getting Lost</h1>
+    <p class="lesson-meta">Time: 6 minutes. Tangible win: move through a diff using a tiny dependable key set.</p>
+
+    <p>A review is easier when movement has levels: scan lines, jump between hunks, jump between files, search for a term, then change focus only when needed.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      Use the <a href="https://raw.githubusercontent.com/agavra/tuicr/main/docs/KEYBINDINGS.md">tuicr keybindings reference</a> for the full list. The lesson keeps only the starter set.
+    </section>
+
+    <h2>The starter set</h2>
+    <pre class="diagram">line scan     j / k
+page scan     Ctrl-d / Ctrl-u
+file jump     { / }
+hunk jump     [ / ]
+search        / then n / N
+panel focus   Tab / Shift-Tab
+help          ?</pre>
+
+    <section class="callout">
+      <span class="callout-title">Why this order works</span>
+      Most reviews alternate between broad scan and precise inspection. File and hunk jumps keep you oriented; search is for questions like "where is auth handled?" or "did tests change?"
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You are done with the current hunk and want the next changed hunk, not the next file. Which key do you press?</p>
+      <div class="quiz-options">
+        <button data-correct="false">}</button>
+        <button data-correct="true">]</button>
+        <button data-correct="false">n</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. <code>]</code> jumps to the next hunk.</p>
+      <p class="quiz-feedback incorrect">Not quite. <code>]</code> jumps to the next hunk; <code>}</code> jumps to the next file.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Open a review target.</li>
+      <li>Use <code>]</code> three times, then <code>[</code> once.</li>
+      <li>Use <code>}</code> once, then <code>{</code> once.</li>
+      <li>Search for a symbol with <code>/</code>, then step through matches with <code>n</code>.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent to quiz you on movement keys until you can recall them without looking.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0001-open-the-right-review.html">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-place-review-comments.html">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

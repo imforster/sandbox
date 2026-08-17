@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tuicr Field Guide</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="../lessons/index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>tuicr Field Guide</h1>
+    <p class="lesson-meta">Quick reference for review setup, navigation, comments, export, and agent handoff.</p>
+
+    <h2>Open the right review target</h2>
+    <table class="command-table">
+      <tr><th>Goal</th><th>Command</th></tr>
+      <tr><td>Choose from commits</td><td><code>tuicr</code></td></tr>
+      <tr><td>Review uncommitted changes</td><td><code>tuicr -w</code></td></tr>
+      <tr><td>Review a commit range</td><td><code>tuicr -r main..HEAD</code></td></tr>
+      <tr><td>Review a GitHub or Bitbucket PR</td><td><code>tuicr pr 125</code></td></tr>
+      <tr><td>Review a GitLab MR</td><td><code>tuicr mr 125</code></td></tr>
+      <tr><td>Print review markdown</td><td><code>tuicr --stdout</code></td></tr>
+    </table>
+
+    <h2>Move with intent</h2>
+    <table class="command-table">
+      <tr><th>Key</th><th>Use it for</th></tr>
+      <tr><td><code>j</code> / <code>k</code></td><td>Scroll down / up.</td></tr>
+      <tr><td><code>Ctrl-d</code> / <code>Ctrl-u</code></td><td>Half-page scan.</td></tr>
+      <tr><td><code>{</code> / <code>}</code></td><td>Previous / next file.</td></tr>
+      <tr><td><code>[</code> / <code>]</code></td><td>Previous / next hunk.</td></tr>
+      <tr><td><code>/</code>, then <code>n</code> / <code>N</code></td><td>Search, then move through matches.</td></tr>
+      <tr><td><code>Tab</code></td><td>Cycle file list, comments, diff, and commit selector.</td></tr>
+      <tr><td><code>?</code></td><td>Open in-app help.</td></tr>
+    </table>
+
+    <h2>Leave review comments</h2>
+    <table class="command-table">
+      <tr><th>Key</th><th>Comment target</th></tr>
+      <tr><td><code>c</code></td><td>Line comment, or file comment when not on a diff line.</td></tr>
+      <tr><td><code>C</code></td><td>File comment.</td></tr>
+      <tr><td><code>v</code> / <code>V</code>, move, <code>c</code></td><td>Range comment.</td></tr>
+      <tr><td><code>&lt;leader&gt;c</code></td><td>Review-level comment.</td></tr>
+      <tr><td><code>Tab</code> in comment box</td><td>Cycle comment type.</td></tr>
+      <tr><td><code>Ctrl-s</code> or <code>Enter</code></td><td>Save comment.</td></tr>
+    </table>
+
+    <h2>Finish the review</h2>
+    <table class="command-table">
+      <tr><th>Goal</th><th>Action</th></tr>
+      <tr><td>Mark progress</td><td><code>r</code> for file reviewed, <code>R</code> for hunk reviewed.</td></tr>
+      <tr><td>Copy for an agent</td><td><code>y</code> or <code>:clip</code>.</td></tr>
+      <tr><td>Submit to forge</td><td><code>:submit</code>, then choose Comment, Approve, Request changes, or Draft where supported.</td></tr>
+      <tr><td>Inspect sessions outside TUI</td><td><code>tuicr review list --repo .</code></td></tr>
+      <tr><td>Read saved comments</td><td><code>tuicr review comments --session &lt;slug&gt;</code></td></tr>
+    </table>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      Based on the <a href="https://github.com/agavra/tuicr">tuicr README</a>, <a href="https://raw.githubusercontent.com/agavra/tuicr/main/docs/KEYBINDINGS.md">keybindings reference</a>, and <a href="https://raw.githubusercontent.com/agavra/tuicr/main/docs/REVIEW_CLI.md">review CLI docs</a>.
+    </section>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
