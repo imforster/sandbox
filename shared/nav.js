@@ -271,6 +271,7 @@
       { text: 'Safe Agentic Workflows', href: '/sandbox/safe-agentic-workflows/' },
       { text: 'SkillOpt & Harnesses', href: '/sandbox/learn-skillopt-harness/' },
       { text: 'Strands Agents', href: '/sandbox/learn-strands/' },
+      { text: 'tuicr', href: '/sandbox/learn-tuicr/' },
     ]},
     { label: 'Navigate', items: [
       { text: 'Blog', href: 'https://blog.imfsoftware.com' },
