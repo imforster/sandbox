@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Run it locally — the worker, and watch it resume</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0002-activities-in-depth.html" title="Previous: Activities in depth">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-signals-human-gate.html" title="Next: Signals — the human review gate">Next</a>
+    </nav>
+
+    <h1>Run it locally</h1>
+    <p class="lesson-meta">Time: ~9 minutes. Tangible win: you understand the three moving parts needed to run a Cadence workflow on your Mac — and exactly why killing the worker mid-run doesn't lose the work.</p>
+
+    <p>Ian — concepts land when you can run them. This lesson is the wiring: the <strong>server</strong>, the <strong>worker</strong>, and the <strong>starter</strong>. It also surfaces the one Go-specific determinism trap that bites everyone. We won't stand up infra in this lesson — that's a hands-on session — but you'll leave able to read the Hello World sample and know what each line does.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://cadenceworkflow.io/docs/go-client/workers">Go Client — Worker service</a> and <a href="https://cadenceworkflow.io/docs/go-client/starting-workflows">Starting workflows</a>. The runnable reference is the <a href="https://github.com/cadence-workflow/cadence-samples/blob/master/new_samples/hello_world/main.go">hello_world sample</a> in cadence-samples.
+    </section>
+
+    <h2>The three parts</h2>
+    <div class="diagram">1. CADENCE SERVER   stores event history, schedules work, hands out tasks
+   (local: docker-compose from the cadence repo → 127.0.0.1:7933)
+        ▲                      │
+        │ poll for work        │ dispatch task
+        │                      ▼
+2. WORKER            your Go process; hosts workflow + activity code
+   worker.New(service, Domain, TaskList) ; worker.Start()
+        ▲
+        │ StartWorkflow(...)
+        │
+3. STARTER           any process that kicks off a run (CLI, HTTP handler)
+   client.StartWorkflow(ctx, opts, ResearchWorkflow, topic)</div>
+    <p>The worker and the starter are both just Go programs talking to the server. The server is the durable brain — it holds the event history that makes replay possible.</p>
+
+    <h2>The worker (verified Go, from the docs)</h2>
+    <p>A worker connects to the server, then registers which workflows and activities it can run, then starts polling:</p>
+    <pre><code>const (
+    HostPort     = "127.0.0.1:7933"   // local Cadence
+    Domain       = "research-domain"
+    TaskListName = "research-tasklist"
+)
+
+func main() {
+    service := buildCadenceClient()               // YARPC/tchannel wiring (boilerplate)
+    w := worker.New(service, Domain, TaskListName, worker.Options{Logger: logger})
+
+    // Register everything this worker can run:
+    w.RegisterWorkflow(ResearchWorkflow)
+    w.RegisterActivity(CoordinationActivity)
+    w.RegisterActivity(ExecutionActivity)
+    // ... the rest of the 7 stages
+
+    if err := w.Start(); err != nil {             // begins polling the task list
+        logger.Fatal("worker failed to start")
+    }
+    select {}                                     // block forever
+}</code></pre>
+    <p>The three arguments to <code>worker.New</code> — service, <code>Domain</code>, <code>TaskListName</code> — are the address book. Workers poll a <strong>task list</strong>; the server dispatches work onto it. Everything registered here is what this worker is allowed to execute.</p>
+
+    <h2>The starter</h2>
+    <p>Starting is separate from the worker. Any program with a client can do it, using <code>client.StartWorkflow</code> with the two mandatory options (<code>TaskList</code> and <code>ExecutionStartToCloseTimeout</code>) plus a business <code>ID</code>:</p>
+    <pre><code>run, err := cadenceClient.StartWorkflow(ctx,
+    client.StartWorkflowOptions{
+        ID:                           "research-" + topicSlug, // stable business ID
+        TaskList:                     TaskListName,
+        ExecutionStartToCloseTimeout: time.Hour,               // whole run's ceiling
+    },
+    ResearchWorkflow, // the function (or its registered name)
+    topic,            // workflow argument
+)</code></pre>
+    <p>That <code>ID</code> matters: Cadence guarantees only one open workflow with a given ID per domain (from Lesson 1's docs). Keying it to the research topic gives you free dedup — start the same topic twice and the second is rejected while the first runs.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">The Go determinism trap: no native channels or <code>select</code></span>
+      The Go client docs are explicit: workflow code <strong>must not</strong> use native Go channels or <code>select</code> — they schedule non-deterministically and break replay. Cadence provides deterministic replacements: <code>workflow.Channel</code> instead of <code>chan</code>, and <code>workflow.Selector</code> instead of <code>select</code>. You'll need <code>workflow.Selector</code> in the very next lesson to wait on a human signal. In activities, native channels are fine — determinism only binds workflow code.
+    </section>
+
+    <h2>The payoff: kill the worker, watch it resume</h2>
+    <p>Here is the demo that makes durable execution real, and the thing your ICM folder model can't do automatically. Once you're running locally:</p>
+    <div class="diagram">1. Start ResearchWorkflow. It finishes CoordinationActivity, begins ExecutionActivity.
+2. Ctrl-C the worker process mid-execution.  ← simulate a crash
+3. The server still holds the event history. The workflow is not lost —
+   it is just parked, waiting for a worker.
+4. Restart the worker.  It polls, the server hands back the parked workflow,
+   Cadence REPLAYS the history to rebuild state, and execution CONTINUES
+   from where it stopped — Coordination is NOT re-run.</div>
+    <p>Contrast with the research-assistant-workflow today: a crash mid-stage means you re-open the stage folder and re-run it by hand. Cadence makes "resume exactly where it stopped" the default, at the cost of running a server and thinking about determinism.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">Local server, the short version</span>
+      For the hands-on session: clone <code>github.com/cadence-workflow/cadence</code>, run its <code>docker-compose</code> (server + Cassandra + web UI), register the domain once with the CLI, then <code>go run</code> the worker and the starter. We'll do this step by step — for now, just hold the three-part shape.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You Ctrl-C the worker while ExecutionActivity is running. After you restart it, what happens?</p>
+      <div class="quiz-options">
+        <button data-correct="true">The server replays history and resumes from where it stopped</button>
+        <button data-correct="false">The run is gone; you must start the whole workflow again</button>
+        <button data-correct="false">The worker kept the state in memory and simply carries on</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The server holds the event history. A restarted worker gets the parked workflow, replays to rebuild state, and continues — earlier activities are not re-run.</p>
+      <p class="quiz-feedback incorrect">No. The durable state lives in the server, not the worker. A restarted worker replays the history and resumes from the last recorded point.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Your workflow needs to wait on one of several events at once. What do you use?</p>
+      <div class="quiz-options">
+        <button data-correct="false">A native Go select over several native channels</button>
+        <button data-correct="true">workflow.Selector over workflow.Channel values</button>
+        <button data-correct="false">A goroutine per event writing to a shared slice</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Native select and channels are non-deterministic and break replay. Cadence's workflow.Selector and workflow.Channel are the deterministic equivalents for workflow code.</p>
+      <p class="quiz-feedback incorrect">No. Native select, channels, and goroutines are non-deterministic in workflow code. Use workflow.Selector over workflow.Channel instead.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>What does the three-argument <code>worker.New(service, Domain, TaskList)</code> plus RegisterWorkflow/RegisterActivity establish?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Where to connect and which code this worker may execute</button>
+        <button data-correct="false">The retry policy and timeouts for every activity it runs</button>
+        <button data-correct="false">The durable storage backend the histories are written to</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The args are the address book (server, domain, task list); Register* declares the workflows/activities this worker can run. Storage is the server's job.</p>
+      <p class="quiz-feedback incorrect">No. That call sets where to connect and what this worker can run. Timeouts are per-activity options, and storage is the server's concern.</p>
+    </div>
+
+    <p>New terms — <a href="../reference/glossary.html">worker, task list, starter, workflow.Selector, workflow.Channel</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask me anything. When you're ready, say the word and we'll do the hands-on: docker-compose the server, register the domain, and run a real workflow you can kill and resume. Next lesson: signals — pausing the workflow for a human to approve a stage, the Cadence version of your ICM review gates.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0002-activities-in-depth.html" title="Previous: Activities in depth">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-signals-human-gate.html" title="Next: Signals — the human review gate">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

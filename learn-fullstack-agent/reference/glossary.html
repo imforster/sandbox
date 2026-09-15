@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Glossary — fullstack-agent study</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="../lessons/index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Glossary</h1>
+    <p class="lesson-meta">Terminology for the fullstack-agent study. Updated each lesson.</p>
+
+    <h2>Project and components</h2>
+    <table>
+      <tr><th>Term</th><th>Meaning</th></tr>
+      <tr><td><strong>fullstack-agent</strong></td><td>Jared Rhodenizer's repo. A Claude-Code-only <em>installer wizard</em> that assembles four separate personal-AI repos into one desktop assistant. Not an agent framework.</td></tr>
+      <tr><td><strong>the stack</strong></td><td>The four assembled pieces together: memory, voice, face, hands. "Full stack" means the agent <em>has</em> a stack, not that it builds full-stack code.</td></tr>
+      <tr><td><strong>ai-memory-vault</strong></td><td>"The mind." Plain-text (Markdown/Obsidian) file-based persistent memory the agent reads and writes.</td></tr>
+      <tr><td><strong>backtalk</strong></td><td>"The mouth." Push-to-talk (or open-mic) voice input/output. Also owns the config that wires pieces together.</td></tr>
+      <tr><td><strong>ai-visualizer</strong></td><td>"The face." Full-screen browser visualizer that reacts to conversation state (idle, listen, think, speak).</td></tr>
+      <tr><td><strong>barehands</strong></td><td>"The hands." Optional webcam gesture control to move notes and images on screen. No headset.</td></tr>
+    </table>
+
+    <h2>Architecture and patterns</h2>
+    <table>
+      <tr><th>Term</th><th>Meaning</th></tr>
+      <tr><td><strong>installer-as-spec</strong></td><td>The install logic is a prose file (<code>fullstack-agent.md</code>) executed by the LLM, not compiled code. The wizard is a document.</td></tr>
+      <tr><td><strong>phased wizard</strong></td><td>The install runs in ordered phases: find-home, menu, interview, install, wire, hello, hand-over. Answers collected once, executed later.</td></tr>
+      <tr><td><strong>the home folder</strong></td><td>The parent directory containing the toolbox repo. The agent "lives" here; Claude Code must open here for the agent to be itself.</td></tr>
+      <tr><td><strong>adopt, never destroy</strong></td><td>Core principle: pre-existing user state (vaults, identities, hand-built pieces) is found and kept, never deleted, overwritten, or moved. Replacements retire the old thing in place.</td></tr>
+      <tr><td><strong>config-path wiring</strong></td><td>Components connect only by writing each other's file paths into JSON config. No shared library, no API. Loose coupling by filesystem.</td></tr>
+      <tr><td><strong>status-file bus</strong></td><td>Inter-component communication via a shared directory of small state files: voice writes status notes, face reads them. A filesystem message bus.</td></tr>
+      <tr><td><strong>agent-as-mechanic</strong></td><td>Each component ships a TROUBLESHOOTING.md written for the agent to read. When something breaks, the agent fixes itself; the user never debugs.</td></tr>
+      <tr><td><strong>the mechanic section</strong></td><td>A block appended to the home <code>CLAUDE.md</code> instructing the agent that repairing the stack is its own job.</td></tr>
+      <tr><td><strong>present verb</strong></td><td>When asked to SEE something, the agent puts it on the visualizer ("glass") instead of replying in text.</td></tr>
+    </table>
+
+    <h2>Evaluation lenses (external)</h2>
+    <table>
+      <tr><th>Term</th><th>Meaning</th></tr>
+      <tr><td><strong>workflow vs. agent</strong></td><td>Anthropic's distinction: workflows follow predefined code paths; agents dynamically direct their own process. A lens to classify what fullstack-agent's pieces are.</td></tr>
+      <tr><td><strong>12-factor agents</strong></td><td>A set of design principles for durable agent systems; a checklist to judge this stack against.</td></tr>
+    </table>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Sources</span>
+      Repo files, Anthropic, and 12-factor agents. Full list in <a href="../RESOURCES.md">RESOURCES.md</a>.
+    </section>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="../lessons/index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

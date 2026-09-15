@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Durable timers & child workflows</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0004-signals-human-gate.html" title="Previous: Signals — the human review gate">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0006-hands-on-run-it.html" title="Next: Hands-on — run the real thing">Next</a>
+    </nav>
+
+    <h1>Durable timers &amp; child workflows</h1>
+    <p class="lesson-meta">Time: ~9 minutes. Tangible win: you can express a research run that waits days without a running process, and you can decide when to split a stage into its own child workflow versus keeping it a plain activity.</p>
+
+    <p>Ian — two structural tools that make the 7-stage pipeline realistic. <strong>Durable timers</strong> let a run pause for days (a review SLA, a scheduled re-crawl) with nothing running. <strong>Child workflows</strong> let you break the monolith into reusable, independently-retryable pieces. Both are decisions with real tradeoffs — this lesson is as much about <em>when not to</em> as how.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://cadenceworkflow.io/docs/go-client/sleep">Go Client — Sleep</a> and <a href="https://cadenceworkflow.io/docs/go-client/child-workflows">Go Client — Child workflows</a>. The child-workflows page has the decision table and the ParentClosePolicy behaviors used below.
+    </section>
+
+    <h2>Durable timers: <code>workflow.Sleep</code></h2>
+    <p>Inside workflow code you never call <code>time.Sleep</code> — it blocks a worker thread and breaks determinism. You call <code>workflow.Sleep</code>. From the docs: the workflow is <em>"paused and resumed by the Cadence service… durable, meaning the workflow can survive worker restarts or failures during the sleep period,"</em> and <em>"not consuming worker resources while sleeping."</em></p>
+    <pre><code>func ResearchWorkflow(ctx workflow.Context, topic string) (string, error) {
+    // ... produce a draft, notify a reviewer ...
+
+    // Give the reviewer 2 days — the run parks, costs nothing, survives restarts:
+    if err := workflow.Sleep(ctx, 48*time.Hour); err != nil {
+        return "", err // interrupted (e.g. workflow cancelled)
+    }
+    // ... 48h later, on some worker, execution resumes exactly here ...
+    return finalize(ctx, topic)
+}</code></pre>
+
+    <section class="callout tip">
+      <span class="callout-title">Sleep + signal = the real review gate</span>
+      Combine Lesson 4's signal with a timer using <code>workflow.Selector</code>: whichever fires first wins. That is a complete review gate — "human approves within 48h, else auto-escalate." The timer is the deadline; the signal is the human. Neither needs a process babysitting it.
+    </section>
+
+    <section class="callout warning">
+      <span class="callout-title">Don't fire a million timers at once</span>
+      The docs warn: very large numbers of simultaneous timers can strain the cluster. If you'd start thousands of long sleeps at the same instant (e.g. a batch of scheduled re-crawls), jitter or batch them. For a handful of research runs this never bites — but know the ceiling exists.
+    </section>
+
+    <h2>Child workflows: split the pipeline</h2>
+    <p><code>workflow.ExecuteChildWorkflow</code> starts another workflow from inside a running one. The parent shapes the child's lifecycle; otherwise the child is independent — <em>its own event history, its own timeouts and retry policy, and it can run on a different task list and worker pool</em> (docs). For your pipeline, an "execution" stage that itself orchestrates several LLM sub-steps is a natural child.</p>
+    <pre><code>cwo := workflow.ChildWorkflowOptions{
+    WorkflowID:                   "research-exec-" + topicSlug,
+    ExecutionStartToCloseTimeout: 30 * time.Minute, // required
+}
+ctx = workflow.WithChildOptions(ctx, cwo)
+
+var deliverable string
+future := workflow.ExecuteChildWorkflow(ctx, ExecutionChildWorkflow, plan)
+if err := future.Get(ctx, &deliverable); err != nil {
+    return "", err
+}</code></pre>
+
+    <h2>The decision that actually matters: activity vs child vs standalone</h2>
+    <p>This is the judgment the docs put front and center. Reach for the lightest tool that fits:</p>
+    <table>
+      <tr><th>Use</th><th>When</th></tr>
+      <tr><td><strong>Activity</strong></td><td>A single non-deterministic operation — one LLM call, one DB write. Lowest overhead, retried independently. <em>Your default.</em></td></tr>
+      <tr><td><strong>Child workflow</strong></td><td>A reusable, self-contained <em>orchestration</em> with its own history/timeouts/retries, but whose lifecycle stays tied to the parent.</td></tr>
+      <tr><td><strong>Standalone workflow</strong></td><td>A fully independent process that shouldn't share the parent's lifecycle. Start it top-level with a client instead.</td></tr>
+    </table>
+    <p>For most of your 7 stages, an <em>activity</em> is right — one stage, one main operation. Promote a stage to a child workflow only when it becomes its own multi-step orchestration you'd want to reuse or run on separate workers. Resist the urge to make all seven children; that is over-engineering the coordination.</p>
+
+    <h2>When the parent closes: <code>ParentClosePolicy</code></h2>
+    <p>A live footgun. What happens to a still-running child when the parent finishes? Set it per child:</p>
+    <table>
+      <tr><th>Policy</th><th>Behavior</th></tr>
+      <tr><td><code>Terminate</code> <em>(default)</em></td><td>Child is killed immediately when the parent closes.</td></tr>
+      <tr><td><code>RequestCancel</code></td><td>Child gets a cancel request — a chance to clean up first.</td></tr>
+      <tr><td><code>Abandon</code></td><td>Child keeps running independently after the parent closes.</td></tr>
+    </table>
+    <p>Default is <strong>Terminate</strong>. If you spawn a long detached job and let the parent return, the child dies unless you set <code>Abandon</code>. And the docs stress: a child is only scheduled once the parent yields to Cadence, so for an abandoned child, block on <code>future.GetChildWorkflowExecution().Get(ctx, nil)</code> before the parent returns — otherwise it may never start.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">One thing you can't do from workflow code</span>
+      A parent cannot <em>query</em> a child from inside workflow code (queries would be non-deterministic). Signal a child with <code>workflow.SignalExternalWorkflow</code>, but run queries from an activity or an external client. Communication between parent and child is asynchronous — signals, not shared memory.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>A research run must wait 48 hours for a review deadline. What goes in the workflow?</p>
+      <div class="quiz-options">
+        <button data-correct="false">time.Sleep of 48 hours on the worker goroutine directly</button>
+        <button data-correct="true">workflow.Sleep, which parks the run durably for 48 hours</button>
+        <button data-correct="false">A loop that checks workflow.Now every few seconds passing</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. workflow.Sleep parks the run in the server — durable, survives restarts, consumes no worker while waiting. time.Sleep and polling loops break determinism and waste a worker.</p>
+      <p class="quiz-feedback incorrect">No. time.Sleep blocks a worker and breaks determinism; a polling loop wastes resources. workflow.Sleep parks the run durably for the full duration.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Your "coordination" stage is a single LLM call that produces a plan. What should it be?</p>
+      <div class="quiz-options">
+        <button data-correct="true">A plain activity — one operation, lowest overhead</button>
+        <button data-correct="false">A child workflow so it gets its own event history</button>
+        <button data-correct="false">A standalone workflow started with its own client</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A single non-deterministic operation is the textbook activity case. Reserve child workflows for reusable multi-step orchestrations; a lone LLM call doesn't need one.</p>
+      <p class="quiz-feedback incorrect">No. One LLM call is a single operation — the lightest tool, an activity, fits. Child and standalone workflows are for self-contained orchestrations.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>A parent spawns a long child, then returns quickly. You did not set ParentClosePolicy. What happens to the child?</p>
+      <div class="quiz-options">
+        <button data-correct="true">It is terminated, because Terminate is the default policy</button>
+        <button data-correct="false">It keeps running, since children outlive parents always</button>
+        <button data-correct="false">It restarts from the beginning under a new parent later</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The default is Terminate — the child dies when the parent closes. To let it outlive the parent, set Abandon and block until the child has actually started.</p>
+      <p class="quiz-feedback incorrect">No. The default ParentClosePolicy is Terminate, so the child is killed when the parent closes. Use Abandon to let it keep running.</p>
+    </div>
+
+    <p>New terms — <a href="../reference/glossary.html">workflow.Sleep, ChildWorkflowFuture, ParentClosePolicy, standalone workflow</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask me anything. Good follow-ups: "Sketch the full 7 stages — which become children?" or "How does Sleep interact with the ExecutionStartToCloseTimeout?" Next lesson is the hands-on: stand up a local server (no Docker needed) and run a workflow you can crash and resume.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0004-signals-human-gate.html" title="Previous: Signals — the human review gate">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0006-hands-on-run-it.html" title="Next: Hands-on — run the real thing">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

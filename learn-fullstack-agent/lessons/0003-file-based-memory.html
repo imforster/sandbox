@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>File-Based Memory</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0002-installer-as-spec.html" title="Previous: The Installer-as-Spec Pattern">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-config-wiring-and-bus.html" title="Next: Config Wiring and the Status-File Bus">Next</a>
+    </nav>
+
+    <h1>File-Based Memory</h1>
+    <p class="lesson-meta">Time: 8 minutes. Tangible win: judge when plain-text files are the right memory substrate for an agent — and when they are not.</p>
+
+    <p>Ian — the "mind" of this stack is <code>ai-memory-vault</code>: an Obsidian vault of plain Markdown the agent reads and writes. No database, no vector store. This lesson extracts the pattern and its limits so you can decide where it fits your own systems.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      Read the <a href="https://github.com/jaredrhod/ai-memory-vault">ai-memory-vault README</a>. Note three claims to test: memory "lives outside the model with no size ceiling," the agent "pulls back exactly what it needs in one step," and the concept of <em>AI priming</em>.
+    </section>
+
+    <h2>What the pattern is</h2>
+    <p>File-based memory stores durable state as human-readable files in a directory tree, and lets the agent retrieve by navigating that tree (folders, filenames, links) rather than querying an index. The vault is the source of truth; the model holds only what the current task needs and reaches the rest in one file read.</p>
+
+    <h2>Why plain text, specifically</h2>
+    <table>
+      <tr><th>Property</th><th>Payoff</th></tr>
+      <tr><td>Human-readable</td><td>You can see, edit, and correct the agent's memory directly. No opaque store.</td></tr>
+      <tr><td>Portable</td><td>Markdown outlives any tool. No lock-in to a DB or embedding model.</td></tr>
+      <tr><td>Diff-able / versionable</td><td>Git tracks memory changes; you get history and rollback for free.</td></tr>
+      <tr><td>No size ceiling in context</td><td>The vault can be huge; only the retrieved slice enters the window.</td></tr>
+      <tr><td>Structured by convention</td><td>Folders and links <em>are</em> the schema — "AI priming" points the agent at the right notes per job.</td></tr>
+    </table>
+
+    <section class="callout tip">
+      <span class="callout-title">The insight to keep</span>
+      Retrieval here is <strong>navigational, not semantic</strong>. The agent finds a note because a folder, filename, or link told it where to look — the same way you would. That is cheap, transparent, and correctable, and it is why it works without a vector database.
+    </section>
+
+    <h2>Where it fails</h2>
+    <p>Navigational retrieval degrades as the corpus grows unstructured. If notes are not organized by convention, the agent cannot find them — there is no similarity search to fall back on. It scales with <em>human-maintained structure</em>, not with volume. Fuzzy recall ("find everything related to X" across thousands of notes with no link) is exactly what a vector store does and files do not. And concurrent writers can clobber a file — plain text has no transaction model.</p>
+
+    <div class="diagram">file-based memory            vector / DB memory
+  navigational retrieval       semantic retrieval
+  human-readable, editable     opaque embeddings
+  git history for free         needs migration tooling
+  scales with structure        scales with volume
+  no fuzzy recall              fuzzy recall is the point
+  no concurrency model         real transactions</div>
+
+    <h2>Applying it to your work</h2>
+    <p>Your AIOS is already this pattern — Markdown files (<code>me.md</code>, wikis, journals) the agent primes on. The lesson to carry: file-based memory is the right default for <em>durable, low-write, human-owned</em> knowledge where transparency matters more than fuzzy recall. When you need cross-corpus similarity search at scale, add a vector index <em>beside</em> the files, not instead of them — keep the readable files as truth and treat the index as a derived cache.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You need an agent to answer "find every past note vaguely related to margin pricing" across 5,000 unlinked notes. Is a plain file vault sufficient?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes, navigational retrieval handles fuzzy cross-corpus search fine</button>
+        <button data-correct="true">No, fuzzy cross-corpus recall needs a semantic index beside the files</button>
+        <button data-correct="false">Yes, as long as every note has a timestamp in its filename here</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Files retrieve navigationally; fuzzy recall across unlinked notes is the vector-store case. Add an index beside the files.</p>
+      <p class="quiz-feedback incorrect">Not quite. With no links or structure, navigational retrieval cannot find them — that is the semantic-search case.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>What is the biggest single advantage of plain-text memory over an opaque store, for your use?</p>
+      <div class="quiz-options">
+        <button data-correct="false">It is always faster to read than any database query could be</button>
+        <button data-correct="true">You can see, edit, version, and correct the memory directly</button>
+        <button data-correct="false">It automatically prevents the agent from ever storing errors</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Transparency and direct correctability — plus git history — are the defining wins of readable files.</p>
+      <p class="quiz-feedback incorrect">The defining win is transparency: readable, editable, versionable memory you can correct by hand.</p>
+    </div>
+
+    <p>Terms live in the <a href="../reference/glossary.html">glossary</a>.</p>
+
+    <section class="ask-teacher">
+      Curious how a file-vault-plus-vector-index hybrid would look for one of your projects? Ask and we will sketch the split.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0002-installer-as-spec.html" title="Previous: The Installer-as-Spec Pattern">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-config-wiring-and-bus.html" title="Next: Config Wiring and the Status-File Bus">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cadence + Go for agentic research workflows</title>
+  <link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+  <main>
+    <div class="course-header">
+      <h1>Cadence + Go for agentic research workflows</h1>
+      <p>Learning Cadence's Go SDK to orchestrate a durable, agentic research pipeline — evaluated against Ian's existing 7-stage research-assistant-workflow. One concept per lesson, each anchored to a real stage and each with a judgment check. See MISSION.md for the full mission.</p>
+    </div>
+
+    <div class="section-label">Foundations</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0001-workflow-vs-activity.html">
+          <span class="lesson-num">01</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Workflow vs Activity</span>
+            <span class="lesson-desc">The one split everything rests on. What belongs in the durable coordinator vs the side-effecting work, and why determinism is non-negotiable.</span>
+          </span>
+          <span class="lesson-time">~8 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0002-activities-in-depth.html">
+          <span class="lesson-num">02</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Activities in depth</span>
+            <span class="lesson-desc">Timeouts, retries, idempotency, and heartbeats — how a flaky LLM call recovers without corrupting the run.</span>
+          </span>
+          <span class="lesson-time">~8 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0003-run-it-locally.html">
+          <span class="lesson-num">03</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Run it locally</span>
+            <span class="lesson-desc">Server, worker, starter — the three parts. Register workflows/activities, and the Go determinism trap (workflow.Selector, not select). Kill the worker, watch it resume.</span>
+          </span>
+          <span class="lesson-time">~9 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0004-signals-human-gate.html">
+          <span class="lesson-num">04</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Signals — the human review gate</span>
+            <span class="lesson-desc">Pause a workflow durably until a human approves. The Cadence answer to ICM's review boundaries, with timeouts and escalation.</span>
+          </span>
+          <span class="lesson-time">~8 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Structure &amp; running</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0005-timers-and-child-workflows.html">
+          <span class="lesson-num">05</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Durable timers &amp; child workflows</span>
+            <span class="lesson-desc">Wait days with no running process (workflow.Sleep), and decide when to split a stage into a child workflow vs a plain activity. ParentClosePolicy footguns.</span>
+          </span>
+          <span class="lesson-time">~9 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0006-hands-on-run-it.html">
+          <span class="lesson-num">06</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Hands-on: run the real thing</span>
+            <span class="lesson-desc">Stand up a local server (SQLite, no Docker), register a domain, run a workflow — then crash the worker and watch it resume. Port a slice of your pipeline.</span>
+          </span>
+          <span class="lesson-time">~15 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Reference</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="../reference/glossary.html">
+          <span class="lesson-num">--</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Glossary</span>
+            <span class="lesson-desc">The vocabulary of Cadence + Go durable execution. Updated each lesson.</span>
+          </span>
+          <span class="lesson-time">ref</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="resources-link">
+      <p><strong>Course:</strong> Cadence + Go — evaluating durable execution for the research-assistant-workflow.</p>
+      <p style="color: var(--color-muted); font-size: 0.85rem; margin-top: 0.5rem;">6 lessons live · ~57 minutes · interactive checks in each · next: build a durable slice of the 7-stage pipeline, then judge Cadence vs ICM with evidence</p>
+    </div>
+  </main>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

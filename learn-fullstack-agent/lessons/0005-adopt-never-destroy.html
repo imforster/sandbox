@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adopt, Never Destroy</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0004-config-wiring-and-bus.html" title="Previous: Config Wiring and the Status-File Bus">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Adopt, Never Destroy</h1>
+    <p class="lesson-meta">Time: 7 minutes. Tangible win: a concrete safety principle for any tool that installs into a user's existing environment.</p>
+
+    <p>Ian — the most transferable <em>principle</em> in this whole project has nothing to do with voice or faces. It is how the installer treats state it did not create. The rule, stated verbatim and repeated across the spec: never delete, overwrite, or move anything the person built.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      Read Phase 0 and Phase 3 of <a href="https://raw.githubusercontent.com/jaredrhod/fullstack-agent/main/fullstack-agent.md">fullstack-agent.md</a>. Count how many distinct rules exist just to avoid touching pre-existing vaults, identities, and hand-built pieces.
+    </section>
+
+    <h2>What the principle is</h2>
+    <p>Adopt-never-destroy means an installer treats pre-existing user state as read-only and sovereign. It <em>finds</em> what exists, <em>keeps</em> it in place, and when it must supersede something, it <strong>retires the old thing where it sits and says so out loud</strong> — it never deletes, overwrites, or relocates.</p>
+
+    <h2>How the spec enforces it</h2>
+    <table>
+      <tr><th>Situation</th><th>Behavior</th></tr>
+      <tr><td>Existing agent identity found</td><td>Adopt it. Skip every identity question. "Found [name], keeping them as they are."</td></tr>
+      <tr><td>Existing vault</td><td>Point at it by path. Never move it, never read other vaults, never comment on its location.</td></tr>
+      <tr><td>Hand-built voice/visualizer</td><td>Install the new default; the old build "stays right where it is; it just will not be the one that runs."</td></tr>
+      <tr><td>A custom visualizer scene</td><td>Promote it: <em>copy</em> (never move) into the gallery beside shipped faces.</td></tr>
+      <tr><td>Migrating old memory</td><td>Copy, never delete the originals; ask which projects to take over.</td></tr>
+    </table>
+
+    <section class="callout tip">
+      <span class="callout-title">The principle to keep</span>
+      Destructive-by-default is a trust bomb. Adopt-never-destroy makes the tool <strong>safe to run on a machine you care about</strong>, and — critically — <strong>safe to run twice</strong>. Idempotent, non-destructive installs are the difference between a tool people trust and one they run only in a throwaway VM.
+    </section>
+
+    <h2>Where it costs you</h2>
+    <p>The principle is not free. Detecting existing state is real work — much of the spec's complexity is adoption logic. "Retire in place" leaves clutter: old builds accumulate on disk. And "never move" forces coordination by configuration paths (Lesson 4) rather than convention, which is more wiring. You pay in complexity and disk to buy trust. For a personal-machine installer that trade is clearly right; for a disposable container it may be over-engineering.</p>
+
+    <h2>Applying it to your work</h2>
+    <p>This maps straight onto your production-safety rules and your own <code>me.md</code> ("Backwards Compatibility — don't break existing consumers"; "Surgical Changes"). The generalization: any code that writes into an environment it did not create should default to <em>additive and reversible</em>. Read before write. Confirm before replace. Retire, don't delete. It is the install-time version of a two-way-door decision — and it is exactly the posture your steering files already ask of agents touching your systems.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>The installer finds a visualizer the user hand-built. What does adopt-never-destroy require?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Delete the old one so the new default is the only version present</button>
+        <button data-correct="true">Install the new default and leave the old build untouched on disk</button>
+        <button data-correct="false">Move the old one into a backup folder without telling the user</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Supersede in place, never delete or move, and say so. The old build stays exactly where it is.</p>
+      <p class="quiz-feedback incorrect">No. It retires in place: the new default runs, the old build stays untouched and is not moved or deleted.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>What property makes an adopt-never-destroy installer safe to paste and run repeatedly?</p>
+      <div class="quiz-options">
+        <button data-correct="false">It refuses to run a second time once setup has completed once</button>
+        <button data-correct="true">It is idempotent and non-destructive, so re-runs add only what is missing</button>
+        <button data-correct="false">It reformats the environment cleanly before each fresh install</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Idempotent and non-destructive means a re-run finishes the job without harming existing state — safe to paste repeatedly.</p>
+      <p class="quiz-feedback incorrect">The point is idempotence: re-runs add only what is missing and never damage existing state.</p>
+    </div>
+
+    <p>Terms live in the <a href="../reference/glossary.html">glossary</a>. This is the last lesson in the current arc — ask about a Lesson 6 (synthesis: sketch your own composable agent architecture) when ready.</p>
+
+    <section class="ask-teacher">
+      Want to turn these five patterns into a one-page architecture sketch for a system you actually want to build? That is the natural next session — just ask.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0004-config-wiring-and-bus.html" title="Previous: Config Wiring and the Status-File Bus">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

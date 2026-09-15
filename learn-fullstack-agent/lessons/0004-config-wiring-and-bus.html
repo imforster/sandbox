@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Config Wiring and the Status-File Bus</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0003-file-based-memory.html" title="Previous: File-Based Memory">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-adopt-never-destroy.html" title="Next: Adopt, Never Destroy">Next</a>
+    </nav>
+
+    <h1>Config Wiring and the Status-File Bus</h1>
+    <p class="lesson-meta">Time: 8 minutes. Tangible win: understand filesystem-level component coupling and judge its blast radius against a real message bus.</p>
+
+    <p>Ian — this is the integration heart of the stack. Four separate processes coordinate with no shared library and no network API. They connect two ways: <strong>config-path wiring</strong> at setup, and a <strong>status-file bus</strong> at runtime. Both are just the filesystem.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      Read the <a href="https://github.com/jaredrhod/backtalk">backtalk README</a> ("Give it a face") and Phase 4 of <a href="https://raw.githubusercontent.com/jaredrhod/fullstack-agent/main/fullstack-agent.md">fullstack-agent.md</a>. backtalk "writes tiny state files while it listens, thinks, and speaks, so anything can watch them and react in real time."
+    </section>
+
+    <h2>The two mechanisms</h2>
+    <table>
+      <tr><th>Mechanism</th><th>When</th><th>How</th></tr>
+      <tr><td>Config-path wiring</td><td>Setup</td><td>The wizard writes each piece's path into the others' JSON — e.g. <code>bus_dir</code>, <code>agent_dir</code>, <code>barehands_state_dir</code>.</td></tr>
+      <tr><td>Status-file bus</td><td>Runtime</td><td>The voice writes small state files (listening/thinking/speaking); the face polls that directory and reacts.</td></tr>
+    </table>
+
+    <div class="diagram">        setup (config-path wiring)
+  wizard ──writes paths──> backtalk.json, ai-visualizer.json, barehands.json
+
+        runtime (status-file bus)
+  backtalk ──writes──> [bus_dir]/state.*  <──reads── ai-visualizer
+                                          <──reads── barehands
+  (one writer, many readers, filesystem is the broker)</div>
+
+    <section class="callout tip">
+      <span class="callout-title">The insight to keep</span>
+      This is a <strong>one-writer, many-reader pub/sub over the filesystem</strong>. The producer never knows who consumes it. You can add a fifth face tomorrow that reads the same files, and the voice needs zero changes. That is genuine loose coupling, achieved with nothing but a shared directory.
+    </section>
+
+    <h2>Why it is clever</h2>
+    <p>No message broker to run, no ports, no service discovery, no serialization contract beyond "small files." Any language can participate — a reader is a directory poll. It degrades gracefully: a reader that dies leaves the writer untouched. For a single-user desktop app, this is radically less machinery than Redis, a socket protocol, or an event bus, and it is inspectable — you can <code>cat</code> the bus.</p>
+
+    <h2>Where it fails</h2>
+    <p>Name the limits, because they are exactly where you would <em>not</em> use it. Polling has latency and wastes cycles versus event-driven push. There is no delivery guarantee, ordering, or replay — a reader that was asleep misses the transition. It does not cross machines (a shared directory is local). Filesystem watching has real cross-platform quirks. And many writers to one file race, since there is no transaction. It suits <em>local, ephemeral, one-writer status signaling</em> and nothing heavier.</p>
+
+    <div class="diagram">status-file bus              real message bus (Redis/NATS/SQS)
+  filesystem is the broker     dedicated broker to run
+  polling, ~100ms latency      push, low latency
+  no delivery guarantee        acks, retries, ordering
+  local machine only           cross-machine, cross-network
+  cat to inspect               tooling to inspect
+  ephemeral status fits         durable events fit</div>
+
+    <h2>Applying it to your work</h2>
+    <p>For AWS-native systems your instinct will be EventBridge, SNS/SQS, or a socket — correct for anything distributed or durable. But the status-file pattern earns its place for <em>local dev tooling and single-host coordination</em>: a Go CLI that drops JSON status into a temp dir for a watcher to render. The judgment: use the filesystem bus when the blast radius is one machine and the data is disposable status; reach for a broker the moment you need delivery guarantees or cross-host reach.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You need two processes on separate hosts to exchange events that must not be lost. Is the status-file bus appropriate?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes, just put the shared directory on a network mount for them</button>
+        <button data-correct="true">No, cross-host and no-loss needs a real broker with delivery guarantees</button>
+        <button data-correct="false">Yes, filesystem writes are always atomic so nothing is lost</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Cross-machine plus must-not-lose is precisely the broker case; the file bus is local and lossy by design.</p>
+      <p class="quiz-feedback incorrect">Not quite. It is local-only and offers no delivery guarantee — cross-host no-loss needs a broker.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Why can you add a new visualizer that reads the same status files without touching backtalk?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Because backtalk registers each reader in its config on startup first</button>
+        <button data-correct="true">Because the writer never knows its readers — it just writes to a directory</button>
+        <button data-correct="false">Because the files contain callback URLs pointing back to each reader</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. One-writer, many-reader pub/sub: the producer is decoupled from all consumers. That is the loose coupling.</p>
+      <p class="quiz-feedback incorrect">The producer is unaware of consumers — it only writes to a directory. Readers attach themselves.</p>
+    </div>
+
+    <p>Terms live in the <a href="../reference/glossary.html">glossary</a>.</p>
+
+    <section class="ask-teacher">
+      Want to compare this against an EventBridge design for a specific local-plus-cloud tool you have in mind? Ask and we will lay them side by side.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0003-file-based-memory.html" title="Previous: File-Based Memory">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-adopt-never-destroy.html" title="Next: Adopt, Never Destroy">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

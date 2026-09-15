@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What fullstack-agent Actually Is</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-installer-as-spec.html" title="Next: The Installer-as-Spec Pattern">Next</a>
+    </nav>
+
+    <h1>What fullstack-agent Actually Is</h1>
+    <p class="lesson-meta">Time: 7 minutes. Tangible win: an accurate mental model of the system, cut free of its marketing.</p>
+
+    <p>Ian — before you can evaluate this project or borrow from it, you need an accurate mental model. The README is persuasive and slightly misleading. This lesson gives you one thing: the true shape of the system, grounded in its source files rather than its sales copy.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">The naming trap</span>
+      "fullstack-agent" does <strong>not</strong> mean an agent that writes full-stack code, and it is <strong>not</strong> an agent framework you build on. It means an agent that <em>has</em> a stack: memory, voice, face, hands. The README says so outright: "Not an agent that writes full-stack code. An agent that HAS a full stack."
+    </section>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      Read the installer spec itself: <a href="https://raw.githubusercontent.com/jaredrhod/fullstack-agent/main/fullstack-agent.md">fullstack-agent.md</a>. It is the highest-value artifact in the project and the source for every later lesson. Skim Phases 0 through 4 and notice how much is <em>principle</em> versus <em>procedure</em>.
+    </section>
+
+    <h2>The two-sentence truth</h2>
+    <p>fullstack-agent is a <strong>Claude-Code-only installer wizard</strong> that assembles four independent single-purpose repos into one desktop assistant. The installer itself is a <strong>prose document</strong> (<code>fullstack-agent.md</code>) that Claude Code reads and executes as a conversation — there is no compiled application here.</p>
+
+    <h2>The four pieces</h2>
+    <table>
+      <tr><th>Piece</th><th>Repo</th><th>Does</th></tr>
+      <tr><td>Mind</td><td>ai-memory-vault</td><td>Plain-text file memory the AI reads and writes</td></tr>
+      <tr><td>Mouth</td><td>backtalk</td><td>Push-to-talk voice in and out</td></tr>
+      <tr><td>Face</td><td>ai-visualizer</td><td>Browser visualizer synced to conversation</td></tr>
+      <tr><td>Hands</td><td>barehands (optional)</td><td>Webcam gesture control</td></tr>
+    </table>
+    <p>Each is its own repo, and each works alone. fullstack-agent's only job is to compose them and wire them together.</p>
+
+    <h2>The shape, drawn</h2>
+    <div class="diagram">home folder  (the agent "lives" here — Claude Code opens here)
+│
+├── fullstack-agent/         the toolbox: installer + start/update scripts
+│     └── fullstack-agent.md   the wizard, as prose the LLM executes
+│
+├── CLAUDE.md                the agent's identity + "you are the mechanic"
+│
+├── ai-memory-vault/  ─┐
+├── backtalk/          │  four sibling repos, cloned in,
+├── ai-visualizer/     │  wired only by config file paths
+└── barehands/        ─┘
+      (voice writes status files → face reads them = the only "bus")</div>
+
+    <section class="callout tip">
+      <span class="callout-title">The one insight to keep</span>
+      The pieces are <strong>loosely coupled by the filesystem</strong>. They share no library and no API. They connect by writing each other's <em>paths</em> into JSON config, and they communicate at runtime through small <em>status files</em> in a shared directory. That is the whole integration model. Later lessons judge whether that is clever or fragile.
+    </section>
+
+    <h2>Why this matters for your mission</h2>
+    <p>You want reusable composition patterns, not a Jarvis. The valuable ideas here are architectural: file-based memory, config-path wiring, a status-file bus, "adopt never destroy," and self-healing troubleshooting docs. The voice, face, and hands are just <em>case studies</em> of those patterns. We will name and judge each one against your own Go, AWS, and simplicity defaults.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>A teammate says "let's use fullstack-agent as the framework for our new agent product." What is the most accurate objection?</p>
+      <div class="quiz-options">
+        <button data-correct="true">It is an installer for a fixed personal stack, not a framework layer</button>
+        <button data-correct="false">Its AGPL license blocks all commercial product usage outright</button>
+        <button data-correct="false">It only generates frontend code, so the backend is missing here</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. It is an installer that composes four fixed personal-AI repos on Claude Code; there is no framework layer to build a product on.</p>
+      <p class="quiz-feedback incorrect">Not the core issue. It composes fixed repos and offers no framework layer — that is the category mismatch to name first.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>How do the four pieces actually communicate at runtime?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Through a shared imported library linked into one process</button>
+        <button data-correct="true">Through small status files in a shared directory, wired by paths</button>
+        <button data-correct="false">Through a network RPC API each component exposes to peers</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Voice writes small status files into a shared dir; the face reads them. Coupling is filesystem-level, wired by config paths.</p>
+      <p class="quiz-feedback incorrect">No. There is no shared library and no RPC layer; the connection is status files on disk.</p>
+    </div>
+
+    <p>Terms introduced here live in the <a href="../reference/glossary.html">glossary</a>.</p>
+
+    <section class="ask-teacher">
+      Stuck or curious? I am your teacher — ask follow-ups. Want to challenge whether the filesystem-bus model is sound? That is exactly the debate for Lesson 2.
+    </section>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-installer-as-spec.html" title="Next: The Installer-as-Spec Pattern">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

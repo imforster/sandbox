@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Activities in depth — timeouts, retries, and safe failure</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0001-workflow-vs-activity.html" title="Previous: Workflow vs Activity">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-run-it-locally.html" title="Next: Run it locally">Next</a>
+    </nav>
+
+    <h1>Activities in depth</h1>
+    <p class="lesson-meta">Time: ~8 minutes. Tangible win: you can configure an activity that calls an LLM so that when it fails — and it will — Cadence retries it safely without corrupting your research run.</p>
+
+    <p>Ian — Lesson 1 gave you the split: the workflow coordinates, activities do the messy real work. This lesson is about making activities <em>survive reality</em>. Your research pipeline calls LLMs and search APIs. Those are slow, flaky, and occasionally down. Activities are the layer built to absorb that, and Cadence gives you three controls: timeouts, retries, and heartbeats.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://cadenceworkflow.io/docs/concepts/activities">Cadence Concepts — Activities</a>. Read the <em>Timeouts</em> and <em>Retries</em> sections. The docs are explicit: <em>"Cadence does not recover an activity's state… failures are expected. Therefore, Cadence supports automatic activity retries."</em>
+    </section>
+
+    <h2>The core promise: at-least-once</h2>
+    <p>Cadence does not recover activity state. If a worker dies mid-activity, or the activity errors, Cadence just <strong>runs it again</strong>. That means an activity may execute <strong>more than once</strong>. This is the single most important consequence for your pipeline:</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Make activities idempotent</span>
+      Because retries can re-run an activity, running it twice must not double the effect. Writing <code>stages/03_execution/output/draft.md</code> twice is fine (same file). Charging a card twice, or appending to a log twice, is not. For your research workflow: prefer <em>overwrite</em> outputs keyed by a stable ID over <em>append</em>. Idempotency is your responsibility, not Cadence's.
+    </section>
+
+    <h2>The four timeouts (and which one you actually set)</h2>
+    <p>Straight from the docs — every activity has these, in second resolution:</p>
+    <table>
+      <tr><th>Timeout</th><th>Covers</th><th>Fires when</th></tr>
+      <tr><td><code>ScheduleToStart</code></td><td>Queued → picked up by a worker</td><td>All workers down / overloaded</td></tr>
+      <tr><td><code>StartToClose</code></td><td>Worker starts → activity returns</td><td>The work itself takes too long</td></tr>
+      <tr><td><code>ScheduleToClose</code></td><td>Queued → fully complete</td><td>End-to-end cap across retries</td></tr>
+      <tr><td><code>Heartbeat</code></td><td>Max gap between heartbeats</td><td>A long activity goes silent</td></tr>
+    </table>
+    <p>The docs require <strong>either</strong> <code>ScheduleToClose</code> <strong>or</strong> both <code>ScheduleToStart</code> and <code>StartToClose</code>. In practice, for an LLM call, set <code>StartToClose</code> to the longest a single call should take (say 2 minutes) and let the retry policy handle repeated failures.</p>
+
+    <h2>Retry policy — the fields that matter</h2>
+    <p>Attach an exponential retry policy to the activity. Parameters from the docs:</p>
+    <pre><code>ao := workflow.ActivityOptions{
+    StartToCloseTimeout: 2 * time.Minute,   // one LLM call's ceiling
+    RetryPolicy: &cadence.RetryPolicy{
+        InitialInterval:    time.Second,     // wait before first retry
+        BackoffCoefficient: 2.0,             // 1s, 2s, 4s, 8s...
+        MaximumInterval:    time.Minute,     // cap the growth
+        MaximumAttempts:    5,               // give up after 5 tries
+        NonRetryableErrorReasons: []string{  // don't retry these
+            "BadRequestError",               // e.g. a malformed prompt
+        },
+    },
+}
+ctx = workflow.WithActivityOptions(ctx, ao)
+var draft string
+err := workflow.ExecuteActivity(ctx, ExecutionActivity, plan).Get(ctx, &draft)</code></pre>
+    <p>When <code>MaximumAttempts</code> is exceeded, the docs state the <strong>error is returned to the workflow</strong> that invoked it. So your workflow code decides what happens next — skip the stage, fail the run, or branch to a fallback. That decision lives in the deterministic workflow; the retrying lives in Cadence.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">NonRetryableErrorReasons is the sharp tool</span>
+      A rate-limit or timeout <em>should</em> retry. A malformed-prompt or auth error will fail identically forever — retrying just wastes 5 attempts and money. Mark those non-retryable so they fail fast back to the workflow.
+    </section>
+
+    <h2>Long-running activities: heartbeats</h2>
+    <p>If an activity runs for minutes (a big multi-source research crawl, a long generation), set a short <code>Heartbeat</code> timeout and call the heartbeat API periodically from inside the activity. Two payoffs, per the docs:</p>
+    <ul>
+      <li><strong>Fast failure detection:</strong> if the worker dies, Cadence notices within the heartbeat interval and retries elsewhere — instead of waiting for a long <code>StartToClose</code>.</li>
+      <li><strong>Progress checkpointing:</strong> a heartbeat can carry a payload (e.g. "processed 8 of 20 sources"). On retry, the next attempt reads that progress and resumes rather than restarting the crawl.</li>
+    </ul>
+    <pre><code>func crawlSources(ctx context.Context, sources []string) error {
+    for i, s := range sources {
+        fetch(s)
+        activity.RecordHeartbeat(ctx, i) // checkpoint: last index done
+    }
+    return nil
+}</code></pre>
+
+    <h2>Local activities — the optimization to know but rarely reach for</h2>
+    <p>A <strong>local activity</strong> runs in the same worker process as the workflow, skipping the task-list round trip. The docs recommend them only for functions that are idempotent, run a few seconds, need no rate limiting or routing, and are non-critical (logging, loading config). They trade away debuggability and have a higher chance of duplicate execution. For your LLM calls: use regular activities. For a quick "load the prompt template from disk": a local activity is fine.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>An activity appends the LLM's answer to a shared results file. A worker crashes and Cadence retries it. What is the risk?</p>
+      <div class="quiz-options">
+        <button data-correct="true">The answer is appended twice because retries re-run the activity</button>
+        <button data-correct="false">The workflow loses its state and restarts from stage one</button>
+        <button data-correct="false">Nothing — Cadence guarantees each activity runs exactly once</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Activities are at-least-once; a retry re-runs the whole function. Append is not idempotent, so you get a duplicate. Overwrite by stable key instead.</p>
+      <p class="quiz-feedback incorrect">No. Activities run at-least-once, so a retry re-runs the append and duplicates the entry. Idempotency is on you — overwrite rather than append.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Your prompt is malformed and the LLM returns a 400 every single time. Which setting stops five pointless retries?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Lower the StartToClose timeout to one second flat</button>
+        <button data-correct="true">List that error in NonRetryableErrorReasons on the policy</button>
+        <button data-correct="false">Raise BackoffCoefficient so retries spread further out</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A deterministic failure like a 400 will never succeed on retry. Marking it non-retryable fails it fast back to the workflow instead of burning attempts.</p>
+      <p class="quiz-feedback incorrect">No. A 400 fails identically every time; timeouts and backoff still let it retry. Mark it in NonRetryableErrorReasons to fail fast.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Why heartbeat a 15-minute multi-source crawl activity?</p>
+      <div class="quiz-options">
+        <button data-correct="true">To detect worker death fast and checkpoint crawl progress</button>
+        <button data-correct="false">To keep the workflow function warm inside worker memory</button>
+        <button data-correct="false">To make the activity deterministic enough for safe replay</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Heartbeats let Cadence spot a dead worker within the heartbeat interval and let the retry resume from the last checkpointed index rather than restarting.</p>
+      <p class="quiz-feedback incorrect">No. Heartbeats give fast failure detection and progress checkpointing. Activities never need to be deterministic — only workflows do.</p>
+    </div>
+
+    <p>New terms — <a href="../reference/glossary.html">at-least-once, idempotency, StartToClose, heartbeat, local activity, NonRetryableErrorReasons</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask me anything. Good follow-ups: "How do I make each of my 7 stages idempotent?" or "What's a sane timeout for a Claude call in practice?" Next lesson: we actually run a workflow locally in Go — start it, kill the worker mid-run, and watch it resume.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0001-workflow-vs-activity.html" title="Previous: Workflow vs Activity">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-run-it-locally.html" title="Next: Run it locally">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

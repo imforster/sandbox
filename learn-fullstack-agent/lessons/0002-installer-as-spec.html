@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Installer-as-Spec Pattern</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0001-what-fullstack-agent-is.html" title="Previous: What fullstack-agent Actually Is">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-file-based-memory.html" title="Next: File-Based Memory">Next</a>
+    </nav>
+
+    <h1>The Installer-as-Spec Pattern</h1>
+    <p class="lesson-meta">Time: 8 minutes. Tangible win: decide when a prose spec executed by an LLM beats writing an installer in code.</p>
+
+    <p>Ian — the single most unusual thing about this project is that its installer is not a program. It is <code>fullstack-agent.md</code>, a prose document the LLM reads and performs. This lesson names that pattern and gives you a rule for when to reach for it.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      Re-read <a href="https://raw.githubusercontent.com/jaredrhod/fullstack-agent/main/fullstack-agent.md">fullstack-agent.md</a> as an <em>artifact</em>, not instructions. Notice it mixes hard procedure (exact git commands, JSON keys) with soft judgment ("if they shrug, door A").
+    </section>
+
+    <h2>What the pattern is</h2>
+    <p>An installer-as-spec expresses install logic as natural-language steps plus embedded commands, and delegates execution to an agent. The agent supplies the parts a script cannot: reading existing state, asking one clarifying question, adapting order, and recovering from partial failure by re-reading the current situation rather than replaying fixed steps.</p>
+
+    <h2>Why it works here</h2>
+    <table>
+      <tr><th>Force</th><th>How the spec exploits it</th></tr>
+      <tr><td>Highly variable machines</td><td>Prose says "check for git; if missing, ask, then install" instead of branching code for every OS and shell state.</td></tr>
+      <tr><td>Existing user state</td><td>"Find what already exists" is a judgment task; the agent inspects and decides, no rigid detection logic.</td></tr>
+      <tr><td>Plain-English UX</td><td>The install <em>is</em> the conversation, so the spec and the user-facing experience are the same text.</td></tr>
+      <tr><td>Self-repair</td><td>On failure the agent reads a TROUBLESHOOTING.md and continues; a script would just exit non-zero.</td></tr>
+    </table>
+
+    <section class="callout tip">
+      <span class="callout-title">The rule to keep</span>
+      Reach for installer-as-spec when the work is <strong>high-variance and judgment-heavy</strong> and a human is present to confirm. Reach for real code when the work is <strong>repeatable, unattended, or safety-critical</strong> — CI, production deploys, anything that must run identically a thousand times.
+    </section>
+
+    <h2>Where it fails</h2>
+    <p>The costs are real and worth naming for your own systems. Execution is <em>non-deterministic</em>: the same spec can run differently twice. It is <em>unauditable</em> in the CI sense — there is no exit code, no diff of "what it will do" before it does it. It is <em>slow and expensive</em> per run (every step is model tokens). And it <em>cannot be unit-tested</em>; you test it by running it and watching.</p>
+
+    <div class="diagram">real code installer          installer-as-spec
+  deterministic                adapts per machine
+  fast, free to re-run         slow, token-cost per run
+  testable, CI-safe            unattended-unsafe
+  rigid on new state           handles novel state
+  exit codes + logs            conversation + judgment</div>
+
+    <h2>Applying it to your work</h2>
+    <p>You already run this pattern — Kiro steering files and skills are installer-as-spec for behavior, not setup. The transferable move is deciding the <em>boundary</em>: keep the deterministic core (the git clone, the JSON write) as literal commands the agent runs verbatim, and let prose own only the judgment around them. That hybrid is exactly what <code>fullstack-agent.md</code> does, and it is the safe version of the pattern.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Your team needs a setup step that must run identically in CI on every merge, with no human present. Installer-as-spec or real code?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Installer-as-spec, because it adapts to each machine cleanly</button>
+        <button data-correct="true">Real code, because CI needs deterministic, unattended, testable steps</button>
+        <button data-correct="false">Either works equally well since both end up installing files</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Unattended and must-be-identical is the exact case where the spec's non-determinism and lack of exit codes disqualify it.</p>
+      <p class="quiz-feedback incorrect">Not quite. No human, must-be-identical, and CI-gated is the textbook case AGAINST installer-as-spec.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>What is the safest way to borrow this pattern for a setup that has both fixed steps and judgment?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Put every step in prose so the agent has full flexibility</button>
+        <button data-correct="true">Keep fixed steps as literal commands; let prose own only the judgment</button>
+        <button data-correct="false">Convert the whole thing to code and drop the agent entirely</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The hybrid — deterministic core run verbatim, prose for judgment — is what fullstack-agent.md actually does.</p>
+      <p class="quiz-feedback incorrect">The hybrid is safest: literal commands for the deterministic core, prose only for the judgment around them.</p>
+    </div>
+
+    <p>Terms live in the <a href="../reference/glossary.html">glossary</a>.</p>
+
+    <section class="ask-teacher">
+      Want to sketch where the code/prose boundary should sit for one of your own Kiro workflows? Ask me and we will draw it.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0001-what-fullstack-agent-is.html" title="Previous: What fullstack-agent Actually Is">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-file-based-memory.html" title="Next: File-Based Memory">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

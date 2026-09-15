@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Signals — the human review gate</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0003-run-it-locally.html" title="Previous: Run it locally">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-timers-and-child-workflows.html" title="Next: Durable timers & child workflows">Next</a>
+    </nav>
+
+    <h1>Signals — the human review gate</h1>
+    <p class="lesson-meta">Time: ~8 minutes. Tangible win: you can express your research pipeline's human-approval boundaries — the heart of the ICM model — as a workflow that durably pauses until a person signals it.</p>
+
+    <p>Ian — this is the lesson where Cadence directly answers the thing your research-assistant-workflow is built around: <strong>a human reviews and approves at every stage boundary</strong>. In ICM that's you re-opening a folder. In Cadence it's a <strong>signal</strong>: the workflow pauses, durably, sometimes for days, until an external actor sends it a message. No polling, no running process, no lost state.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://cadenceworkflow.io/docs/concepts/events">Cadence Concepts — Event handling</a> (see the <em>"Human Tasks"</em> section) and <a href="https://cadenceworkflow.io/docs/go-client/signals">Go Client — Signals</a>. Notably, the docs ship a runnable <a href="https://github.com/cadence-workflow/cadence-samples/tree/master/python_sdk_samples/openai_samples/human_in_the_loop">human-in-the-loop agent sample</a> — your exact use case is a first-class pattern.
+    </section>
+
+    <h2>What a signal is</h2>
+    <p>From the docs: a signal is <em>"always point to point destined to a specific workflow instance"</em> and signals are <em>"always processed in the order in which they are received."</em> It is an asynchronous message delivered <em>into</em> a running workflow. The workflow can block waiting for one — and while blocked, it is parked in the server, costing nothing.</p>
+
+    <h2>The standard human-task pattern</h2>
+    <p>The docs spell out the shape, and it maps 1:1 onto a research stage gate:</p>
+    <div class="diagram">1. Workflow runs an ACTIVITY that creates the human task
+   (send an email / Slack / write a review record with the draft)
+2. Workflow BLOCKS on a signal channel, waiting for the human's decision
+   ── parked in the server, could wait minutes or days, zero cost ──
+3. Human reviews the draft, clicks Approve / Revise
+4. Your app sends a SIGNAL to that workflow instance (by its ID)
+5. Workflow WAKES, reads the decision, and branches: continue or loop to revision</div>
+
+    <h2>In Go: GetSignalChannel + a decision branch</h2>
+    <p>Inside the workflow, you get a named signal channel and receive from it. Receiving blocks the workflow until a signal arrives:</p>
+    <pre><code>func ResearchWorkflow(ctx workflow.Context, topic string) (string, error) {
+    // ... run execution activity, produce a draft ...
+
+    // 1. Ask a human to review (activity does the notifying — side effect):
+    _ = workflow.ExecuteActivity(ctx, RequestHumanReview, draft).Get(ctx, nil)
+
+    // 2. Block until the human signals a decision:
+    var decision string
+    reviewCh := workflow.GetSignalChannel(ctx, "review-decision")
+    reviewCh.Receive(ctx, &decision)   // parks the workflow until signalled
+
+    // 3. Branch on the decision — pure workflow logic:
+    if decision == "REVISE" {
+        return runRevision(ctx, draft)  // loop back to the revision stage
+    }
+    return draft, nil                   // PASS → move on
+}</code></pre>
+    <p>The sender — your review UI, a Slack handler, a CLI — signals the specific run by its workflow ID:</p>
+    <pre><code>cadenceClient.SignalWorkflow(ctx,
+    "research-"+topicSlug, // workflow ID (from Lesson 3's starter)
+    "",                     // run ID; empty = the currently running one
+    "review-decision",      // signal name — must match GetSignalChannel
+    "PASS",                 // payload
+)</code></pre>
+
+    <section class="callout tip">
+      <span class="callout-title">Wait on more than one thing: workflow.Selector</span>
+      A review gate usually needs a deadline: approve, revise, <em>or</em> auto-escalate after 48 hours. Combine the signal channel with a durable timer using <code>workflow.Selector</code> (the deterministic <code>select</code> from Lesson 3) — whichever fires first wins. That single construct gives you "human approves, or we time out and escalate."
+    </section>
+
+    <section class="callout warning">
+      <span class="callout-title">SignalWithStartWorkflow — avoid the race</span>
+      If a signal might arrive before the workflow is started (the human acts fast, or the event drives the workflow), use <code>SignalWithStartWorkflow</code>: it starts the workflow if it isn't running and delivers the signal atomically. It prevents the "signal lost because the workflow didn't exist yet" race — common when an external event, not you, initiates the run.
+    </section>
+
+    <h2>Why this beats the folder gate — and when it doesn't</h2>
+    <p>The Cadence version gives you gates that <em>wait durably</em> without anyone babysitting a process, with the whole run's state intact, plus timeouts and escalation for free. The ICM folder version is simpler, has zero infrastructure, and every intermediate artifact is a plain file a human can open and hand-edit before approving. The honest tradeoff for your mission: Cadence wins when runs are long-lived, must survive crashes, and need unattended waits; ICM wins when the value is in the human editing the artifacts and you don't want to operate a server. That judgment is the whole point of this workspace — we'll make the call with a real slice built.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Your workflow calls <code>reviewCh.Receive(ctx, &decision)</code> and no signal has arrived. What is happening to the run?</p>
+      <div class="quiz-options">
+        <button data-correct="true">It is parked in the server, waiting, consuming no worker</button>
+        <button data-correct="false">It is spinning in a busy loop polling for the signal</button>
+        <button data-correct="false">It has failed with a timeout and must be restarted</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A blocked signal receive parks the workflow in the server. It can wait days at zero cost and wakes only when the signal arrives.</p>
+      <p class="quiz-feedback incorrect">No. Receiving on a signal channel durably parks the workflow in the server — no polling, no failure. It wakes when signalled.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>You need "approve, revise, or auto-escalate after 48h." Which construct expresses it?</p>
+      <div class="quiz-options">
+        <button data-correct="false">A native Go select over a channel and a time.After</button>
+        <button data-correct="true">A workflow.Selector over the signal channel and a timer</button>
+        <button data-correct="false">A tight for-loop that sleeps and checks the clock</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. workflow.Selector waits on the signal channel and a durable timer together; whichever fires first wins. Native select and time.After are non-deterministic in workflow code.</p>
+      <p class="quiz-feedback incorrect">No. Native select, time.After, and clock-checking loops all break determinism. Use workflow.Selector over the signal channel plus a durable timer.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>An external event may signal the workflow before it has been started. What prevents the lost-signal race?</p>
+      <div class="quiz-options">
+        <button data-correct="true">SignalWithStartWorkflow, which starts and signals atomically</button>
+        <button data-correct="false">Raising the ScheduleToStart timeout on the review activity</button>
+        <button data-correct="false">Retrying the signal send until the workflow exists yet</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. SignalWithStartWorkflow starts the workflow if it isn't running and delivers the signal in one atomic step, so no signal is lost to a not-yet-started run.</p>
+      <p class="quiz-feedback incorrect">No. Timeouts and manual retries don't fix the race. SignalWithStartWorkflow starts-and-signals atomically, which is the intended fix.</p>
+    </div>
+
+    <p>New terms — <a href="../reference/glossary.html">signal, GetSignalChannel, SignalWorkflow, SignalWithStartWorkflow, human task</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask me anything. This closes the foundations arc: you now have workflow/activity, retries, running locally, and human gates — enough to sketch your whole 7-stage pipeline in Cadence. Next session I'd suggest either the hands-on local run, or Lesson 5 (durable timers + child workflows to partition the stages). Your call.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0003-run-it-locally.html" title="Previous: Run it locally">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-timers-and-child-workflows.html" title="Next: Durable timers & child workflows">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

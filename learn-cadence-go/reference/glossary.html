@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cadence Glossary</title>
+  <link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="../lessons/index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Cadence Glossary</h1>
+    <p class="lesson-meta">Reference — the vocabulary of Cadence + Go durable execution. Updated each lesson. All lessons use terms consistently with this page.</p>
+
+    <h2>Core model</h2>
+    <dl class="glossary">
+      <dt>Durable execution</dt>
+      <dd>An execution model where ordinary application code keeps running correctly across process restarts, infrastructure failures, and arbitrary pauses. You write a plain function; the engine makes it durable. <a href="https://cadenceworkflow.io/docs/concepts/workflows">[docs]</a></dd>
+
+      <dt>Workflow</dt>
+      <dd>The durable coordinator function. Cadence calls it a <em>fault-oblivious stateful workflow</em>: its local variables, threads, and timers survive worker and service failures. It decides <strong>what happens and in what order</strong> — but does no side-effecting work itself. Must be deterministic. <a href="https://cadenceworkflow.io/docs/concepts/workflows">[docs]</a></dd>
+
+      <dt>Activity</dt>
+      <dd>A single unit of side-effecting work called by a workflow: an API call, a DB write, an LLM call, a file read. Activities are where all non-deterministic and external interaction lives. They can fail and be retried without affecting workflow state. <a href="https://cadenceworkflow.io/docs/concepts/activities">[docs]</a></dd>
+
+      <dt>Determinism</dt>
+      <dd>The rule that workflow code must produce the same result every time it is replayed. This forbids direct external calls, <code>time.Now()</code>, randomness, and raw goroutines inside workflow code — all of that goes in activities or via Cadence's workflow APIs. Determinism is what makes replay-based recovery possible. <a href="https://cadenceworkflow.io/docs/concepts/workflows">[docs]</a></dd>
+
+      <dt>Event sourcing / Replay</dt>
+      <dd>How workflow state is recovered. Cadence records every step as an event history. To restore a workflow, it re-runs the workflow code against that history, reconstructing local state exactly. Because the code is deterministic, replay produces the identical state. <a href="https://cadenceworkflow.io/docs/concepts/workflows">[docs]</a></dd>
+    </dl>
+
+    <h2>Runtime pieces</h2>
+    <dl class="glossary">
+      <dt>Worker</dt>
+      <dd>A process (your Go program) that hosts workflow and activity code and polls Cadence for work to run. Workers are stateless and disposable — kill one mid-run and another (or the same, restarted) resumes the workflow from history. <a href="https://cadenceworkflow.io/docs/go-client">[docs]</a></dd>
+
+      <dt>Cadence service</dt>
+      <dd>The server that stores workflow event histories, schedules work, and hands tasks to workers. Workflows survive even the service restarting. <a href="https://github.com/cadence-workflow/cadence">[repo]</a></dd>
+
+      <dt>Task list</dt>
+      <dd>A named queue that routes work from the Cadence service to the workers that can handle it. Workers poll a task list; the service dispatches workflow/activity tasks onto it.</dd>
+
+      <dt>Domain</dt>
+      <dd>A namespace for workflows. Workflow IDs are unique per domain: only one open workflow with a given ID can exist in a domain at a time.</dd>
+    </dl>
+
+    <h2>Control &amp; structure</h2>
+    <dl class="glossary">
+      <dt>Signal</dt>
+      <dd>An asynchronous, point-to-point message delivered into a specific running workflow instance (e.g. "human approved stage 3"). Processed in the order received. The workflow can block waiting for one, making it the natural fit for a human-review gate. <a href="https://cadenceworkflow.io/docs/concepts/events">[docs]</a></dd>
+
+      <dt>GetSignalChannel</dt>
+      <dd>Go workflow API: <code>workflow.GetSignalChannel(ctx, "name")</code> returns a channel for a named signal. Calling <code>.Receive(ctx, &out)</code> parks the workflow until a matching signal arrives. <a href="https://cadenceworkflow.io/docs/go-client/signals">[docs]</a></dd>
+
+      <dt>SignalWorkflow</dt>
+      <dd>Client API to send a signal to a running workflow by its workflow ID and signal name: <code>client.SignalWorkflow(ctx, workflowID, runID, "name", payload)</code>. <a href="https://cadenceworkflow.io/docs/go-client/signals">[docs]</a></dd>
+
+      <dt>SignalWithStartWorkflow</dt>
+      <dd>Client API that starts a workflow if it isn't running and delivers a signal atomically. Prevents the lost-signal race when an external event may arrive before the workflow exists. <a href="https://cadenceworkflow.io/docs/go-client/signals">[docs]</a></dd>
+
+      <dt>Human task</dt>
+      <dd>The standard Cadence pattern for human-in-the-loop: an activity creates the task (email/Slack/record), the workflow blocks on a signal, and the human's action sends the signal back. Maps directly onto ICM review boundaries. <a href="https://cadenceworkflow.io/docs/concepts/events">[docs]</a></dd>
+
+      <dt>Query</dt>
+      <dd>A synchronous, read-only request to inspect a running workflow's current state without changing it.</dd>
+
+      <dt>Durable timer</dt>
+      <dd>A sleep/await inside a workflow that can last seconds or months. The workflow is removed from memory while waiting and resurrected when the timer fires — no process needs to stay running. In Go: <code>workflow.Sleep(ctx, duration)</code>, never <code>time.Sleep</code>. <a href="https://cadenceworkflow.io/docs/go-client/sleep">[docs]</a></dd>
+
+      <dt>Child workflow</dt>
+      <dd>A workflow started by another via <code>workflow.ExecuteChildWorkflow</code>. Has its own event history, timeouts, retry policy, and can run on a different task list — but its lifecycle is shaped by the parent. Used to partition large problems or build reusable orchestrations. <a href="https://cadenceworkflow.io/docs/go-client/child-workflows">[docs]</a></dd>
+
+      <dt>ChildWorkflowFuture</dt>
+      <dd>What <code>ExecuteChildWorkflow</code> returns immediately. Call <code>.Get(ctx, &out)</code> to block on the child's result, or start several and block later to run children in parallel. <a href="https://cadenceworkflow.io/docs/go-client/child-workflows">[docs]</a></dd>
+
+      <dt>ParentClosePolicy</dt>
+      <dd>Per-child setting for what happens to a still-running child when the parent closes: <code>Terminate</code> (default, kill it), <code>RequestCancel</code> (let it clean up), or <code>Abandon</code> (let it keep running). <a href="https://cadenceworkflow.io/docs/go-client/child-workflows">[docs]</a></dd>
+
+      <dt>Standalone workflow</dt>
+      <dd>A top-level workflow started with a client, fully independent of any parent's lifecycle. The right choice over a child workflow when the process shouldn't share the parent's fate. <a href="https://cadenceworkflow.io/docs/go-client/child-workflows">[docs]</a></dd>
+
+      <dt>Retry policy</dt>
+      <dd>Configurable exponential backoff (initial interval, coefficient, max interval, max attempts, non-retryable errors) applied to activities and, optionally, whole workflows.</dd>
+    </dl>
+
+    <h2>Activity behavior</h2>
+    <dl class="glossary">
+      <dt>At-least-once</dt>
+      <dd>Cadence does not recover activity state, so on failure it re-runs the activity. An activity may therefore execute more than once. <a href="https://cadenceworkflow.io/docs/concepts/activities">[docs]</a></dd>
+
+      <dt>Idempotency</dt>
+      <dd>The property that running an activity twice has the same effect as running it once. Required because of at-least-once execution. For research outputs: overwrite by a stable key rather than append.</dd>
+
+      <dt>Timeouts (ScheduleToStart / StartToClose / ScheduleToClose / Heartbeat)</dt>
+      <dd>The four activity timeouts. <code>ScheduleToStart</code>: queued → picked up. <code>StartToClose</code>: worker start → return. <code>ScheduleToClose</code>: end-to-end cap. <code>Heartbeat</code>: max gap between heartbeats. Either ScheduleToClose, or both ScheduleToStart and StartToClose, is required. <a href="https://cadenceworkflow.io/docs/concepts/activities">[docs]</a></dd>
+
+      <dt>Heartbeat</dt>
+      <dd>A periodic "still alive" call from inside a long-running activity. Enables fast worker-death detection and progress checkpointing (the heartbeat can carry a payload the retry resumes from). <a href="https://cadenceworkflow.io/docs/concepts/activities">[docs]</a></dd>
+
+      <dt>NonRetryableErrorReasons</dt>
+      <dd>Retry-policy list of error types that should fail fast instead of retrying (e.g. malformed request, auth error) — failures that would never succeed on retry.</dd>
+
+      <dt>Local activity</dt>
+      <dd>An activity executed in the same worker process as the workflow, skipping the task-list round trip. Lower latency but less debuggability and higher duplicate-execution risk. Use for short, idempotent, non-critical work only. <a href="https://cadenceworkflow.io/docs/concepts/activities">[docs]</a></dd>
+    </dl>
+
+    <h2>Running it in Go</h2>
+    <dl class="glossary">
+      <dt>Starter</dt>
+      <dd>Any process that begins a workflow run via <code>client.StartWorkflow(ctx, opts, WorkflowFunc, args...)</code>. Separate from the worker; can be a CLI or HTTP handler. <a href="https://cadenceworkflow.io/docs/go-client/starting-workflows">[docs]</a></dd>
+
+      <dt>workflow.Channel</dt>
+      <dd>Cadence's deterministic replacement for a native Go <code>chan</code>. Required inside workflow code because native channels schedule non-deterministically and break replay. <a href="https://cadenceworkflow.io/docs/go-client">[docs]</a></dd>
+
+      <dt>workflow.Selector</dt>
+      <dd>Cadence's deterministic replacement for Go's <code>select</code>. Waits on multiple sources (signal channels, timers, futures) inside workflow code; whichever is ready first wins. <a href="https://cadenceworkflow.io/docs/go-client">[docs]</a></dd>
+    </dl>
+
+    <h2>Ian's context</h2>
+    <dl class="glossary">
+      <dt>ICM (Interpretable Context Methodology)</dt>
+      <dd>The model behind Ian's existing research-assistant-workflow: the <em>folder structure is the orchestration</em>. Stages are folders with <code>CONTEXT.md</code> contracts; work passes as plain-text files; humans review at each boundary; stateless between runs. The comparison baseline for judging Cadence.</dd>
+
+      <dt>The 7 stages</dt>
+      <dd>Ian's research pipeline: intent → coordination → execution → evaluation → revision → knowledge → follow-through. The workload we map onto Cadence workflows and activities.</dd>
+    </dl>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="../lessons/index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

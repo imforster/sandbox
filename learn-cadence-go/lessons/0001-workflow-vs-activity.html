@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workflow vs Activity — the one split everything rests on</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-activities-in-depth.html" title="Next: Activities in depth">Next</a>
+    </nav>
+
+    <h1>Workflow vs Activity</h1>
+    <p class="lesson-meta">Time: ~8 minutes. Tangible win: you can look at any line of your research pipeline and say correctly whether it belongs in a workflow or an activity — and know why getting it wrong breaks everything.</p>
+
+    <p>Ian — this is the one distinction the entire framework rests on. Cadence has exactly two kinds of code: <strong>workflows</strong> and <strong>activities</strong>. Almost every newcomer mistake is putting code in the wrong one. Get this split right and the rest of Cadence is detail. Get it wrong and your workflow silently corrupts on the first crash.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      Read this once, slowly: <a href="https://cadenceworkflow.io/docs/concepts/workflows">Cadence Concepts — Workflows</a>. Focus on the section <em>"State Recovery and Determinism."</em> Everything below is that section, made concrete for your research pipeline. (The docs' code sample is Java; ignore the syntax — the model is identical in Go.)
+    </section>
+
+    <h2>The split in one sentence</h2>
+    <p>A <strong>workflow</strong> decides <em>what happens and in what order</em>. An <strong>activity</strong> <em>does the actual work</em> that touches the outside world.</p>
+
+    <table>
+      <tr><th></th><th>Workflow</th><th>Activity</th></tr>
+      <tr><td>Job</td><td>Coordinate: order, branching, waiting, retries</td><td>Do one side-effecting task</td></tr>
+      <tr><td>Touches outside world?</td><td><strong>Never</strong></td><td><strong>Always</strong></td></tr>
+      <tr><td>Can call an LLM / API / DB?</td><td>No</td><td>Yes</td></tr>
+      <tr><td>Survives a crash?</td><td>Yes — state is rebuilt by replay</td><td>No state of its own; just retried</td></tr>
+      <tr><td>Must be deterministic?</td><td>Yes</td><td>No — free to be messy</td></tr>
+    </table>
+
+    <h2>Why the workflow can't touch the outside world</h2>
+    <p>This is the counterintuitive part, and it is the whole ballgame. Cadence recovers a crashed workflow by <strong>replay</strong>: it re-runs your workflow function from the start against a recorded event history, rebuilding every local variable exactly as it was. (Source: <a href="https://cadenceworkflow.io/docs/concepts/workflows">docs, "State Recovery and Determinism"</a>.)</p>
+
+    <p>Replay only works if the code produces the <em>same result every time it runs</em>. So workflow code must be <strong>deterministic</strong>. That rules out, <em>inside the workflow function</em>:</p>
+
+    <div class="diagram">calling an external API or LLM   →  result changes each run  ✗
+time.Now()                       →  different every replay  ✗
+rand / uuid                      →  different every replay  ✗
+raw `go` goroutines              →  scheduling not reproducible  ✗
+reading a file / DB directly     →  content can change  ✗</div>
+
+    <p>All of that goes into <strong>activities</strong>. The docs put it bluntly: <em>"all communication with the external world should happen through activities."</em> The workflow orchestrates; the activities reach out.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">The mental test</span>
+      Ask of any line: <strong>"If I ran this twice, could it give a different answer?"</strong> If yes, it is an activity. If it is pure coordination logic — if/else, loops, calling activities in order — it is workflow code.
+    </section>
+
+    <h2>Mapped onto your research pipeline</h2>
+    <p>Your 7-stage research-assistant-workflow splits cleanly. The <em>orchestration</em> — which stage runs next, whether evaluation says PASS or REVISE, looping back to revision — is <strong>workflow</strong>. The <em>work inside each stage</em> — calling an LLM, searching sources, writing an output file — is <strong>activities</strong>.</p>
+
+    <div class="diagram">WORKFLOW (the durable coordinator — pure decision logic)
+│  run intentActivity → get intent doc
+│  run coordinationActivity → get plan
+│  loop:
+│     run executionActivity → deliverable
+│     result = run evaluationActivity → PASS or REVISE
+│     if PASS: break
+│     run revisionActivity
+│  run knowledgeActivity
+│  run followThroughActivity
+│
+ACTIVITIES (the messy real work — each can call an LLM, hit the web, write files)
+   intentActivity · coordinationActivity · executionActivity
+   evaluationActivity · revisionActivity · knowledgeActivity · followThroughActivity</div>
+
+    <p>Notice what this buys you over the ICM folder model: the <em>loop back to revision</em>, the retries when an LLM call fails, and the "resume after a crash" are all handled by the workflow function instead of by you re-running a stage folder by hand.</p>
+
+    <h2>What it looks like in Go</h2>
+    <p>Rough shape only — we run this for real in a later lesson. The point is to see the split in code: the workflow calls activities through <code>workflow.ExecuteActivity</code> and never does I/O itself.</p>
+
+    <pre><code>// ACTIVITY — ordinary Go. Free to call an LLM, hit the network, be non-deterministic.
+func ExecutionActivity(ctx context.Context, plan string) (string, error) {
+    // e.g. call your LLM / research tools here — messy real work lives here
+    return callLLM(ctx, plan)
+}
+
+// WORKFLOW — pure coordination. No time.Now, no direct LLM call, no goroutines.
+func ResearchWorkflow(ctx workflow.Context, topic string) (string, error) {
+    ao := workflow.ActivityOptions{
+        StartToCloseTimeout: time.Minute * 10,
+        // a retry policy goes here — Cadence retries the activity automatically
+    }
+    ctx = workflow.WithActivityOptions(ctx, ao)
+
+    var plan string
+    // ExecuteActivity is how a workflow reaches the outside world — indirectly.
+    if err := workflow.ExecuteActivity(ctx, CoordinationActivity, topic).Get(ctx, &plan); err != nil {
+        return "", err
+    }
+
+    var deliverable string
+    if err := workflow.ExecuteActivity(ctx, ExecutionActivity, plan).Get(ctx, &deliverable); err != nil {
+        return "", err
+    }
+    return deliverable, nil
+}</code></pre>
+
+    <p>Two tells that mark the boundary: the workflow uses <code>workflow.Context</code> (not the plain <code>context.Context</code> an activity gets), and it only reaches outward through <code>workflow.ExecuteActivity</code>. Anything a workflow needs from the world — even the current time — comes through a Cadence API or an activity, never a raw Go call.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">The failure you are avoiding</span>
+      Put a raw <code>time.Now()</code> or an LLM call directly in the workflow function and it will often <em>appear</em> to work. Then a worker restarts mid-run, replay produces a different value than the recorded history, and Cadence throws a non-determinism error — or worse, silently diverges. This is the #1 Cadence bug. The split is the defense.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>In your research workflow, where does the actual call to the LLM that drafts the deliverable belong?</p>
+      <div class="quiz-options">
+        <button data-correct="false">In the workflow function, right beside the loop</button>
+        <button data-correct="true">In an activity that the workflow invokes by name</button>
+        <button data-correct="false">In a raw goroutine started from the workflow</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. LLM calls are non-deterministic external I/O, so they live in an activity. The workflow only decides when to invoke it.</p>
+      <p class="quiz-feedback incorrect">No. An LLM call is non-deterministic external I/O. It must live in an activity; the workflow only orchestrates the call.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Why is workflow code forbidden from calling <code>time.Now()</code> directly?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Replay would read a different clock and diverge from history</button>
+        <button data-correct="false">Cadence has no concept of time inside a workflow run</button>
+        <button data-correct="false">It is allowed; only network calls are actually restricted</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Recovery replays the code against recorded history; a live clock returns a new value each replay, breaking determinism. Use Cadence's workflow time API instead.</p>
+      <p class="quiz-feedback incorrect">Not quite. The reason is replay: recovery re-runs the code against recorded history, and a live clock diverges. Cadence provides a deterministic workflow time API.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>A crash kills the worker while stage 3 is running. What happens to the workflow?</p>
+      <div class="quiz-options">
+        <button data-correct="false">It is lost; you re-run the pipeline from stage one</button>
+        <button data-correct="true">It is rebuilt by replay and resumes where it stopped</button>
+        <button data-correct="false">It keeps running because the workflow held the state</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The workflow is fault-oblivious: a worker resurrects it by replaying its event history, restoring local state, and continues from the last recorded point.</p>
+      <p class="quiz-feedback incorrect">No. Cadence rebuilds the workflow from its recorded event history via replay and resumes from where it stopped — no manual re-run needed.</p>
+    </div>
+
+    <p>New terms — <a href="../reference/glossary.html">durable execution, workflow, activity, determinism, event sourcing, replay</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      I am your teacher — ask me anything. Good next questions: "What exactly does a retry policy look like on an activity?" or "Show me how the workflow gets the current time the legal way." Next lesson digs into activities: retries, timeouts, and how they fail safely.
+    </section>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-activities-in-depth.html" title="Next: Activities in depth">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

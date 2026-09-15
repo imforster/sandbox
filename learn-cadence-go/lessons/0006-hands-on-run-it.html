@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hands-on — run the real thing</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0005-timers-and-child-workflows.html" title="Previous: Durable timers & child workflows">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Hands-on — run the real thing</h1>
+    <p class="lesson-meta">Time: ~15 minutes at the keyboard. Tangible win: a Cadence server running on your Mac, a real workflow executing, and the moment of truth — you kill the worker mid-run and watch Cadence resume it. This is where durable execution stops being theory.</p>
+
+    <p>Ian — every prior lesson was a mental model. This one you <em>run</em>. The payoff is the crash-and-resume demo you can't get from the ICM folder approach. Do this in a scratch checkout first; we port to the research pipeline afterward. Follow the steps in order and watch the feedback at each one.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://cadenceworkflow.io/docs/get-started">Get Started with Cadence</a> (the 5-minute SQLite quickstart) and <a href="https://cadenceworkflow.io/docs/get-started/golang-hello-world">Golang Hello World</a>. The runnable Go is the <a href="https://github.com/cadence-workflow/cadence-samples">cadence-samples</a> repo. Commands below are copied from the official quickstart — verify against it as versions move.</p>
+    </section>
+
+    <section class="callout tip">
+      <span class="callout-title">Good news: no Docker required</span>
+      The official quickstart now uses an <strong>embedded SQLite backend</strong>. No Cassandra, no docker-compose, no cluster. One clone, one build, one server process. This is the fastest possible path to a running Cadence.
+    </section>
+
+    <h2>Step 1 — Start a local server</h2>
+    <p>Clone and build the server, install the SQLite schema, and start it:</p>
+    <pre><code># Clone and build (needs Go + make)
+git clone https://github.com/cadence-workflow/cadence.git
+cd cadence
+make bins
+
+# Install the schema and start the server on the embedded SQLite backend
+make install-schema-sqlite
+./cadence-server --zone sqlite start</code></pre>
+    <p class="lesson-meta"><strong>Feedback to look for:</strong> the server logs start streaming and stay running. Leave this terminal open — it is your Cadence brain.</p>
+
+    <h2>Step 2 — Open the Web UI</h2>
+    <p>In a browser, go to <a href="http://localhost:8088">http://localhost:8088</a>. This is Cadence Web — you'll watch your workflow's event history here, which is the single best way to <em>see</em> durable execution working.</p>
+    <p class="lesson-meta"><strong>Feedback to look for:</strong> the Cadence Web dashboard loads. No workflows yet — that's next.</p>
+
+    <h2>Step 3 — Register a domain</h2>
+    <p>Workflows live in a <strong>domain</strong> (Lesson 1's glossary). Register one with the CLI before running anything:</p>
+    <pre><code># From the cadence repo; registers a domain named "research"
+./cadence --domain research domain register
+# Verify it exists:
+./cadence --domain research domain describe</code></pre>
+    <p class="lesson-meta"><strong>Feedback to look for:</strong> <code>domain describe</code> prints the domain's details instead of a "not found" error.</p>
+
+    <h2>Step 4 — Run the Hello World workflow</h2>
+    <p>In a second checkout, get the samples, point them at your local server, and run the worker + starter:</p>
+    <pre><code>git clone https://github.com/cadence-workflow/cadence-samples.git
+cd cadence-samples
+make   # builds the sample binaries
+
+# Start the worker (hosts the workflow + activity code):
+./bin/helloworld -m worker &
+
+# In another terminal, trigger a run (the starter):
+./bin/helloworld -m trigger</code></pre>
+    <p class="lesson-meta"><strong>Feedback to look for:</strong> the worker logs the activity running and the workflow completing. Refresh Cadence Web — you'll see a completed workflow with its full event history. Read that history: every step Cadence recorded is what makes replay possible.</p>
+
+    <h2>Step 5 — The moment of truth: crash and resume</h2>
+    <p>This is the whole point. Use a workflow with a durable sleep (the <a href="https://cadenceworkflow.io/docs/go-client/sleep">sleep sample</a>, or add a <code>workflow.Sleep(ctx, 60*time.Second)</code> between two activities), then:</p>
+    <div class="diagram">1. Trigger the workflow.  It runs the first activity, then hits the sleep.
+2. While it is sleeping (or mid-activity), Ctrl-C the WORKER process.  ← crash
+3. In Cadence Web, the workflow is still there — Running, parked, not lost.
+4. Restart the worker:  ./bin/helloworld -m worker
+5. Watch: the worker picks the workflow back up, Cadence REPLAYS its history,
+   and it CONTINUES from the sleep — the first activity does NOT run again.</div>
+    <p class="lesson-meta"><strong>Feedback to look for:</strong> after restart, the workflow completes, and the event history in Cadence Web shows the first activity ran <em>once</em>. That is durable execution — the thing your ICM pipeline can't do without you manually re-running a stage folder.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">If something breaks</span>
+      Most first-run failures are one of: server terminal was closed (restart it), domain not registered (Step 3), or the sample pointing at the wrong host/port (check its config against <code>127.0.0.1:7933</code>). The <a href="https://cadenceworkflow.io/docs/workflow-troubleshooting">Workflow Troubleshooting</a> page and the CNCF Slack are the fastest unblocks. And ask me — that's what I'm here for.
+    </section>
+
+    <h2>Step 6 — Port a slice to your pipeline</h2>
+    <p>Once the sample crash-resumes, you've proven the engine. Now build the smallest real slice: a <code>ResearchWorkflow</code> that runs two of your seven stages as activities (say coordination → execution), with one <code>workflow.Sleep</code> or one signal gate between them. Run it, crash it, resume it. That slice — not the whole pipeline — is enough evidence to make the mission's call: <strong>does durable execution earn its operational cost for your research workflow, or does the simpler ICM/folder model still win?</strong></p>
+
+    <section class="callout tip">
+      <span class="callout-title">What "done" looks like for this workspace</span>
+      You can (1) run a Cadence workflow locally, (2) crash the worker and watch it resume, (3) add a human-signal gate and a durable timer, and (4) state, with the slice as evidence, where Cadence beats ICM for your pipeline and where it doesn't. That's the mission.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>What does the SQLite quickstart let you skip compared to a production Cadence setup?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Standing up Cassandra or a database cluster to back the server</button>
+        <button data-correct="false">Registering a domain before any workflow can be run</button>
+        <button data-correct="false">Writing workflow and activity code in the Go client</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The embedded SQLite backend replaces Cassandra/MySQL/Postgres for local dev. You still register a domain and write the workflow/activity code.</p>
+      <p class="quiz-feedback incorrect">No. You still register a domain and write the code. What SQLite removes is needing a Cassandra/database cluster behind the server.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>After you Ctrl-C the worker mid-sleep and restart it, what does the event history show for the first activity?</p>
+      <div class="quiz-options">
+        <button data-correct="true">It ran exactly once; replay rebuilt state without re-running it</button>
+        <button data-correct="false">It ran twice, once before and once after the restart occurred</button>
+        <button data-correct="false">It was rolled back and removed from the recorded history</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Replay rebuilds workflow state from recorded history without re-executing completed activities. The first activity shows a single execution.</p>
+      <p class="quiz-feedback incorrect">No. Replay reconstructs state from history without re-running completed activities, so the first activity appears once — not twice, and not removed.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>What is the smallest slice that proves the mission's point for your pipeline?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Two stages as activities with a gate between them, crash-tested</button>
+        <button data-correct="false">All seven stages rebuilt as separate child workflows first</button>
+        <button data-correct="false">A production cluster running the full pipeline under load now</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A two-stage slice with a sleep or signal gate, crashed and resumed, is enough evidence to judge Cadence vs ICM. Rebuilding all seven or going to production is premature.</p>
+      <p class="quiz-feedback incorrect">No. You don't need all seven stages or a cluster to decide. A crash-tested two-stage slice with one gate is the minimum that answers the question.</p>
+    </div>
+
+    <p>Terms used here — <a href="../reference/glossary.html">domain, worker, starter, event sourcing, workflow.Sleep</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      This is the end of the current arc — you can now build and run durable workflows and judge them against ICM. When you're ready to build the slice, tell me and we'll write the Go together, step by step. Stuck on any command above? Ask — I'll debug it with you.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0005-timers-and-child-workflows.html" title="Previous: Durable timers & child workflows">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
