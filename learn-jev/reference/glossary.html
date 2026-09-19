@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glossary — Jev / System One</title>
+    <style>
+:root {
+    --bg: #fbfbfd; --text-primary: #1d1d1f; --text-secondary: #6e6e73; --text-tertiary: #86868b;
+    --accent: #1a8f3c; --border: rgba(0,0,0,0.06); --card-bg: rgba(255,255,255,0.72);
+    --search-bg: #f5f5f7; --radius: 12px;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg:#000; --text-primary:#f5f5f7; --text-secondary:#a1a1a6; --text-tertiary:#6e6e73;
+        --accent:#30d158; --border:rgba(255,255,255,0.08); --card-bg:rgba(28,28,30,0.72); --search-bg:rgba(28,28,30,0.9);
+    }
+}
+[data-theme="dark"] {
+    --bg:#000; --text-primary:#f5f5f7; --text-secondary:#a1a1a6; --text-tertiary:#6e6e73;
+    --accent:#30d158; --border:rgba(255,255,255,0.08); --card-bg:rgba(28,28,30,0.72); --search-bg:rgba(28,28,30,0.9);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display','Helvetica Neue',sans-serif; background:var(--bg); color:var(--text-primary); -webkit-font-smoothing:antialiased; line-height:1.5; }
+.page { max-width:720px; margin:0 auto; padding:0 2rem 4rem; }
+.back-nav { padding:1.5rem 0; }
+.back-nav a { display:inline-flex; align-items:center; gap:0.35rem; font-size:0.9rem; color:var(--accent); text-decoration:none; transition:opacity 0.2s; }
+.back-nav a:hover { opacity:0.7; }
+.glossary-header { padding:2rem 0 2.5rem; border-bottom:1px solid var(--border); margin-bottom:1rem; }
+.glossary-header h1 { font-size:2.5rem; font-weight:700; letter-spacing:-0.03em; margin-bottom:0.5rem; }
+.glossary-header p { font-size:1.05rem; color:var(--text-secondary); max-width:540px; }
+.search-container { position:sticky; top:0; z-index:100; background:var(--bg); padding:1rem 0; }
+.search-input { width:100%; padding:0.75rem 1rem 0.75rem 2.5rem; font-size:1rem; font-family:inherit; background:var(--search-bg); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-primary); outline:none; transition:border-color 0.2s, box-shadow 0.2s; }
+.search-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(26,143,60,0.1); }
+.search-input::placeholder { color:var(--text-tertiary); }
+.search-wrapper { position:relative; }
+.search-icon { position:absolute; left:0.85rem; top:50%; transform:translateY(-50%); color:var(--text-tertiary); pointer-events:none; }
+.search-count { font-size:0.8rem; color:var(--text-tertiary); margin-top:0.5rem; min-height:1.2em; }
+.letter-group { margin-top:2rem; }
+.letter-heading { font-size:1.4rem; font-weight:700; padding-bottom:0.5rem; border-bottom:1px solid var(--border); margin-bottom:0; position:sticky; top:4.5rem; background:var(--bg); z-index:50; }
+.term-entry { padding:1.25rem 0; border-bottom:1px solid var(--border); transition:opacity 0.2s; }
+.term-entry:last-child { border-bottom:none; }
+.term-entry.hidden { display:none; }
+.term-name { font-size:1.05rem; font-weight:600; margin-bottom:0.35rem; letter-spacing:-0.01em; }
+.term-def { font-size:0.95rem; color:var(--text-secondary); line-height:1.6; }
+.term-def code { font-family:'SF Mono','Fira Code',Consolas,monospace; font-size:0.85em; background:var(--search-bg); padding:0.15rem 0.4rem; border-radius:4px; }
+.term-def em { color:var(--text-tertiary); font-style:italic; }
+.no-results { text-align:center; padding:3rem 1rem; color:var(--text-tertiary); font-size:1rem; display:none; }
+@media (max-width:600px) { .page { padding:0 1.25rem 3rem; } .glossary-header h1 { font-size:2rem; } .letter-heading { top:4rem; } }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <nav class="back-nav"><a href="../lessons/index.html">← Lessons</a></nav>
+        <header class="glossary-header">
+            <h1>Glossary</h1>
+            <p>Canonical language for the Jev / System One course. All lessons use these terms.</p>
+        </header>
+        <div class="search-container">
+            <div class="search-wrapper">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" class="search-input" placeholder="Search terms…" id="searchInput">
+            </div>
+            <div class="search-count" id="searchCount"></div>
+        </div>
+        <div class="glossary-content" id="glossaryContent">
+
+            <div class="letter-group" id="letter-C">
+                <h2 class="letter-heading">C</h2>
+                <div class="term-entry" data-term="calibrated confidence">
+                    <div class="term-name">Calibrated Confidence</div>
+                    <div class="term-def">A model's honest estimate of how likely its own answer is correct, where higher confidence reliably means higher accuracy. Lets code set act-vs-escalate thresholds. <em>Avoid</em>: certainty, sureness.</div>
+                </div>
+                <div class="term-entry" data-term="choice">
+                    <div class="term-name">Choice (question type)</div>
+                    <div class="term-def">A Jev question that picks one option from a fixed set, returning a probability per option plus an overall confidence. <em>Avoid</em>: classification, category pick.</div>
+                </div>
+                <div class="term-entry" data-term="confidence">
+                    <div class="term-name">Confidence</div>
+                    <div class="term-def">How sure Jev is about a whole answer distribution (distinct from the probability of any one option). The number you branch on when deciding to act, review, or escalate. <em>Avoid</em>: certainty, accuracy.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-H">
+                <h2 class="letter-heading">H</h2>
+                <div class="term-entry" data-term="harness">
+                    <div class="term-name">Harness</div>
+                    <div class="term-def">The loop and surrounding code in which an LLM picks tools and acts. Jev sits inside a harness to route requests and gate risky tool calls cheaply. <em>Avoid</em>: agent framework, wrapper.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-J">
+                <h2 class="letter-heading">J</h2>
+                <div class="term-entry" data-term="jev">
+                    <div class="term-name">Jev</div>
+                    <div class="term-def">TypeSafe AI's first public System One model. Named after William Stanley Jevons — cheaper intelligence is expected to increase demand for it. <em>Avoid</em>: the Jev LLM, the Jev chatbot.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-M">
+                <h2 class="letter-heading">M</h2>
+                <div class="term-entry" data-term="model routing">
+                    <div class="term-name">Model Routing</div>
+                    <div class="term-def">Using a Jev Choice to pick which LLM handles a request — cheap model for lookups, powerful model for hard tasks — before the loop spends on reasoning. <em>Avoid</em>: model switching, dispatch.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-N">
+                <h2 class="letter-heading">N</h2>
+                <div class="term-entry" data-term="noul">
+                    <div class="term-name">Noul (question type)</div>
+                    <div class="term-def">A Jev question answering a yes-or-no statement, returning the probability that the statement is true. <em>Avoid</em>: boolean, yes/no flag.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-P">
+                <h2 class="letter-heading">P</h2>
+                <div class="term-entry" data-term="probability">
+                    <div class="term-name">Probability</div>
+                    <div class="term-def">How likely a given answer is (e.g. billing 0.84) — which option leads. Distinct from confidence, which is how sure Jev is about the whole distribution. <em>Avoid</em>: score, likelihood.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-R">
+                <h2 class="letter-heading">R</h2>
+                <div class="term-entry" data-term="rlcd">
+                    <div class="term-name">RLCD (Reinforcement Learning for Calibrated Decisions)</div>
+                    <div class="term-def">The training method behind System One models, optimizing for calibrated typed decisions rather than human-preferred text (the goal of RLHF). <em>Avoid</em>: RLHF variant.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-S">
+                <h2 class="letter-heading">S</h2>
+                <div class="term-entry" data-term="score">
+                    <div class="term-name">Score (question type)</div>
+                    <div class="term-def">A Jev question rating an input against ordered levels (e.g. low, medium, high), returning a continuous score, the distribution, and a confidence. <em>Avoid</em>: rating, grade.</div>
+                </div>
+                <div class="term-entry" data-term="state">
+                    <div class="term-name">State</div>
+                    <div class="term-def">The context you send Jev to evaluate — text, structured data, or messages. The "unstructured input" half of a System One call. <em>Avoid</em>: prompt, input.</div>
+                </div>
+                <div class="term-entry" data-term="system one model">
+                    <div class="term-name">System One Model</div>
+                    <div class="term-def">A class of AI model that evaluates a state and returns typed answers with probabilities, for software to act on directly — versus an LLM that generates text. Named after Kahneman's fast, intuitive System 1. <em>Avoid</em>: small LLM, classifier LLM.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-T">
+                <h2 class="letter-heading">T</h2>
+                <div class="term-entry" data-term="tool-call gating">
+                    <div class="term-name">Tool-Call Gating (Auto Mode)</div>
+                    <div class="term-def">Using a Jev Noul to judge whether a proposed tool call is dangerous, and blocking it before it runs. Sits on the tool boundary in a harness. <em>Avoid</em>: guardrail, safety filter.</div>
+                </div>
+                <div class="term-entry" data-term="type-safe">
+                    <div class="term-name">Type-safe</div>
+                    <div class="term-def">Jev's outputs match a schema defined in advance and never contain type errors, so code can use them directly without parsing or validation. <em>Avoid</em>: structured, validated.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-W">
+                <h2 class="letter-heading">W</h2>
+                <div class="term-entry" data-term="workflow">
+                    <div class="term-name">Workflow</div>
+                    <div class="term-def">Several independent, decomposed Jev questions asked in one call, combined by ordinary code into a final branch. The reliable shape for real automation. <em>Avoid</em>: pipeline, chain.</div>
+                </div>
+            </div>
+
+        </div>
+        <div class="no-results" id="noResults">No matching terms found.</div>
+    </div>
+    <script>
+    const searchInput=document.getElementById('searchInput');
+    const searchCount=document.getElementById('searchCount');
+    const noResults=document.getElementById('noResults');
+    const entries=document.querySelectorAll('.term-entry');
+    const letterGroups=document.querySelectorAll('.letter-group');
+    searchInput.addEventListener('input',function(){
+        const query=this.value.toLowerCase().trim(); let visible=0;
+        entries.forEach(entry=>{
+            const term=entry.getAttribute('data-term');
+            const def=entry.querySelector('.term-def').textContent.toLowerCase();
+            const match=!query||term.includes(query)||def.includes(query);
+            entry.classList.toggle('hidden',!match); if(match)visible++;
+        });
+        letterGroups.forEach(group=>{
+            const hasVisible=group.querySelectorAll('.term-entry:not(.hidden)').length>0;
+            group.style.display=hasVisible?'':'none';
+        });
+        noResults.style.display=visible===0?'block':'none';
+        searchCount.textContent=query?`${visible} term${visible!==1?'s':''} found`:'';
+    });
+    </script>
+    <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 3: Reading Calibrated Confidence</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .band { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; margin: 1.5rem 0; align-items: center; }
+    .band .chip { font-family: var(--font-mono); font-size: 0.8rem; padding: 0.2rem 0.6rem; border-radius: 6px; text-align: center; white-space: nowrap; }
+    .band .act { background: var(--color-accent-light); color: var(--color-accent); }
+    .band .review { background: #fff4e0; color: #b25e00; }
+    .band .esc { background: #ffe5e3; color: #c0261b; }
+    .band p { margin: 0; font-size: 0.9rem; color: var(--color-muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0002-question-types.html" title="The Three Question Types">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-composing-a-workflow.html" title="Composing Questions into a Workflow">Next</a>
+    </nav>
+
+    <h1>Reading Calibrated Confidence</h1>
+    <p class="lesson-meta">Time: 7 minutes. Tangible win: you can turn Jev's probability and confidence into an act / review / escalate decision in code.</p>
+
+    <p>A label without a confidence is a liability. In <a href="0002-question-types.html">Lesson 2</a> every answer came back with a probability and a confidence score. This lesson is about the single most important habit when building on Jev: <strong>branch on the confidence, not just the answer.</strong></p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://docs.typesafe.ai/confidence">Confidence — TypeSafe docs</a> (~5 min). Explains why RLCD produces calibrated probabilities and how to read them. Pair with the <a href="https://docs.typesafe.ai/patterns/confidence-routing">confidence-gated routing</a> pattern.
+    </section>
+
+    <h2>Probability vs confidence</h2>
+    <p>These are two different numbers and confusing them causes bad automation. The <strong>probability</strong> is how likely each answer is (billing 0.84). The <strong>confidence</strong> is how sure Jev is about that whole distribution (0.596). You can have a clear winner the model is only moderately sure about.</p>
+
+    <p><em>Calibrated</em> is the word that matters. It means when Jev says 0.9, it is right about 90% of the time — the number tracks reality. TypeSafe's whole pitch is that a model which is right 95% of the time but never tells you which 5% it missed cannot safely automate anything. Calibration is what makes a threshold trustworthy.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">First-party claim</span>
+      <p>Calibration quality is TypeSafe's own reported result under their RLCD training. It's the core promise, but there's no independent third-party audit yet. In production, verify calibration on <em>your</em> data before trusting a threshold blindly.</p>
+    </section>
+
+    <h2>The act / review / escalate band</h2>
+    <p>The standard pattern: pick two thresholds and split outcomes into three lanes.</p>
+
+    <div class="band">
+      <span class="chip act">&ge; 0.90</span><p><strong>Act.</strong> High confidence — let code proceed autonomously.</p>
+      <span class="chip review">0.60&ndash;0.90</span><p><strong>Review.</strong> Uncertain — hand to a human or a slower LLM.</p>
+      <span class="chip esc">&lt; 0.60</span><p><strong>Escalate.</strong> Low confidence — don't act on Jev alone.</p>
+    </div>
+
+    <pre><code>ans = response.answers["department"]
+
+if ans.confidence >= 0.90:
+    route_to(ans.choice)            # act autonomously
+elif ans.confidence >= 0.60:
+    queue_for_human(ans.choice)     # suggest, let a person confirm
+else:
+    escalate_to_llm(ticket)         # too unsure — reason it out</code></pre>
+
+    <p>The thresholds are yours to set from the cost of being wrong. Gating a destructive tool call? Push "act" to 0.99. Sorting low-stakes newsletter emails? 0.7 is plenty. The transcript's Bitcoin demo is the cautionary tale: high-stakes prediction is exactly where you widen the escalate band.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Jev returns choice "refund" with probability 0.88 but confidence 0.44. Your act threshold is 0.90. What should your code do here?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Act on refund, the probability clears the bar</button>
+        <button data-correct="true">Escalate, the confidence is far below the bar</button>
+        <button data-correct="false">Average the two values and then decide</button>
+      </div>
+      <p class="quiz-feedback correct">Right. You gate on confidence, not the winning probability. A clear favorite the model is unsure about is exactly the case to escalate rather than auto-act.</p>
+      <p class="quiz-feedback incorrect">Probability is which answer leads; confidence is how sure Jev is overall. You branch on confidence — 0.44 is well under 0.90, so escalate.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>For your email-triage spam Noul, pick an act threshold above which mail auto-archives.</li>
+      <li>Write the three-way branch in Python for the priority Choice.</li>
+      <li>Name one decision where you'd set the act threshold to 0.99, and say why.</li>
+      <li>Bring your thresholds back and defend them against the cost of a wrong call.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask me: "How do I actually check whether Jev is calibrated on my own data?" — I'll sketch a tiny reliability-curve check you can run over a labeled sample.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0002-question-types.html" title="The Three Question Types">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-composing-a-workflow.html" title="Composing Questions into a Workflow">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

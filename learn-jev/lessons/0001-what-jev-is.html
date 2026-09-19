@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 1: What Jev Is, and When to Reach for It</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .frontier-diagram {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+    .frontier-diagram > div {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      background: var(--color-card-bg);
+    }
+    .frontier-diagram h4 {
+      margin: 0 0 0.5rem;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+    }
+    .frontier-diagram .llm { border-top: 3px solid var(--color-muted); }
+    .frontier-diagram .jev { border-top: 3px solid var(--color-accent); }
+    .frontier-diagram ul { margin: 0; padding-left: 1.1rem; font-size: 0.9rem; }
+    .frontier-diagram li { margin-bottom: 0.3rem; color: var(--color-muted); }
+    @media (max-width: 600px) { .frontier-diagram { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-question-types.html" title="The Three Question Types">Next</a>
+    </nav>
+
+    <h1>What Jev Is, and When to Reach for It</h1>
+    <p class="lesson-meta">Time: 6 minutes. Tangible win: you can decide whether a given decision in an agent loop is a Jev job or an LLM job.</p>
+
+    <p>Your agent loop makes dozens of small decisions: is this ticket urgent, which team owns it, is this tool call dangerous. Today, each of those costs a full LLM call — seconds of latency, real money, and a small chance the model hallucinates the answer. <strong>Jev</strong> is a different kind of model built for exactly those decisions. This lesson gives you one thing: a reliable test for when to reach for it.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://typesafe.ai/blog/introducing-system-one-models-and-jev">Introducing System One Models &amp; Jev</a> — Diogo Almeida, TypeSafe founder (~8 min). Read the "Frontiers, Old and New" comparison table. Every claim carries an honest "Nuance" note — read those too.
+    </section>
+
+    <h2>Strings vs decisions</h2>
+    <p>A normal LLM (GPT, Claude) generates <em>text</em>, one token at a time. That text is flexible enough to be a chat reply, code, or a refusal — but to be used by software it must be parsed and validated, and it can always go off the rails. TypeSafe calls these tools for <em>System 2</em> thinking: slow and deliberate.</p>
+
+    <p>Jev is a <strong>System One model</strong>. It does not generate strings. You hand it a <strong>state</strong> (the context) and typed <strong>questions</strong>, and it returns typed answers with a calibrated probability for each — all in parallel, in one query. Think of it as a frontier-intelligence function call: unstructured state in, typed probabilistic decisions out.</p>
+
+    <div class="frontier-diagram">
+      <div class="llm">
+        <h4>Existing LLM</h4>
+        <ul>
+          <li>Outputs strings (parse + validate)</li>
+          <li>Sequential, token by token</li>
+          <li>Seconds of latency</li>
+          <li>Can hallucinate / type-error</li>
+          <li>Best for open-ended reasoning</li>
+        </ul>
+      </div>
+      <div class="jev">
+        <h4>Jev (System One)</h4>
+        <ul>
+          <li>Outputs typed decisions + probabilities</li>
+          <li>Parallel, all answers at once</li>
+          <li>70–500ms latency</li>
+          <li>Cannot type-error by construction</li>
+          <li>Best for classify / route / gate / score</li>
+        </ul>
+      </div>
+    </div>
+
+    <section class="callout tip">
+      <span class="callout-title">The reach-for-it test</span>
+      <p>If the answer fits a fixed shape you could define in advance — a yes/no, a pick-from-list, or a rating — and the surrounding code will act on it, it's a Jev job. If you need open-ended text, novel reasoning, or generated code, it's an LLM job.</p>
+    </section>
+
+    <p>The founder's framing is "smart if-statements": Jev slots into ordinary software as a fuzzy decision rule where hand-written logic is too brittle. The LLM still drives open-ended reasoning; Jev makes the fast structured calls along the way.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Stay honest about the numbers</span>
+      <p>The launch post claims up to 193.6x faster and 444.6x cheaper. Those are first-party evals run on the team's own laptops, by their own capabilities team. Real-world gains will be smaller, and no independent benchmark exists yet. Treat the pattern as real; treat the exact multipliers as best-case marketing.</p>
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You are building an agent. One step must write a friendly reply to the customer. Another step must decide if the message is urgent. Which step is the Jev job?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Writing the friendly customer reply text</button>
+        <button data-correct="true">Deciding whether the message is urgent</button>
+        <button data-correct="false">Both steps are equally good fits</button>
+      </div>
+      <p class="quiz-feedback correct">Right. "Is it urgent" is a yes/no that fits a fixed shape and code acts on it — a Jev job. Writing prose needs open-ended generation, so it stays an LLM job.</p>
+      <p class="quiz-feedback incorrect">Reach-for-it test: Jev returns typed decisions, not strings. Writing a reply needs generated text (LLM). "Is it urgent" is a yes/no code acts on (Jev).</p>
+    </div>
+
+    <h2>Practice</h2>
+    <p>For each decision below, say "Jev" or "LLM" and why. Then bring your answers back and I'll check your reasoning.</p>
+    <ol class="checklist">
+      <li>Route a support ticket to billing, technical, or sales.</li>
+      <li>Draft the apology email the customer receives.</li>
+      <li>Rate how frustrated the customer sounds, from calm to furious.</li>
+      <li>Decide whether a proposed <code>bash</code> tool call is dangerous before running it.</li>
+      <li>Summarize a 20-page contract into three paragraphs.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask me: "Walk me through the three Jev question types with a real ticket example" — that is Lesson 2, but I can preview it against one of your own use cases right now. Or tell me a decision from a harness you're actually building and we'll run the reach-for-it test on it together.
+    </section>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-question-types.html" title="The Three Question Types">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

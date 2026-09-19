@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 2: The Three Question Types</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+  <style>
+    .qtype-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin: 2rem 0; }
+    .qtype-grid > div { border: 1px solid var(--color-border); border-top: 3px solid var(--color-accent); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--color-card-bg); }
+    .qtype-grid h4 { margin: 0 0 0.4rem; font-size: 0.95rem; }
+    .qtype-grid p { margin: 0; font-size: 0.85rem; color: var(--color-muted); }
+    @media (max-width: 600px) { .qtype-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0001-what-jev-is.html" title="What Jev Is, and When to Reach for It">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-calibrated-confidence.html" title="Reading Calibrated Confidence">Next</a>
+    </nav>
+
+    <h1>The Three Question Types</h1>
+    <p class="lesson-meta">Time: 8 minutes. Tangible win: you can write a Jev call that asks a Noul, a Choice, and a Score about the same state, and read every answer back.</p>
+
+    <p>In <a href="0001-what-jev-is.html">Lesson 1</a> you learned to spot a Jev job. Now you learn the only three shapes a Jev question can take. Every decision you ever route to Jev is one of these three — memorize them and the API stops being a mystery.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://docs.typesafe.ai/introduction/quickstart">TypeSafe Quickstart</a> — docs.typesafe.ai (~5 min). The support-ticket example uses all three types in one call; this lesson walks through exactly that request and response.
+    </section>
+
+    <h2>Noul, Choice, Score</h2>
+    <div class="qtype-grid">
+      <div>
+        <h4>Noul</h4>
+        <p>A yes/no statement. Returns the probability it's true, 0&ndash;1. "Is this urgent?" &rarr; <code>0.999</code>.</p>
+      </div>
+      <div>
+        <h4>Choice</h4>
+        <p>Pick one from a fixed set. Returns a probability per option plus overall confidence. "Which team?" &rarr; <code>billing</code>.</p>
+      </div>
+      <div>
+        <h4>Score</h4>
+        <p>Rate against ordered levels. Returns a continuous score plus confidence. "How frustrated?" &rarr; <code>1.035</code>.</p>
+      </div>
+    </div>
+
+    <p>Two rules that trip people up. First, Jev <strong>never invents options</strong> — a Choice picks only from the criteria you pass in. Second, a Score is <strong>continuous</strong>: with levels 0/1/2, a return of <code>1.035</code> means "just past 'frustrated but civil,' leaning toward angry." The decimal carries information a plain label throws away.</p>
+
+    <h2>The call</h2>
+    <p>The Python SDK reads <code>TYPESAFE_API_KEY</code> from the environment and defaults to <code>jev-latest</code>. One call, three questions, evaluated in parallel:</p>
+
+    <pre><code>from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
+
+client = TypeSafeClient()
+
+ticket = ("Hi, I've been trying to connect my Stripe account for 3 days "
+          "and it keeps failing. I'm losing sales. Please help ASAP.")
+
+response = client.system_one(
+    state=ticket,
+    questions={
+        "department": Choice(
+            instructions="Which team should handle this",
+            criteria={
+                "billing": "Payment or subscription issues",
+                "technical": "Bugs or integration problems",
+                "sales": "Pricing or account questions",
+            },
+        ),
+        "frustration": Score(
+            instructions="How frustrated the customer appears",
+            criteria=[
+                "Calm, just stating facts",
+                "Frustrated but civil",
+                "Very angry, strong language",
+            ],
+        ),
+        "is_urgent": Noul(
+            instructions="The message conveys urgency or time-sensitivity",
+        ),
+    },
+)
+
+print(response.answers["department"].choice)   # "billing"
+print(response.answers["frustration"].score)   # 1.035
+print(response.answers["is_urgent"].noul)      # 0.999</code></pre>
+
+    <section class="callout tip">
+      <span class="callout-title">The state is not a prompt</span>
+      <p>You pass <code>state</code> (the thing to evaluate) and <code>questions</code> (what to decide) as separate arguments. There is no prompt to engineer. The <code>instructions</code> field describes the decision, not how to think about it — Jev doesn't reason in text.</p>
+    </section>
+
+    <h2>Reading the response</h2>
+    <p>Each answer carries its type and its raw distribution, not just the top pick. A Choice returns per-option probabilities <em>and</em> a confidence; a Noul returns a single probability. This is the calibrated data you'll act on in <a href="0003-calibrated-confidence.html">Lesson 3</a>:</p>
+
+    <pre><code>"department": {
+  "type": "choice",
+  "choice": "billing",
+  "probabilities": {"billing": 0.84, "technical": 0.159, "sales": 0.001},
+  "confidence": 0.596
+}</code></pre>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You want Jev to rate how negative a review is, from mildly to extremely negative. Which single question type fits best?</p>
+      <div class="quiz-options">
+        <button data-correct="false">A Noul, since it maps neatly to true</button>
+        <button data-correct="true">A Score, since levels are clearly ordered</button>
+        <button data-correct="false">A Choice, since options are clearly listed</button>
+      </div>
+      <p class="quiz-feedback correct">Right. "Mildly to extremely" is an ordered scale, so a Score returns a continuous value that preserves how negative. A Choice would flatten that ordering into unrelated buckets.</p>
+      <p class="quiz-feedback incorrect">The key word is "ordered." Noul is yes/no; Choice is unordered buckets. A ranked scale from mild to extreme is a Score, which keeps the ordering.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Take the email-triage demo from the <a href="../reference/transcript-isenberg-jev.html">transcript</a>: category, priority, spam, reply. Label each as Noul, Choice, or Score.</li>
+      <li>Write the <code>questions</code> dict for those four, with criteria, in Python.</li>
+      <li>For the Choice, list exactly which options you'd pass — remember Jev won't invent any.</li>
+      <li>Bring it back and I'll check your types and criteria against the docs.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask me: "Why is <code>frustration</code> a Score of 1.035 and not just 'frustrated'?" — I'll show you what the decimal buys you and how it changes the branch you write next.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0001-what-jev-is.html" title="What Jev Is, and When to Reach for It">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-calibrated-confidence.html" title="Reading Calibrated Confidence">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
