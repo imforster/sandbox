@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 4: Composing Questions into a Workflow</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0003-calibrated-confidence.html" title="Reading Calibrated Confidence">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-jev-in-the-harness.html" title="Jev in the Harness">Next</a>
+    </nav>
+
+    <h1>Composing Questions into a Workflow</h1>
+    <p class="lesson-meta">Time: 8 minutes. Tangible win: you can turn one multi-question Jev call plus plain code into the "AI traffic cop" that triages an email end to end.</p>
+
+    <p>Ryan Vogel's phrase in the <a href="../reference/transcript-isenberg-jev.html">transcript</a> is the whole mental model: Jev is an <strong>AI traffic cop</strong> at the front of an expensive queue. This lesson wires the three question types from <a href="0002-question-types.html">Lesson 2</a> and the thresholds from <a href="0003-calibrated-confidence.html">Lesson 3</a> into one working triage flow.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://docs.typesafe.ai/patterns/composite-scoring">Composite scoring</a> and <a href="https://docs.typesafe.ai/patterns/intent-routing">intent routing</a> — TypeSafe patterns docs (~6 min). The building blocks for combining several decisions into one branch.
+    </section>
+
+    <h2>The shape of a workflow</h2>
+    <p>The docs are blunt about this: the most reliable real-world workflows are <strong>many independent, decomposed questions</strong>, with fine-grained branching driven by probabilities rather than one big discrete decision. You ask everything in one call — questions run in parallel, so extra questions barely cost latency — then let ordinary code combine the typed answers.</p>
+
+    <div class="diagram">
+┌──────────────┐   one call, 4 questions   ┌─────────────┐
+│  email object│──────────────────────────▶│     Jev     │
+└──────────────┘                           └──────┬──────┘
+                                                  │ typed answers
+                   ┌──────────────────────────────┼───────────────────────┐
+                   ▼                ▼               ▼                       ▼
+              category(Choice)  priority(Score)  spam(Noul)          reply?(Score)
+                   │                │               │                       │
+                   └────────────────┴───────┬───────┴───────────────────────┘
+                                            ▼
+                              plain if/elif branch (your code)
+                                   act · review · escalate
+    </div>
+
+    <h2>The traffic cop, in code</h2>
+    <p>One call gets every decision. The logic that acts on them is boring, deterministic Python — which is the point:</p>
+
+    <pre><code>from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
+
+client = TypeSafeClient()
+
+def triage(email: str) -> dict:
+    r = client.system_one(
+        state=email,
+        questions={
+            "category": Choice(
+                instructions="Bucket this email",
+                criteria={
+                    "work": "Job or project related",
+                    "finance": "Payments, invoices, banking",
+                    "marketing": "Promotions and newsletters",
+                    "security": "Account or login alerts",
+                },
+            ),
+            "priority": Score(
+                instructions="How urgently this needs attention",
+                criteria=["Low", "Medium", "High", "Urgent"],
+            ),
+            "is_spam": Noul(instructions="This email is spam"),
+            "warrants_reply": Score(
+                instructions="How much this warrants a personal reply",
+                criteria=["Ignore", "Maybe", "Should reply"],
+            ),
+        },
+    )
+    a = r.answers
+
+    # boring, deterministic branching on typed answers
+    if a["is_spam"].noul >= 0.95:
+        return {"action": "archive", "reason": "spam"}
+    if a["priority"].score >= 2.5 and a["category"].confidence >= 0.80:
+        return {"action": "notify_now", "folder": a["category"].choice}
+    if a["warrants_reply"].score >= 1.5:
+        return {"action": "draft_reply", "folder": a["category"].choice}
+    return {"action": "file", "folder": a["category"].choice}</code></pre>
+
+    <section class="callout tip">
+      <span class="callout-title">Decompose, don't cram</span>
+      <p>Four small questions beat one giant "what should I do with this email?" question. Each answer is independently calibrated, so your branch can weigh spam confidence differently from priority. This is why the docs push many fine-grained questions over one big one.</p>
+    </section>
+
+    <section class="callout warning">
+      <span class="callout-title">Where the LLM comes back in</span>
+      <p>Notice <code>draft_reply</code> — Jev decided the email deserves a reply, but writing that reply is open-ended text, an LLM job. Jev routes; the LLM generates. That hand-off is the whole harness pattern, and it's the subject of <a href="0005-jev-in-the-harness.html">Lesson 5</a>.</p>
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Why ask category, priority, spam, and reply as four separate questions instead of one "what do I do" question?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Because one big question is slower to run</button>
+        <button data-correct="true">Because each answer is independently calibrated</button>
+        <button data-correct="false">Because Jev cannot answer combined questions</button>
+      </div>
+      <p class="quiz-feedback correct">Right. Decomposed questions each carry their own calibrated confidence, so your code can weigh spam and priority separately. Parallel evaluation means four questions cost about the same latency as one.</p>
+      <p class="quiz-feedback incorrect">Speed isn't the reason — questions run in parallel. The point is that separate questions are separately calibrated, so your branch can treat each confidence independently.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Take one queue from your own work (support, leads, PRs) and list its decomposed questions.</li>
+      <li>Assign each a type and write the <code>questions</code> dict.</li>
+      <li>Write the branch: which outcomes act, which draft with an LLM, which escalate to a human.</li>
+      <li>Bring it back — I'll pressure-test whether any question is secretly two questions.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask me: "Is my 'warrants_reply' question actually doing two jobs?" — bring your questions dict and I'll help you find crammed questions that should be split.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0003-calibrated-confidence.html" title="Reading Calibrated Confidence">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-jev-in-the-harness.html" title="Jev in the Harness">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

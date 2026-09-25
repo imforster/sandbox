@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Transcript: "Jev is HERE. How to use it" — Greg Isenberg</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    .transcript p { margin-bottom: 1rem; }
+    .speaker { font-weight: 600; color: var(--color-accent); }
+    .transcript-meta { color: var(--color-muted); font-size: 0.9rem; margin-bottom: 2rem; }
+    .transcript-meta a { color: var(--color-accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="glossary.html">Glossary</a>
+      <a class="nav-home" href="../lessons/index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Transcript: "Jev is HERE. How to use it"</h1>
+    <p class="transcript-meta">
+      Greg Isenberg with guest Ryan Vogel (founding team, Open Code) · 28:24 · published 2026-09-18 ·
+      <a href="https://www.youtube.com/watch?v=4mTLpuQpB80">watch on YouTube</a>
+    </p>
+
+    <section class="callout warning">
+      <span class="callout-title">Raw auto-transcript</span>
+      <p>This is YouTube's auto-generated transcript, deduplicated and lightly formatted into speaker turns. Speech-to-text artifacts are preserved verbatim — notably "Dooo Almeida" (Diogo Almeida), "chatbt" (ChatGPT), and "new"/"noul" (the Noul true-scale question type). Treat it as a listening aid, not a citable source. The <a href="https://typesafe.ai/blog/introducing-system-one-models-and-jev">launch post</a> and <a href="https://docs.typesafe.ai/introduction/quickstart">docs</a> are the authorities.</p>
+    </section>
+
+    <section class="callout tip">
+      <span class="callout-title">Why this transcript is in the course</span>
+      <p>It's the clearest plain-English framing of the reach-for-it test from Lesson 1: Jev is a <em>decision model</em> — "an AI traffic cop" — you put in front of an expensive queue of incoming information. The email-triage and lead-scoring demos map directly onto the Noul, Choice, and Score question types you'll meet in Lesson 2.</p>
+    </section>
+
+    <div class="transcript">
+      <p><span class="speaker">Greg (intro):</span> Jev is here and it's a big deal. It was created by Dooo Almeida [Diogo Almeida]. Yes, that's the same guy whose research built chatbt [ChatGPT]. Now, it's such a big deal because it's a whole new way to do AI. So, I brought on my friend Ryan who's on the founding team of Open Code to just come on and clearly explain what Jev is, what are some insane use cases, and break down some startup ideas that are now unlocked. As of publishing this, Jev is invite only. But good news, by the end of the episode, you're going to see how you can get access today. Happy Jev Day, and I'll see you at the end of the episode. Ryan Vogel, welcome to the pod. By the end of the episode, what are people going to learn?</p>
+
+      <p><span class="speaker">Ryan:</span> We're going to learn about a new type of AI that we haven't really seen before, but I think it's good. It's Jev. People are ready for this new type of classifier AI because we've been so used to using these LLMs which are slow, they stream — and as we'll cover today, this AI is fundamentally different in so many ways with quality, speed and price that there are so many usage applications for it. The possibilities are truly endless, and it just comes back to the humans again about how creative you can be.</p>
+
+      <p><span class="speaker">Greg:</span> Cool. I just have a few things I need from you because I haven't used Jev. Give me the simplest possible explanation of Jev. Give me three or four insane use cases so people walk away with productivity, making money — even boring use cases that could become $10 million, $100 million businesses. And wrap it in a bow so people understand why they should care. Can you commit to that, Ryan Vogel?</p>
+
+      <p><span class="speaker">Ryan:</span> I can. And I'll add one better — I'll make it entertaining. First up I'm going to start with a demo. This is my email. If you know me at all, you know I love email because it seems unsolved. Greg, how many spam emails do you get every day? Too many, right? You can't reply to all of them. Some email algorithms are good, but not the best. Some people take traditional AI where they have a GPT-5.6 Luna read every email and score it, but that takes time and it's not instant. I wish we could just have something that could instantly categorize all the emails. This is that — this is using Jev.</p>
+
+      <p><span class="speaker">Ryan:</span> Before I run it, I'll break down Jev in a super simple example. Jev is a classifier at its truest being — that's what it is. I won't get into the architecture because honestly I don't understand it that well, but essentially you define an input. Say you have this iPhone as an input. The output is a schema. We could have the schema be "what color is the iPhone" — almost a question — with blue, orange, red, green, yellow as the output options. The classifier Jev looks at the phone in text format and says, "I'm pretty confident it's 80% orange, but it could be 10% red or 10% blue," which adds up to 100. It's the probabilities of those choices. It's not going to be 100% affirmative — it's "I'm 80% confident this is orange."</p>
+
+      <p><span class="speaker">Ryan (email demo):</span> Each row you see on the table is a full email object — subject, description, body, sender, all the snazzy email jazz. The input is that entire email object, no special treatment. We have four outputs. A category — shopping, work, marketing, finance, security. A priority — five options: low, medium, high, important, urgent (like a missed credit card payment). A spam score — a percentage, not a true/false, because some emails are more spammy than others. And a reply percentage — how much does this warrant your reply. A "90% account violation possibility" email means a user seems to be having trouble, so we should probably respond. I've got 1,700 of these emails categorized... and oh, it's done. It didn't cost 18 cents —</p>
+
+      <p><span class="speaker">Greg:</span> 1,700 emails.</p>
+
+      <p><span class="speaker">Ryan:</span> That is the power of Jev. We had 4.2 million input tokens and 500,000 output tokens. The entire cost was 18 cents for all of those emails. All categorized, all ranked, all given that score.</p>
+
+      <p><span class="speaker">Greg:</span> I just want to make sure I have a good mental model. So Jev is basically like an AI decision maker. You give it some information — the contents of the email — and a set of possible choices, like is it spam or not. Jev looks at that and chooses an answer. Is this email spam, urgent, or normal? But you can also have it do things like "is this customer likely to buy or unlikely to buy," right?</p>
+
+      <p><span class="speaker">Ryan:</span> Exactly, you're 90% correct. It makes a <em>probability</em> of a decision. A decision would be it tells you buy or don't buy. Technically what happens underneath is that percentage — 83% buy, 17% no-buy. The stronger percentage wins and gets returned. But it's not a 100% decisive action.</p>
+
+      <p><span class="speaker">Greg:</span> So instead of asking ChatGPT or Claude "read this email and explain what I should do," the new mental model is: ask Jev "read this email and choose a set of actions" — reply or escalate — and you get a choice with a confidence score. Is that the way to think about it?</p>
+
+      <p><span class="speaker">Ryan:</span> Kind of. The LLMs have corrupted our minds. You said "ask Jev" — you don't really ask Jev, because Jev isn't a text model. If you look at the actual spec, it doesn't generate any text at all. Let me pull up a whiteboard. We've got our email input, and it goes into Jev — Jev seems like a circle guy, a tiny circle because he's fast and cheap. It's not asked, it's an input like a standard API, and you define a schema. "is_spam" can be a <em>noul</em> [Noul] — a true/false but on a scale, 0 to 1. If it returns is_spam 0.90, that's a 90% chance it's spam. Then a choice like category — marketing, finance, spam. It doesn't generate the categories itself; it looks at the categories you passed in.</p>
+
+      <p><span class="speaker">Greg:</span> And a schema is just a fancy word for how data is organized, right?</p>
+
+      <p><span class="speaker">Ryan:</span> It's how the output is organized. Which is why developers love it — it's type-safe. You can take the output Jev gives you and instantly use it in code, because that noul it returns is a number object, not text you'd have to parse. There's no internal reasoning. Recent AI development is all about reasoning — models speaking out loud to identify issues in their thought progression. Jev doesn't do that. Or it might, really fast on the server, we don't know. From our point of view it doesn't reason, it just gives you the output.</p>
+
+      <p><span class="speaker">Greg:</span> It just gives you a decision.</p>
+
+      <p><span class="speaker">Ryan:</span> Exactly. It's a decision model. Everyone assimilates AI with LLMs — that next-token prediction, a conversational agent. This isn't that. It's still AI, it's machine learning, but it's strictly a decision model. You can't ask it "how are you doing today." I played with the idea: I'm a decision model too — when I type "hello" I'm deciding each key H-E-L-L-O. So what if I apply that to Jev? Instead of a category, have all letters A–Z, each a noul, and let it predict each letter. I asked it "what is bigger, a cat or an elephant?" letter by letter, in real time. It's not trained for next-letter completion, but it worked — which shows this isn't a conversational LLM, it's a decision-based model.</p>
+
+      <p><span class="speaker">Greg:</span> That begs the question — what should I use Jev for? The person listening wants to build a business, a side hustle. They see this is a glimpse into the future but don't know how to use it.</p>
+
+      <p><span class="speaker">Ryan:</span> This is the first model that caters to a lot of applications, and it's fast and cheap — no high barrier to entry. Our Open Code team got a $5 intro credit and used it for two days without hitting it, using it a ton. Load $10 and you're good for maybe three months. My girlfriend runs a graphic design agency and gets a lot of inbound through a contact form. She uses Jev to score "is this a good lead" from 0 to 1. A 98% lead you reply to; a vague one probably needs more effort. You can use Jev to make a lot of the decisions in your business. Go through all your historical emails: are there any leads I missed, any high-value clients I could re-engage? Anywhere you look at data and think "I have to make a decision on this," add Jev at that layer — as a heavy advisory role, not 100% of interactions. For issue triage, someone says "I need help with XYZ product" and Jev instantly classifies which product team to route to. It takes around 200 milliseconds per query no matter the input/output structure — versus AI that can take 30 seconds and needs streaming and listeners. With Jev it's a quick API call and it just works.</p>
+
+      <p><span class="speaker">Greg:</span> So Jev is basically an AI traffic cop. Information comes in, Jev decides where it should go and what happens next — what is this, how important is it, what should happen. It either goes to a human (a lead your girlfriend acts on right now — the CMO of Coca-Cola), or if confidence is lower and it's a local business, you automate it or use an LLM to draft something, or the confidence is so low you ignore it. Am I getting that right?</p>
+
+      <p><span class="speaker">Ryan:</span> Spot on. Anything where you'd make a quick decision and maybe provide feedback to a user, you can do it with this.</p>
+
+      <p><span class="speaker">Greg:</span> My brain goes to startup ideas — that's what this podcast is about. So Jev now exists: how do I find a business with an expensive queue of incoming information and put Jev at the front of that queue? By queue I mean lots of inbound where people need stuff from you and you need it routed to the right person.</p>
+
+      <p><span class="speaker">Ryan:</span> Something comes to mind. Say you run a services-aggregation business — a SaaS on top of local services. You type "I need my driveway powerwashed," Jev takes that plus the input of all the other businesses in the area and returns percentages for which is the best fit. You fill in a form and get an instant match. Those "get an instant quote" forms that are never instant and say "we'll email you by end of day" — a lot of that could be a classifier and genuinely be instant. The speed is nice because the client sees you're not wasting their time — an insanely good virtue signal.</p>
+
+      <p><span class="speaker">Greg:</span> What other Jev use cases do you want to show?</p>
+
+      <p><span class="speaker">Ryan (Bitcoin demo):</span> I was messing around trying to hook Jev up to a Bitcoin signal — every minute it runs and tells me buy, hold, or sell. It does not seem to be doing well, which shows the model is great but has regressions. I would not put this in front of your stock portfolio. This is for routing or decisions that don't need insane model intelligence. I tested with GPT-6 Astra, OpenAI's latest frontier model, and it did a bit better because it cross-referenced news — but it's apples to oranges, a different type of model. A classifier and decision maker isn't the best in all situations.</p>
+
+      <p><span class="speaker">Ryan (video-clipping demo):</span> Everyone who makes content knows this issue — you make a long YouTube video but you want clips. I'm dragging and dropping a video file. It transcribes the video, gets a word-level transcript, and passes the whole thing into Jev with classifier decisions to find the best clips. It prepared audio and scored 17 moments in around 3 seconds. Each moment is an interesting part, not the filler. 1.1 million tokens. I worked on this for maybe 10 minutes — iterate on this and combine it with other AI agent types and you could build a real clipping startup.</p>
+
+      <p><span class="speaker">Ryan (browser-use demo):</span> The browser-control folks — the browser-use guys — had Jev control a browser to pick a flight from Zurich to London in 7.1 seconds, all real time. Any other browser-use AI agent would have taken one, two, even three minutes.</p>
+
+      <p><span class="speaker">Greg:</span> That's a really big deal. If people want to get set up with Jev, how do they do it?</p>
+
+      <p><span class="speaker">Ryan:</span> Jev is on a waitlist, but by the time this drops it might be in general access. For instant access you can use the Vercel gateway — they've added Jev to their AI package so you can start testing right away. Or drop your AI agent the TypeSafe AI link and ask "how can I start experimenting with Jev." Talk to any AI agent about your business and ask "what workflows do I do daily that could benefit from a decision maker like Jev?" That's a huge tip.</p>
+
+      <p><span class="speaker">Greg:</span> I appreciate that. I'll include links in the show notes, and links to follow Ryan — he's got a criminally underfollowed YouTube channel, like a thousand subs. Ryan, thank you so much for coming on.</p>
+
+      <p><span class="speaker">Ryan:</span> Let me caution you — it is dangerously addictive. Once you see the speed and the price you'll be like "holy cow." To everyone watching or listening, please try it out. It's so cheap you won't notice — like 1/1,000 of a cent to test. If you've ever done any classification, or want to build something for your own email, try it. I don't think we've seen AI this fast in a long time.</p>
+
+      <p><span class="speaker">Greg:</span> Can't wait to play with it. Thanks everyone. Ryan, you're a legend. I'll see you next time.</p>
+    </div>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="glossary.html">Glossary</a>
+      <a class="nav-home" href="../lessons/index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

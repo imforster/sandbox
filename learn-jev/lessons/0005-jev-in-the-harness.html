@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 5: Jev in the Harness</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0004-composing-a-workflow.html" title="Composing Questions into a Workflow">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Jev in the Harness</h1>
+    <p class="lesson-meta">Time: 8 minutes. Tangible win: you can name the two harness roles Jev plays — tool-call gating and model routing — and read the LangChain middleware that wires each.</p>
+
+    <p>This is where the mission lands, Ian. You can spot a Jev job (<a href="0001-what-jev-is.html">L1</a>), shape it (<a href="0002-question-types.html">L2</a>), gate it (<a href="0003-calibrated-confidence.html">L3</a>), and compose it (<a href="0004-composing-a-workflow.html">L4</a>). Now you place Jev inside an <em>agent harness</em> — the loop where an LLM picks tools and acts — and use it to make that loop cheaper and safer.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://www.langchain.com/blog/building-a-harness-with-jev">Building a Harness with Jev</a> — LangChain (Runkle &amp; Lovell, ~5 min). Shows <code>TypeSafeClassifier</code>, <code>ModelRouterMiddleware</code>, and <code>AutoModeMiddleware</code> in real code.
+    </section>
+
+    <h2>Role 1: model routing</h2>
+    <p>Not every request needs your best model. A lookup can go to a small, cheap model; an architecture question needs a powerful one. Jev classifies the incoming request and picks the model before the loop spends a dime on reasoning.</p>
+
+    <pre><code>from langchain.agents import create_agent
+from langchain_typesafe.experimental.middleware import (
+    ModelChoice, ModelRouterMiddleware,
+)
+
+router = ModelRouterMiddleware(
+    choices={
+        "fast": ModelChoice(
+            model="openai:luna",
+            criteria="Direct lookups, extraction, localized changes.",
+        ),
+        "powerful": ModelChoice(
+            model="openai:sol",
+            criteria="Architecture and high-stakes decisions.",
+        ),
+    },
+    instructions="Choose the least costly model that can complete the task.",
+)
+
+agent = create_agent("openai:gpt-5.6-luna", middleware=[router])</code></pre>
+
+    <p>Under the hood this is a Jev Choice over your model options. The chosen model, its probabilities, and confidence stay in the agent state, so you can log or override the routing decision.</p>
+
+    <h2>Role 2: tool-call gating (Auto Mode)</h2>
+    <p>Agents can be talked into dangerous actions — a poisoned web page, a bad instruction, a misread. Closed harnesses (Claude Code, Codex, Cursor) have long classified risky actions <em>before</em> running them. A cheap classifier lets any agent do the same.</p>
+
+    <pre><code>from langchain.agents import create_agent
+from langchain_typesafe.experimental.middleware import AutoModeMiddleware
+
+guardrail = AutoModeMiddleware(tools=["bash"])
+
+agent = create_agent("openai:gpt-5.6-luna", middleware=[guardrail])</code></pre>
+
+    <p>Before the <code>bash</code> tool executes, Jev evaluates the proposed call and blocks it if it looks risky. This is a Noul ("is this dangerous?") gated on confidence — exactly the pattern from <a href="0003-calibrated-confidence.html">Lesson 3</a>, now sitting on the tool boundary.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">One model, two jobs</span>
+      <p>Jev is not a drop-in LLM replacement — it generates no text. The harness pattern is a division of labor: the LLM does open-ended reasoning and generation; Jev makes the fast structured decisions along the way — which model, which route, is this safe.</p>
+    </section>
+
+    <section class="callout warning">
+      <span class="callout-title">A gate is not a guarantee</span>
+      <p>Auto Mode reduces risk; it doesn't eliminate it. It's a calibrated classifier, so tune its confidence threshold to your blast radius and keep hard limits (sandboxing, allow-lists, human approval) for genuinely destructive actions. Trust the gate proportionally to what a false negative would cost.</p>
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>In a Jev-powered harness, which job stays with the LLM rather than moving to Jev?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Deciding which model a request should use</button>
+        <button data-correct="true">Writing the actual code the agent produces</button>
+        <button data-correct="false">Judging whether a tool call is dangerous</button>
+      </div>
+      <p class="quiz-feedback correct">Right. Generating code is open-ended text — an LLM job. Routing and risk-gating are structured decisions, which is exactly what Jev handles cheaply and fast.</p>
+      <p class="quiz-feedback incorrect">Routing and gating are structured decisions Jev makes. Producing code is open-ended generation, which only a text-generating LLM can do.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Sketch an agent you'd build. Mark every point where it makes a structured decision.</li>
+      <li>For each, decide: model routing, tool gating, or in-loop classification.</li>
+      <li>Pick the one tool call whose gate you'd set to the highest confidence, and justify it.</li>
+      <li>Bring the sketch back — we'll turn it into a mini harness design together.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask me: "Help me design the harness for &lt;my agent&gt;." — bring the sketch from practice and we'll place Jev at each decision point and set the thresholds. This is the mission; let's build it.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0004-composing-a-workflow.html" title="Composing Questions into a Workflow">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
