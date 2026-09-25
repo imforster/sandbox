@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Apache Polaris Course</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #a3720a; --color-accent-light: #fdf1dc; }
+    a:hover { color: #8a5f08; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #ffd23f; }
+    }
+    [data-theme="dark"] { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+    [data-theme="dark"] a:hover { color: #ffd23f; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="course-header">
+      <h1>Apache Polaris Course</h1>
+      <p>A hands-on course on <a href="https://polaris.apache.org/">Apache Polaris</a>, the Apache Iceberg REST catalog. Nine lessons, one concept each, in order — each builds on the previous one's entities and credentials, so work through them in sequence rather than skipping around. Lessons 1–6 were run for real against a live local Polaris + Spark Docker stack; Lessons 7–9 cover newer/heavier capabilities as close-reading exercises against the primary docs.</p>
+    </div>
+
+    <div class="section-label">Foundations</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0001-what-polaris-is-and-why.html">
+          <span class="lesson-num">01</span>
+          <span class="lesson-info">
+            <span class="lesson-title">What Polaris Is and the Problem It Solves</span>
+            <span class="lesson-desc">The catalog-service model, the Iceberg REST Catalog spec, and the multi-engine interoperability payoff.</span>
+          </span>
+          <span class="lesson-time">~7 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0002-the-entity-model.html">
+          <span class="lesson-num">02</span>
+          <span class="lesson-info">
+            <span class="lesson-title">The Entity Model</span>
+            <span class="lesson-desc">Catalog, Namespace, Table, Principal, Principal Role, Catalog Role — and where the two trees connect.</span>
+          </span>
+          <span class="lesson-time">~8 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Getting Hands-On</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0003-bootstrapping-a-realm.html">
+          <span class="lesson-num">03</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Running Polaris and Bootstrapping a Realm</span>
+            <span class="lesson-desc">Start Polaris, find the bootstrap root credentials, and understand what a realm is.</span>
+          </span>
+          <span class="lesson-time">~6 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0004-the-iceberg-rest-catalog-api.html">
+          <span class="lesson-num">04</span>
+          <span class="lesson-info">
+            <span class="lesson-title">The Iceberg REST Catalog API</span>
+            <span class="lesson-desc">OAuth client credentials, creating a catalog and namespace, using nothing but curl.</span>
+          </span>
+          <span class="lesson-time">~9 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0005-connecting-spark.html">
+          <span class="lesson-num">05</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Connecting a Query Engine (Spark)</span>
+            <span class="lesson-desc">Configure Spark's Iceberg REST catalog integration, and confirm both clients agree on the same table.</span>
+          </span>
+          <span class="lesson-time">~9 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Security</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0006-role-based-access-control.html">
+          <span class="lesson-num">06</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Role-Based Access Control</span>
+            <span class="lesson-desc">Build the full grant chain from scratch, and reproduce a real authorized call and a real 403.</span>
+          </span>
+          <span class="lesson-time">~10 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Beyond Iceberg</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0007-generic-tables.html">
+          <span class="lesson-num">07</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Generic Tables</span>
+            <span class="lesson-desc">What a Generic Table is, and what it gives up (commit coordination, credential vending) versus Iceberg.</span>
+          </span>
+          <span class="lesson-time">~7 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0008-catalog-federation.html">
+          <span class="lesson-num">08</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Catalog Federation</span>
+            <span class="lesson-desc">How Polaris fronts an existing Hive Metastore or BigQuery Metastore without migrating data.</span>
+          </span>
+          <span class="lesson-time">~7 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Production</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0009-persistence-and-production-topology.html">
+          <span class="lesson-num">09</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Persistence and Production Topology</span>
+            <span class="lesson-desc">What a persistence backend stores, why the quickstart default isn't production-safe, and how Polaris scales horizontally.</span>
+          </span>
+          <span class="lesson-time">~8 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Reference</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="../reference/glossary.html">
+          <span class="lesson-num">--</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Apache Polaris Glossary</span>
+            <span class="lesson-desc">Quick lookup for Catalog, Namespace, Principal, Catalog Role, Privilege, Realm, Generic Table, federation, and more.</span>
+          </span>
+          <span class="lesson-time">ref</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="resources-link">
+      <p><strong>Course:</strong> Apache Polaris Course - 9 lessons on the Iceberg REST catalog, its entity model, RBAC, and its wider ecosystem (Generic Tables, Federation, production topology).</p>
+      <p style="color: var(--color-muted); font-size: 0.85rem; margin-top: 0.5rem;">Total course time: ~71 minutes · 9 lessons · Interactive checks in each lesson</p>
+    </div>
+  </main>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

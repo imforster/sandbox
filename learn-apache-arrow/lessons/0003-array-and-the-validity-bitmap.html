@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Array and the Validity Bitmap</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #0d9488; --color-accent-light: #e6f7f5; }
+    a:hover { color: #0f766e; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #5eead4; }
+    }
+    [data-theme="dark"] { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+    [data-theme="dark"] a:hover { color: #5eead4; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0002-schema-and-field.html" title="Previous: Schema and Field">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-recordbatch-and-arrow-ipc.html" title="Next: RecordBatch and Arrow IPC">Next</a>
+    </nav>
+
+    <h1>Array and the Validity Bitmap</h1>
+    <p class="lesson-meta">Time: ~8 minutes. Tangible win: construct an Arrow Array, explain how it represents nulls, and demonstrate that slicing is zero-copy.</p>
+
+    <p>Array is the actual buffer of column data that a Field/Schema only describes abstractly. This is where "columnar in-memory format" stops being a slogan and becomes bytes you can inspect.</p>
+
+    <ul>
+      <li><code>pa.array(python_list)</code> infers an Arrow type from the input and builds an immutable columnar buffer.</li>
+      <li>Nulls are <strong>not</strong> encoded with a sentinel value inside the data buffer. Arrow arrays carry a separate <strong>validity bitmap</strong> — one bit per element — alongside the data buffer. This is why null-heavy columns don't need "impossible value" hacks like <code>-1</code> or <code>NaN</code>-as-null.</li>
+      <li>Arrays are immutable, and <strong>slicing does not copy the underlying data buffer</strong> — a slice is a view with a different offset/length into the same buffer. This is the array-level version of the zero-copy idea from Lesson 1.</li>
+      <li>A Table's columns aren't plain Arrays — they're <code>ChunkedArray</code>s (Lesson 5). Keep those two names distinct.</li>
+    </ul>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arrow.apache.org/docs/format/Columnar.html">Arrow Columnar Format specification</a> — the validity bitmap layout referenced here.
+    </section>
+
+    <h2>Exercise</h2>
+    <pre><code>import pyarrow as pa
+
+arr = pa.array([1, 2, None, 4, 5])
+print("Array:", arr)
+print("null_count:", arr.null_count)
+print("length:", len(arr))
+
+sliced = arr.slice(3, 2)
+print("Sliced:", sliced)
+
+parent_data_buffer = arr.buffers()[1]
+sliced_data_buffer = sliced.buffers()[1]
+print("Same underlying data buffer (zero-copy slice):",
+      parent_data_buffer.address == sliced_data_buffer.address)
+print("Sliced array offset into parent:", sliced.offset)</code></pre>
+
+    <p class="lesson-meta">Verified output (pyarrow 25.0.1):</p>
+
+    <pre><code>Array: [
+  1,
+  2,
+  null,
+  4,
+  5
+]
+null_count: 1
+length: 5
+Sliced: [
+  4,
+  5
+]
+Same underlying data buffer (zero-copy slice): True
+Sliced array offset into parent: 3</code></pre>
+
+    <section class="callout warning">
+      <span class="callout-title">A slice keeps the whole parent alive</span>
+      Don't assume a slice is an independent copy you can freely hand off expecting the parent to become garbage-collectable — the slice keeps the <em>entire</em> parent buffer alive, not just the sliced portion. Slicing a tiny window out of a huge array does not free the rest of the memory.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>How does an Arrow Array represent a null value in an int64 column?</p>
+      <div class="quiz-options">
+        <button data-correct="false">A sentinel value like <code>-1</code> stored directly in the data buffer</button>
+        <button data-correct="true">A separate validity bitmap, one bit per element, alongside the data buffer</button>
+        <button data-correct="false">Arrow doesn't support nulls in numeric columns</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The validity bitmap tracks null/not-null per element separately from the data buffer — no "impossible value" hacks needed.</p>
+      <p class="quiz-feedback incorrect">Not quite. Arrow uses a dedicated validity bitmap rather than sentinel values, so the data buffer itself never needs a fake "null" number.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>You slice a 10,000-element array down to 5 elements and drop your reference to the original array. Is the other 9,995 elements' memory now freed?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes — slicing copies only the requested range, so the rest is released</button>
+        <button data-correct="true">No — the slice is a view into the same buffer, which keeps the entire parent buffer alive</button>
+        <button data-correct="false">Only if you call <code>.combine_chunks()</code> on the slice</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Slicing is zero-copy, which is fast — but it means the slice pins the whole original buffer in memory, not just its own window.</p>
+      <p class="quiz-feedback incorrect">No. A slice is zero-copy: it's a view (offset + length) into the parent's buffer, so the full parent buffer stays alive as long as the slice does.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Build an array of at least 10 elements with 3+ nulls in different positions.</li>
+      <li>Slice out a range that includes at least one null.</li>
+      <li>Report: the <code>null_count</code> of the slice, and whether the slice's data buffer address still matches the parent's.</li>
+    </ol>
+
+    <p>New terms — <a href="../reference/glossary.html">Array, validity bitmap, zero-copy</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask the agent: "What does <code>is_null()</code> return for the slice in the exercise, and how does that relate to the validity bitmap?" Next lesson combines multiple typed Arrays under one Schema into the actual unit of interchange: RecordBatch.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0002-schema-and-field.html" title="Previous: Schema and Field">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-recordbatch-and-arrow-ipc.html" title="Next: RecordBatch and Arrow IPC">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

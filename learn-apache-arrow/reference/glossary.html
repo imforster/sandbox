@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Apache Arrow Glossary</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #0d9488; --color-accent-light: #e6f7f5; }
+    a:hover { color: #0f766e; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #5eead4; }
+    }
+    [data-theme="dark"] { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+    [data-theme="dark"] a:hover { color: #5eead4; }
+  </style>
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="../lessons/index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Apache Arrow Glossary</h1>
+    <p class="lesson-meta">Reference — the vocabulary of Apache Arrow's data model and ecosystem. All lessons use terms consistently with this page.</p>
+
+    <h2>Core data model</h2>
+    <dl class="glossary">
+      <dt>Schema</dt>
+      <dd>An ordered list of Fields, plus optional schema-level metadata (a bytes-keyed dict). Order matters — two schemas with the same fields in a different order are not equal. <a href="https://arrow.apache.org/docs/python/index.html">[docs]</a></dd>
+
+      <dt>Field</dt>
+      <dd><code>name + type + nullable flag + optional metadata</code>. Describes one column, not its data. Fields default to <code>nullable=True</code> unless set otherwise. <a href="https://arrow.apache.org/docs/python/index.html">[docs]</a></dd>
+
+      <dt>Array</dt>
+      <dd>An immutable, contiguous columnar buffer of typed values, built with <code>pa.array(...)</code>. The actual data a Field/Schema only describes abstractly. <a href="https://arrow.apache.org/docs/format/Columnar.html">[docs]</a></dd>
+
+      <dt>Buffer</dt>
+      <dd>A raw block of memory backing an Array (e.g. the data buffer, the validity bitmap buffer). Accessible via <code>array.buffers()</code>; comparing buffer addresses is how this course proves zero-copy behavior. <a href="https://arrow.apache.org/docs/format/Columnar.html">[docs]</a></dd>
+
+      <dt>Validity bitmap</dt>
+      <dd>A separate bitmap, one bit per element, that tracks null/not-null for an Array — nulls are never encoded as a sentinel value inside the data buffer itself. <a href="https://arrow.apache.org/docs/format/Columnar.html">[docs]</a></dd>
+
+      <dt>Zero-copy</dt>
+      <dd>Sharing the same underlying memory buffer instead of serializing/copying data — possible because Arrow's memory layout is a published, language-independent spec. Conditional, not unconditional: it holds when representations already match (e.g. float64 to NumPy), not for every type.</dd>
+
+      <dt>RecordBatch</dt>
+      <dd>One Schema + one Array per field, all the same length. A fixed-size, fixed-row-count chunk of columnar data — the unit that actually moves across Arrow IPC and Arrow Flight. Mismatched array lengths are a hard error at construction. <a href="https://arrow.apache.org/docs/python/index.html">[docs]</a></dd>
+
+      <dt>Table</dt>
+      <dd>One Schema + one ChunkedArray per column. The higher-level container that can span multiple RecordBatches — what most pyarrow-level operations (Parquet reads, Flight queries) actually hand you. <a href="https://arrow.apache.org/docs/python/index.html">[docs]</a></dd>
+
+      <dt>ChunkedArray</dt>
+      <dd>A Table column's actual type: a sequence of Array chunks, often one per source RecordBatch. Distinct from a plain Array — some operations need <code>.combine_chunks()</code> or <code>.chunk(i)</code> first. <a href="https://arrow.apache.org/docs/python/index.html">[docs]</a></dd>
+    </dl>
+
+    <h2>Moving data</h2>
+    <dl class="glossary">
+      <dt>IPC (Inter-Process Communication)</dt>
+      <dd>Arrow's serialization format (<code>pyarrow.ipc</code>) for writing a stream of RecordBatches to bytes and reading them back, with no row-by-row translation. Used for files and as the wire format inside Flight. <a href="https://arrow.apache.org/docs/python/ipc.html">[docs]</a></dd>
+
+      <dt>Flight</dt>
+      <dd>A gRPC-based streaming protocol for moving RecordBatches between processes over a network, with no per-row (de)serialization. Not a request/response REST API. <a href="https://arrow.apache.org/docs/format/Flight.html">[docs]</a></dd>
+
+      <dt>FlightDescriptor</dt>
+      <dd>Identifies a dataset to a Flight server, by path or an opaque command (the latter is how Flight SQL carries a SQL statement). <a href="https://arrow.apache.org/docs/format/Flight.html">[docs]</a></dd>
+
+      <dt>Ticket</dt>
+      <dd>What a client hands to <code>do_get</code> to actually retrieve a Flight data stream, typically obtained from a prior <code>FlightInfo</code>/<code>GetFlightInfo</code> lookup. <a href="https://arrow.apache.org/docs/format/Flight.html">[docs]</a></dd>
+
+      <dt>do_get / do_put</dt>
+      <dd>The two core Flight data-movement RPCs: <code>do_get</code> streams server → client, <code>do_put</code> streams client → server. <code>list_flights</code> / <code>get_flight_info</code> are metadata/discovery RPCs instead. <a href="https://arrow.apache.org/docs/format/Flight.html">[docs]</a></dd>
+
+      <dt>Flight SQL</dt>
+      <dd>A protocol layered on top of Flight (not a replacement) defining standard commands (<code>CommandStatementQuery</code>, <code>CommandGetTables</code>, ...) so any Flight SQL client can talk to any Flight SQL server generically. Results still arrive via ordinary <code>do_get</code> RecordBatch streams. <a href="https://arrow.apache.org/docs/format/FlightSql.html">[docs]</a></dd>
+
+      <dt>ADBC (Arrow Database Connectivity)</dt>
+      <dd>The client API family built around Flight SQL's model — drivers hand back Arrow batches directly instead of row-at-a-time cursor fetches like traditional JDBC/ODBC. <a href="https://arrow.apache.org/adbc/">[docs]</a></dd>
+    </dl>
+
+    <h2>At-rest interop</h2>
+    <dl class="glossary">
+      <dt>Parquet</dt>
+      <dd>An on-disk columnar file format Arrow interoperates with closely, because their type systems are close to 1:1. Distinct from Arrow: Parquet is at-rest and compressed; Arrow is in-memory and decoded. <a href="https://parquet.apache.org/">[docs]</a></dd>
+
+      <dt>Column projection</dt>
+      <dd>Requesting only specific columns (<code>columns=[...]</code>) from a Parquet read. Because Parquet's on-disk layout is columnar too, unrequested columns are never read off disk at all.</dd>
+
+      <dt>Row group</dt>
+      <dd>A horizontal partition of a Parquet file, each carrying its own per-column statistics (min/max). A <code>filters=</code> predicate that can be checked against those stats lets the reader skip entire row groups — predicate pushdown.</dd>
+
+      <dt>Compute kernel</dt>
+      <dd>A vectorized function in <code>pyarrow.compute</code> (e.g. <code>pc.greater</code>, <code>pc.filter</code>, <code>pc.sum</code>) that operates directly on Arrow Arrays/ChunkedArrays/Tables and always returns a new object — never mutates in place. Comparisons involving null propagate <code>null</code>, not <code>False</code>. <a href="https://arrow.apache.org/docs/python/api/compute.html">[docs]</a></dd>
+    </dl>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="../lessons/index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

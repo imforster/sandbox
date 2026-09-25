@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What Arrow Is and Why It Exists</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #0d9488; --color-accent-light: #e6f7f5; }
+    a:hover { color: #0f766e; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #5eead4; }
+    }
+    [data-theme="dark"] { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+    [data-theme="dark"] a:hover { color: #5eead4; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-schema-and-field.html" title="Next: Schema and Field">Next</a>
+    </nav>
+
+    <h1>What Arrow Is and Why It Exists</h1>
+    <p class="lesson-meta">Time: ~7 minutes. Tangible win: explain, without hand-waving, what problem Arrow solves and for whom — every later lesson is an API detail on top of this idea.</p>
+
+    <p>Apache Arrow is an <strong>in-memory columnar data format</strong>. It is not a file format and not a database. Two things follow directly from "columnar":</p>
+
+    <ol>
+      <li>Values of the same column are stored contiguously, which is what lets vectorized/SIMD compute run fast over a column instead of walking row-by-row.</li>
+      <li>The memory layout is a published, language-independent specification. Any process in any language (Python, C++, Java, Rust, Go, R, ...) that implements the spec can read the exact same bytes without translating them first.</li>
+    </ol>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arrow.apache.org/">arrow.apache.org</a> and the <a href="https://arrow.apache.org/docs/format/Columnar.html">Arrow Columnar Format specification</a> — the published memory layout that makes everything below possible.
+    </section>
+
+    <h2>The actual payoff: zero-copy interop</h2>
+    <p>Historically, moving a column of data from one language runtime to another (say, a pandas DataFrame into a JVM process) meant serializing it into some intermediate format and deserializing it on the other side. Arrow's answer is: don't serialize at all — hand over a pointer to memory that both sides already agree on the layout of.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Don't confuse this with Parquet</span>
+      Parquet is an <strong>on-disk</strong> columnar file format, optimized for compression and long-term storage. Arrow is the <strong>in-memory</strong> format things get decoded into before you compute on them. They're designed to interoperate closely (Lesson 7), but they solve different problems.
+    </section>
+
+    <h2>Exercise: prove zero-copy with buffer addresses</h2>
+    <p>Run this and confirm a pandas Series and its Arrow-backed column literally point at the same memory:</p>
+
+    <pre><code>import pandas as pd
+import pyarrow as pa
+
+df = pd.DataFrame({"price": [10.5, 20.25, 30.0]})
+table = pa.Table.from_pandas(df, preserve_index=False)
+
+arrow_array = table.column("price").chunk(0)
+numpy_array = arrow_array.to_numpy()
+
+arrow_buffer_addr = arrow_array.buffers()[1].address
+numpy_buffer_addr = numpy_array.ctypes.data
+
+print("Arrow buffer address:", arrow_buffer_addr)
+print("NumPy buffer address:", numpy_buffer_addr)
+print("Zero-copy confirmed (same buffer):", arrow_buffer_addr == numpy_buffer_addr)</code></pre>
+
+    <p class="lesson-meta">Verified output (pyarrow 25.0.1, pandas 2.2.6, numpy 2.2.6). Your addresses will differ; the last line should still read <code>True</code>.</p>
+
+    <pre><code>Arrow buffer address: 4379334080
+NumPy buffer address: 4379334080
+Zero-copy confirmed (same buffer): True</code></pre>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Which best describes what Apache Arrow actually is?</p>
+      <div class="quiz-options">
+        <button data-correct="false">An on-disk file format for long-term storage</button>
+        <button data-correct="true">An in-memory columnar data format with a published, language-independent layout</button>
+        <button data-correct="false">A column-oriented database engine</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Arrow specifies memory layout, not storage or query planning — that's what makes cross-language zero-copy possible.</p>
+      <p class="quiz-feedback incorrect">Not quite. Arrow is neither a file format nor a database — it's the in-memory columnar layout that other formats (like Parquet) and engines interoperate with.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>In the exercise above, the Arrow buffer address and the NumPy buffer address matched exactly. Why is that only possible because Arrow specifies a memory layout?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Arrow always copies data on conversion, and the copy coincidentally lands at the same address</button>
+        <button data-correct="true">Because both sides already agree on the byte layout, NumPy can point directly at Arrow's buffer with no translation step</button>
+        <button data-correct="false">Python's garbage collector reuses freed addresses, so this is a coincidence of timing</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Zero-copy isn't an optimization bolted on after the fact — it's a direct consequence of Arrow publishing an exact, language-independent memory layout.</p>
+      <p class="quiz-feedback incorrect">No. The match is not a copy or a coincidence — it holds because Arrow's layout is a published spec that NumPy can read directly without conversion.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Is zero-copy conversion from Arrow to NumPy unconditional — true for every column type?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes, Arrow guarantees zero-copy for any type, always</button>
+        <button data-correct="true">No — it holds when representations already match (like float64); a type NumPy can't represent directly still gets copied</button>
+        <button data-correct="false">No — Arrow never actually avoids a copy, "zero-copy" is marketing</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The guarantee is "no copy when representations already match," not "never copies." A nullable Arrow string array, for example, requires an actual copy to become NumPy.</p>
+      <p class="quiz-feedback incorrect">Not quite. Zero-copy is conditional: it holds for types NumPy can represent directly (like float64) and does not hold universally.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Run the exercise yourself and confirm your own output shows <code>Zero-copy confirmed (same buffer): True</code>.</li>
+      <li>In your own words (3 sentences, no copy-paste from this lesson), explain why that address equality is only possible because Arrow specifies memory layout rather than just an API.</li>
+      <li>Say out loud the difference between Arrow (in-memory format) and Parquet (on-disk format) before moving on — this distinction gets reused constantly.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "What would happen to the buffer addresses if the 'price' column had nulls in it instead of being all-float64?" Next lesson formalizes the data model that describes a column abstractly, before it has any data in it: Schema and Field.
+    </section>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-schema-and-field.html" title="Next: Schema and Field">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

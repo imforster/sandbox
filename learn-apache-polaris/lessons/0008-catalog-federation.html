@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catalog Federation</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #a3720a; --color-accent-light: #fdf1dc; }
+    a:hover { color: #8a5f08; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #ffd23f; }
+    }
+    [data-theme="dark"] { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+    [data-theme="dark"] a:hover { color: #ffd23f; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0007-generic-tables.html" title="Previous: Generic Tables">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0009-persistence-and-production-topology.html" title="Next: Persistence and Production Topology">Next</a>
+    </nav>
+
+    <h1>Catalog Federation</h1>
+    <p class="lesson-meta">Time: ~7 minutes. Tangible win: explain what catalog federation lets Polaris do, and name the external catalog systems it can front.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">Reading-only lesson</span>
+      Real organizations rarely start from zero — there's usually an existing Hive Metastore, an AWS Glue catalog, or a BigQuery metastore already holding tables before anyone adopts Polaris. Federation is how Polaris becomes the single entry point without a forced, all-at-once migration. Like the previous lesson, there's no bundled server for this locally, so the exercise is primary-source reading.
+    </section>
+
+    <ul>
+      <li><strong>Catalog federation</strong> lets a single Polaris catalog proxy requests through to an <em>external</em> catalog system instead of managing entities itself — engines still talk to Polaris's REST endpoint, but Polaris forwards to (and translates responses from) the external system underneath.</li>
+      <li>As of this course's reference version, Polaris ships federation integrations for <strong>Iceberg REST</strong> catalogs (fronting another REST-catalog-speaking system), <strong>Hive Metastore</strong>, and <strong>BigQuery Metastore</strong> — each documented as a separate integration guide because the translation logic differs per backend.</li>
+      <li>The practical payoff mirrors Lesson 1's thesis at the org level: instead of every engine needing direct Hive Metastore <em>and</em> Glue <em>and</em> BigQuery drivers, they all speak one REST protocol to Polaris, and Polaris absorbs the differences.</li>
+      <li>Federation is a migration and interoperability tool, not a performance optimization — a federated call still round-trips to the external system; Polaris isn't caching or replacing that system's data.</li>
+    </ul>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://polaris.apache.org/releases/1.7.0/federation/">Polaris Federation overview (1.7.0)</a> and the <a href="https://polaris.apache.org/releases/1.7.0/federation/hive-metastore-federation/">Hive Metastore Federation guide (1.7.0)</a>.
+    </section>
+
+    <h2>Exercise (written, not scripted)</h2>
+    <p>Read both guides linked above, then write 3–5 sentences on:</p>
+    <ol class="checklist">
+      <li>What configuration Polaris needs to federate to an existing Hive Metastore.</li>
+      <li>What would (and would not) change for an engine that was already talking to that Hive Metastore directly, once Polaris is federating to it instead.</li>
+    </ol>
+
+    <h2>Evidence of competence</h2>
+    <p>A correct answer identifies that the engine now points at Polaris's REST endpoint instead of the Hive Metastore's Thrift endpoint (the client-facing protocol changes), while the actual catalog data continues to live in, and be governed by, the Hive Metastore underneath (the system of record does not move) — federation changes <em>how you talk to</em> the catalog, not <em>where the catalog data lives</em>, which is the same "changes access, not physical reality" pattern as Flight SQL in the Apache Arrow course.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Common failure modes</span>
+      Assuming federation migrates or copies the external catalog's data into Polaris — it doesn't; Polaris is a pass-through layer, and turning off federation (or the external system) removes Polaris's ability to see those tables at all. Also: expecting every external-catalog feature to be exposed identically through federation — the docs list federation integrations individually because each backend's capabilities and quirks are translated separately, not through one universal adapter.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>When Polaris federates to an existing Hive Metastore, where does the actual catalog data end up living?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Copied into Polaris's own persistence backend</button>
+        <button data-correct="true">Still in the Hive Metastore — Polaris forwards requests, it doesn't take ownership of the data</button>
+        <button data-correct="false">Split evenly between Polaris and the Hive Metastore</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Federation is a pass-through — the system of record doesn't move, only the client-facing protocol engines talk to changes.</p>
+      <p class="quiz-feedback incorrect">Not quite. Federation never copies or migrates data into Polaris — the external system stays the system of record.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Which external catalog systems does Polaris ship federation integrations for, per the reference version this course covers?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Only AWS Glue</button>
+        <button data-correct="true">Iceberg REST catalogs, Hive Metastore, and BigQuery Metastore</button>
+        <button data-correct="false">Any catalog, through one universal adapter</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Each is documented as a separate integration guide, since the translation logic differs per backend — there's no single universal federation adapter.</p>
+      <p class="quiz-feedback incorrect">No. The reference version ships three named integrations, each with its own guide — not a universal adapter, and Glue isn't one of the three.</p>
+    </div>
+
+    <p>New terms — <a href="../reference/glossary.html">catalog federation</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask the agent: "If my organization has both a Hive Metastore and a BigQuery Metastore, can one Polaris deployment federate to both at once, as two separate catalogs?" Next lesson turns everything covered as a single-node dev setup into a real understanding of what changes to run Polaris as durable, shared infrastructure.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0007-generic-tables.html" title="Previous: Generic Tables">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0009-persistence-and-production-topology.html" title="Next: Persistence and Production Topology">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

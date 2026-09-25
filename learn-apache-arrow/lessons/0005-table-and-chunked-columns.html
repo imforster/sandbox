@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Table and Chunked Columns</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #0d9488; --color-accent-light: #e6f7f5; }
+    a:hover { color: #0f766e; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #5eead4; }
+    }
+    [data-theme="dark"] { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+    [data-theme="dark"] a:hover { color: #5eead4; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0004-recordbatch-and-arrow-ipc.html" title="Previous: RecordBatch and Arrow IPC">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0006-arrow-compute.html" title="Next: Arrow Compute">Next</a>
+    </nav>
+
+    <h1>Table and Chunked Columns</h1>
+    <p class="lesson-meta">Time: ~9 minutes. Tangible win: build a Table from multiple RecordBatches, inspect its chunked columns, and convert to/from pandas.</p>
+
+    <p>Table is what you'll actually get back from most pyarrow-level operations — reading a Parquet file, querying via Flight, etc. Almost nothing above the RecordBatch layer hands you a bare RecordBatch; it hands you a Table.</p>
+
+    <ul>
+      <li>A <strong>Table</strong> = one Schema + one <code>ChunkedArray</code> per column, where each ChunkedArray is a sequence of Array chunks (often, one chunk per source RecordBatch).</li>
+      <li><code>Table.from_batches([...])</code> stitches multiple same-schema RecordBatches into one Table without copying the underlying arrays — the chunks just get referenced.</li>
+      <li><code>.combine_chunks()</code> merges a Table's multi-chunk columns into single-chunk ChunkedArrays. This <em>does</em> copy, but it can pay off later because some operations are faster or simpler over a single contiguous chunk.</li>
+      <li><code>to_pandas()</code> / <code>Table.from_pandas()</code> are the standard interop path with the pandas ecosystem.</li>
+    </ul>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arrow.apache.org/docs/python/index.html">pyarrow documentation</a> — <code>pa.Table</code>, <code>ChunkedArray</code>.
+    </section>
+
+    <h2>Exercise</h2>
+    <pre><code>import pyarrow as pa
+
+schema = pa.schema([
+    pa.field("id", pa.int64()),
+    pa.field("value", pa.float64()),
+])
+
+batch1 = pa.record_batch([pa.array([1, 2, 3]), pa.array([1.1, 2.2, 3.3])], schema=schema)
+batch2 = pa.record_batch([pa.array([4, 5]), pa.array([4.4, 5.5])], schema=schema)
+
+table = pa.Table.from_batches([batch1, batch2])
+print("num_rows:", table.num_rows)
+print("num_columns:", table.num_columns)
+print("chunks in 'id' column before combine:", table.column("id").num_chunks)
+
+combined = table.combine_chunks()
+print("chunks in 'id' column after combine:", combined.column("id").num_chunks)
+
+df = table.to_pandas()
+table_back = pa.Table.from_pandas(df, preserve_index=False)
+print("Round-trip through pandas preserves row count:", table_back.num_rows == table.num_rows)
+print("Round-trip data equal:", table.equals(table_back, check_metadata=False))</code></pre>
+
+    <p class="lesson-meta">Verified output (pyarrow 25.0.1, pandas 2.2.6):</p>
+
+    <pre><code>num_rows: 5
+num_columns: 2
+chunks in 'id' column before combine: 2
+chunks in 'id' column after combine: 1
+Round-trip through pandas preserves row count: True
+Round-trip data equal: True</code></pre>
+
+    <section class="callout warning">
+      <span class="callout-title">A real production footgun</span>
+      Appending many small batches one at a time can leave you with hundreds of tiny chunks, and the performance cost often isn't noticed until later. Watch chunk counts, not just row counts.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You call <code>table.column("id")</code> and try to call an Array-only method directly on the result. What goes wrong?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Nothing — a Table column is always a plain Array</button>
+        <button data-correct="true">It's a <code>ChunkedArray</code>, not a plain Array — some operations need <code>.combine_chunks()</code> or <code>.chunk(i)</code> first</button>
+        <button data-correct="false">Table columns don't support any method calls at all</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Table columns are ChunkedArrays. Conflating them with plain Arrays is a common source of confusing method errors.</p>
+      <p class="quiz-feedback incorrect">Not quite. A Table's column is a ChunkedArray (a sequence of Array chunks), not a bare Array — that distinction matters for which methods are available directly.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Does <code>Table.from_batches([...])</code> copy the underlying array data when stitching batches together?</p>
+      <div class="quiz-options">
+        <button data-correct="true">No — it references the existing chunks without copying</button>
+        <button data-correct="false">Yes — every batch's arrays are copied into one contiguous buffer</button>
+        <button data-correct="false">Only the first batch is copied; the rest are referenced</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. <code>from_batches</code> stitches batches into one Table's ChunkedArrays by reference, no copy. <code>combine_chunks()</code> is the one that copies.</p>
+      <p class="quiz-feedback incorrect">No. Stitching batches into a Table is reference-only; copying only happens if you explicitly call <code>.combine_chunks()</code>.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Build a Table from 3+ RecordBatches of varying row counts.</li>
+      <li>Report the chunk count before and after <code>combine_chunks()</code>.</li>
+      <li>Confirm a pandas round-trip preserves both row count and data (<code>.equals(...)</code> returns <code>True</code>).</li>
+    </ol>
+
+    <p>New terms — <a href="../reference/glossary.html">Table, ChunkedArray</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask the agent: "At roughly what chunk count does <code>combine_chunks()</code> start paying for itself on a real dataset?" Next lesson computes directly on Arrow data instead of round-tripping through pandas for every transformation: Arrow Compute.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0004-recordbatch-and-arrow-ipc.html" title="Previous: RecordBatch and Arrow IPC">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0006-arrow-compute.html" title="Next: Arrow Compute">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

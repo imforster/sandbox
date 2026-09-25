@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arrow Flight SQL</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #0d9488; --color-accent-light: #e6f7f5; }
+    a:hover { color: #0f766e; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #5eead4; }
+    }
+    [data-theme="dark"] { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+    [data-theme="dark"] a:hover { color: #5eead4; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0008-arrow-flight.html" title="Previous: Arrow Flight">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Arrow Flight SQL</h1>
+    <p class="lesson-meta">Time: ~8 minutes. Tangible win: explain what Flight SQL adds on top of plain Flight, and map its SQL-specific concepts back onto the Flight primitives from Lesson 8.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">Reading-only lesson</span>
+      This is where Arrow shows up as an actual wire protocol competing with JDBC/ODBC — relevant if any client or internal system exposes an Arrow-native SQL interface (Dremio, DuckDB, InfluxDB 3, and several cloud warehouses support Flight SQL). There's no bundled server to stand up for this lesson, so the exercise is a close reading rather than a script.
+    </section>
+
+    <ul>
+      <li><strong>Flight SQL is a protocol layered on top of Flight</strong>, not a replacement for it. It defines a standard set of commands (<code>CommandStatementQuery</code>, <code>CommandPreparedStatementQuery</code>, <code>CommandGetTables</code>, <code>CommandGetSchemas</code>, ...) so that any Flight SQL client can talk to any Flight SQL server generically — no server-specific driver needed.</li>
+      <li>Those commands travel as the opaque <code>command</code> bytes inside a <code>FlightDescriptor</code> — the same descriptor type from Lesson 8, just carrying a structured SQL command instead of a plain path.</li>
+      <li>The actual query results still come back through an ordinary <code>do_get</code> call as a stream of Arrow RecordBatches — not row-oriented result sets like a JDBC <code>ResultSet</code>.</li>
+      <li><strong>ADBC (Arrow Database Connectivity)</strong> is the client API family built around this model: instead of handing you rows one cursor-fetch at a time, ADBC drivers hand you Arrow batches directly.</li>
+    </ul>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      Read the <code>pyarrow.flight</code> docs section covering Flight SQL command types, or the <a href="https://arrow.apache.org/docs/format/FlightSql.html">Arrow Flight SQL protocol docs</a> for the primary source.
+    </section>
+
+    <h2>Exercise (written, not scripted)</h2>
+    <p>Write 4–6 sentences mapping these Flight SQL concepts to the plain-Flight primitives from Lesson 8:</p>
+    <ol class="checklist">
+      <li>Where does a <code>CommandStatementQuery</code> actually get transmitted?</li>
+      <li>Once the server has planned the query, how does the client actually pull the rows?</li>
+      <li>What's the practical difference between calling a Flight SQL server and calling the plain demo server you wrote in Lesson 8?</li>
+    </ol>
+
+    <h2>Evidence of competence</h2>
+    <p>A correct answer identifies that the SQL command is sent as the <code>command</code> payload of a <code>FlightDescriptor</code> (typically via <code>GetFlightInfo</code>, which returns a <code>Ticket</code>), and that the rows still arrive via a standard <code>do_get</code>/<code>DoGet</code> stream of RecordBatches — i.e., Flight SQL changes how you <em>ask</em> for data, not how the data physically travels once the server agrees to send it.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Common failure modes</span>
+      Assuming Flight SQL replaces Flight as a separate protocol — it's a convention/schema built on Flight's existing RPCs, not a new transport. Also: assuming an ADBC driver behaves like a traditional ODBC/JDBC driver internally (row-at-a-time cursor semantics) — it's built to hand you Arrow batches, and code written assuming row-cursor semantics will underuse it.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Is Arrow Flight SQL a separate transport protocol from plain Arrow Flight?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes — it uses a different wire protocol entirely</button>
+        <button data-correct="true">No — it's a standardized set of commands layered on top of Flight's existing RPCs</button>
+        <button data-correct="false">Yes — it replaces gRPC with a SQL-specific transport</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Flight SQL defines standard commands (CommandStatementQuery, etc.) that ride on Flight's existing do_get/GetFlightInfo machinery — it's a convention, not a new transport.</p>
+      <p class="quiz-feedback incorrect">Not quite. Flight SQL is layered on Flight, not a separate protocol — the transport and streaming mechanics are identical to plain Flight.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Once a Flight SQL server has planned a <code>CommandStatementQuery</code>, how does the client actually retrieve the resulting rows?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Through a special <code>do_sql</code> RPC unique to Flight SQL</button>
+        <button data-correct="true">Through an ordinary <code>do_get</code> call, using the Ticket returned by GetFlightInfo, as a stream of Arrow RecordBatches</button>
+        <button data-correct="false">Through a JDBC-style row cursor embedded in the response</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Flight SQL changes how you ask for data (a structured command in the FlightDescriptor); the data itself still arrives via the standard do_get stream of RecordBatches.</p>
+      <p class="quiz-feedback incorrect">No. There's no special retrieval RPC — rows come back through the same do_get stream of RecordBatches that plain Flight uses.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>How does an ADBC driver typically hand back query results, compared to a traditional JDBC/ODBC driver?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Identically — one row at a time via a cursor</button>
+        <button data-correct="true">As Arrow batches directly, not a row-at-a-time cursor</button>
+        <button data-correct="false">As a single in-memory JSON blob</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. ADBC is built around Flight SQL's batch-oriented model — code assuming row-cursor semantics will underuse it.</p>
+      <p class="quiz-feedback incorrect">No. ADBC drivers hand back Arrow batches, not row-at-a-time cursor fetches like traditional ODBC/JDBC.</p>
+    </div>
+
+    <p>New terms — <a href="../reference/glossary.html">Flight SQL</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask the agent: "Which real systems (Dremio, DuckDB, InfluxDB 3, cloud warehouses) actually expose Flight SQL today, and what would connecting to one from Python look like with ADBC?" That's the natural next step once you have a real server to point at — along with <code>pyarrow.dataset</code> for partitioned multi-file Parquet reads with pushdown across many files at once, or an end-to-end pipeline: Parquet on disk → Table → Compute filter/aggregate → served to a remote client via Flight, using only what this course covered.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0008-arrow-flight.html" title="Previous: Arrow Flight">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

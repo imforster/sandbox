@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Apache Arrow Course</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #0d9488; --color-accent-light: #e6f7f5; }
+    a:hover { color: #0f766e; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #5eead4; }
+    }
+    [data-theme="dark"] { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+    [data-theme="dark"] a:hover { color: #5eead4; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="course-header">
+      <h1>Apache Arrow Course</h1>
+      <p>A hands-on course on <a href="https://arrow.apache.org/">Apache Arrow</a> using the Python binding (<code>pyarrow</code>). Nine lessons, one concept each, in order — each builds on the previous one's artifacts, so work through them in sequence rather than skipping around. Every code sample was actually run and its output verified (pyarrow 25.0.1, pandas 2.2.6, numpy 2.2.6).</p>
+    </div>
+
+    <div class="section-label">Foundations</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0001-what-arrow-is-and-why.html">
+          <span class="lesson-num">01</span>
+          <span class="lesson-info">
+            <span class="lesson-title">What Arrow Is and Why It Exists</span>
+            <span class="lesson-desc">The in-memory columnar format, and the zero-copy interop payoff that follows from a published memory layout.</span>
+          </span>
+          <span class="lesson-time">~7 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0002-schema-and-field.html">
+          <span class="lesson-num">02</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Schema and Field</span>
+            <span class="lesson-desc">Construct and inspect a typed Schema, including nested types, and know what schema equality actually checks.</span>
+          </span>
+          <span class="lesson-time">~8 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Data Model</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0003-array-and-the-validity-bitmap.html">
+          <span class="lesson-num">03</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Array and the Validity Bitmap</span>
+            <span class="lesson-desc">How nulls are represented without sentinel values, and why slicing is zero-copy.</span>
+          </span>
+          <span class="lesson-time">~8 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0004-recordbatch-and-arrow-ipc.html">
+          <span class="lesson-num">04</span>
+          <span class="lesson-info">
+            <span class="lesson-title">RecordBatch and Arrow IPC</span>
+            <span class="lesson-desc">Build a fixed-size RecordBatch and round-trip it through Arrow's IPC stream format.</span>
+          </span>
+          <span class="lesson-time">~9 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0005-table-and-chunked-columns.html">
+          <span class="lesson-num">05</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Table and Chunked Columns</span>
+            <span class="lesson-desc">Stitch RecordBatches into a Table, understand ChunkedArray, and round-trip through pandas.</span>
+          </span>
+          <span class="lesson-time">~9 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Compute &amp; Storage</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0006-arrow-compute.html">
+          <span class="lesson-num">06</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Arrow Compute</span>
+            <span class="lesson-desc">Filter and aggregate a Table with pyarrow.compute, and correctly predict null propagation.</span>
+          </span>
+          <span class="lesson-time">~9 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0007-parquet-interop.html">
+          <span class="lesson-num">07</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Parquet Interop</span>
+            <span class="lesson-desc">Column projection, row-group predicate pushdown, and metadata-only reads.</span>
+          </span>
+          <span class="lesson-time">~10 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Distributed Ecosystem</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0008-arrow-flight.html">
+          <span class="lesson-num">08</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Arrow Flight</span>
+            <span class="lesson-desc">Run a minimal Flight server and client and confirm a byte-identical round-trip over gRPC.</span>
+          </span>
+          <span class="lesson-time">~10 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0009-arrow-flight-sql.html">
+          <span class="lesson-num">09</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Arrow Flight SQL</span>
+            <span class="lesson-desc">What Flight SQL adds on top of plain Flight and ADBC's batch-oriented client model. Reading-only.</span>
+          </span>
+          <span class="lesson-time">~8 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Reference</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="../reference/glossary.html">
+          <span class="lesson-num">--</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Apache Arrow Glossary</span>
+            <span class="lesson-desc">Quick lookup for Schema, Field, RecordBatch, Table, Buffer, zero-copy, IPC, Flight, Flight SQL, Parquet, and more.</span>
+          </span>
+          <span class="lesson-time">ref</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="resources-link">
+      <p><strong>Course:</strong> Apache Arrow Course - 9 lessons on the in-memory columnar format, its data model, and its ecosystem (Compute, Parquet, Flight, Flight SQL).</p>
+      <p style="color: var(--color-muted); font-size: 0.85rem; margin-top: 0.5rem;">Total course time: ~78 minutes · 9 lessons · Interactive checks in each lesson</p>
+    </div>
+  </main>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

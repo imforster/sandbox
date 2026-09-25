@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Running Polaris and Bootstrapping a Realm</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #a3720a; --color-accent-light: #fdf1dc; }
+    a:hover { color: #8a5f08; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #ffd23f; }
+    }
+    [data-theme="dark"] { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+    [data-theme="dark"] a:hover { color: #ffd23f; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0002-the-entity-model.html" title="Previous: The Entity Model">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-the-iceberg-rest-catalog-api.html" title="Next: The Iceberg REST Catalog API">Next</a>
+    </nav>
+
+    <h1>Running Polaris and Bootstrapping a Realm</h1>
+    <p class="lesson-meta">Time: ~6 minutes. Tangible win: locate the bootstrap root principal credentials in your server's startup output — the one seed credential every later call in this course depends on.</p>
+
+    <p>A <strong>realm</strong> is a top-level tenant boundary inside one Polaris deployment — catalogs, principals, and roles all live inside exactly one realm. A single-node quickstart typically runs one realm (commonly named <code>default-realm</code> or <code>POLARIS</code>), but production deployments can host many realms behind one Polaris process for multi-tenancy.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://polaris.apache.org/releases/1.7.0/getting-started/quick-start/">Polaris Quickstart guide (1.7.0)</a> — the Docker Compose setup this exercise runs against.
+    </section>
+
+    <section class="callout danger">
+      <span class="callout-title">There is no default password</span>
+      On first boot, Polaris <strong>bootstraps a root principal</strong> for the realm and prints its <code>clientId:clientSecret</code> pair to the server logs exactly once. If you lose that line before saving it, you re-bootstrap or rotate credentials through an authenticated admin path — there's no way to recover it after the fact.
+    </section>
+
+    <p>The root principal is a real Principal (Lesson 2) with the built-in <code>PRINCIPAL_ROLE:ALL</code> scope — enough to do anything, which is why Lesson 6 immediately creates a narrower, purpose-specific principal instead of using root for everyday work.</p>
+
+    <h2>Exercise: find your bootstrap line</h2>
+    <pre><code>docker compose up -d
+docker logs polaris 2>&1 | grep -i "root principal credentials"</code></pre>
+
+    <p class="lesson-meta">Verified output from a real local run:</p>
+
+    <pre><code>realm: default-realm root principal credentials: f103ea289b7df858:&lt;redacted-secret&gt;</code></pre>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You restart the Polaris container with a fresh (empty) volume. Will last session's root credentials still work?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes, root credentials are fixed at image build time</button>
+        <button data-correct="true">No, a fresh volume triggers a brand-new bootstrap with a new credential pair</button>
+        <button data-correct="false">Yes, as long as you remember the realm name</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Bootstrap credentials are generated per-boot against a given persistence state — a fresh volume means a fresh bootstrap, and the old pair is gone.</p>
+      <p class="quiz-feedback incorrect">Not quite. Credentials aren't baked into the image or tied to the realm name alone — they're generated fresh whenever the underlying state is fresh.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>What is a realm's relationship to a catalog?</p>
+      <div class="quiz-options">
+        <button data-correct="false">A realm and a catalog are the same thing, just different names</button>
+        <button data-correct="true">A realm is a tenancy layer above catalogs — one realm can hold many catalogs</button>
+        <button data-correct="false">A catalog can span multiple realms for redundancy</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Realm sits above Lesson 2's entity tree entirely — it's the tenancy boundary, not a peer of Catalog.</p>
+      <p class="quiz-feedback incorrect">No. A realm is the boundary that contains catalogs, principals, and roles — not interchangeable with "catalog," and a catalog never spans realms.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Start your own Polaris container and grep the startup log for the bootstrap line.</li>
+      <li>Save the <code>clientId:clientSecret</code> pair somewhere you can reference for the next three lessons.</li>
+      <li>State in one sentence what persistence backend your quickstart is using, and whether you'd expect that credential to survive a restart (Lesson 9 covers this properly).</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "If I need a second admin identity besides root, do I bootstrap a new realm or just create another principal in this one?" Next lesson uses this credential to make your first real Iceberg REST Catalog calls.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0002-the-entity-model.html" title="Previous: The Entity Model">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-the-iceberg-rest-catalog-api.html" title="Next: The Iceberg REST Catalog API">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
