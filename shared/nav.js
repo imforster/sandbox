@@ -270,6 +270,7 @@
       { text: 'Codex', href: '/sandbox/learn-codex/' },
       { text: 'Fullstack Agent', href: '/sandbox/learn-fullstack-agent/' },
       { text: 'Graphify', href: '/sandbox/learn-graphify/' },
+      { text: 'Jev / System One', href: '/sandbox/learn-jev/' },
       { text: 'Jujutsu (jj)', href: '/sandbox/learn-jj/' },
       { text: 'Safe Agentic Workflows', href: '/sandbox/safe-agentic-workflows/' },
       { text: 'SkillOpt & Harnesses', href: '/sandbox/learn-skillopt-harness/' },
