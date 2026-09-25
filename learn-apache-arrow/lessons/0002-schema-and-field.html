@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Schema and Field</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #0d9488; --color-accent-light: #e6f7f5; }
+    a:hover { color: #0f766e; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #5eead4; }
+    }
+    [data-theme="dark"] { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+    [data-theme="dark"] a:hover { color: #5eead4; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0001-what-arrow-is-and-why.html" title="Previous: What Arrow Is and Why It Exists">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-array-and-the-validity-bitmap.html" title="Next: Array and the Validity Bitmap">Next</a>
+    </nav>
+
+    <h1>Schema and Field</h1>
+    <p class="lesson-meta">Time: ~8 minutes. Tangible win: construct and inspect an Arrow Schema made of typed Fields, and know what schema equality actually checks.</p>
+
+    <p>Schema is the blueprint every other structure in this course (Array, RecordBatch, Table) is validated against. You can't reason about the rest of the data model without it.</p>
+
+    <ul>
+      <li>A <strong>Field</strong> is <code>name + type + nullable flag + optional metadata</code>. It describes one column, not the data in it.</li>
+      <li>A <strong>Schema</strong> is an ordered list of Fields, plus optional schema-level metadata (a bytes-keyed dict, separate from field metadata).</li>
+      <li>Arrow has its own type system (<code>pa.int64()</code>, <code>pa.string()</code>, <code>pa.timestamp('us')</code>, <code>pa.list_(...)</code>, <code>pa.struct([...])</code>, etc.) — these are not Python types or numpy dtypes, though they map to/from them.</li>
+      <li><strong>Order matters</strong> for schema equality; two schemas with the same fields in a different order are not equal.</li>
+    </ul>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arrow.apache.org/docs/python/index.html">pyarrow documentation</a> — the <code>pa.schema()</code> / <code>pa.field()</code> API surface used below.
+    </section>
+
+    <h2>Exercise</h2>
+    <pre><code>import pyarrow as pa
+
+schema = pa.schema([
+    pa.field("id", pa.int64(), nullable=False),
+    pa.field("name", pa.string()),
+    pa.field("tags", pa.list_(pa.string())),
+    pa.field("address", pa.struct([
+        pa.field("city", pa.string()),
+        pa.field("zip", pa.string()),
+    ])),
+])
+
+print(schema)
+print("Field names:", schema.names)
+print("id field nullable:", schema.field("id").nullable)
+print("name field nullable (default):", schema.field("name").nullable)
+
+reordered = pa.schema([schema.field("name"), schema.field("id")])
+print("Reordered schema equal to original order:",
+      reordered.equals(pa.schema([schema.field("id"), schema.field("name")])))</code></pre>
+
+    <p class="lesson-meta">Verified output (pyarrow 25.0.1):</p>
+
+    <pre><code>id: int64 not null
+name: string
+tags: list&lt;item: string&gt;
+  child 0, item: string
+address: struct&lt;city: string, zip: string&gt;
+  child 0, city: string
+  child 1, zip: string
+Field names: ['id', 'name', 'tags', 'address']
+id field nullable: False
+name field nullable (default): True
+Reordered schema equal to original order: False</code></pre>
+
+    <section class="callout warning">
+      <span class="callout-title">Nullable defaults the way you don't expect</span>
+      Fields default to nullable <code>True</code> unless you set <code>nullable=False</code> explicitly — the opposite of what many newcomers assume.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>If you construct a field with <code>pa.field("name", pa.string())</code> and don't pass <code>nullable</code>, what is it?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Not nullable — you must opt in to nulls</button>
+        <button data-correct="true">Nullable — fields default to <code>nullable=True</code></button>
+        <button data-correct="false">It raises an error until nullability is specified</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The default is nullable; you have to explicitly pass <code>nullable=False</code> to forbid nulls in that column.</p>
+      <p class="quiz-feedback incorrect">Not quite. Arrow fields default to nullable <code>True</code> — the opposite of the common assumption.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Two schemas contain the exact same fields, but the "id" and "name" fields are in a different order between them. Are the schemas equal?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes — schema equality only checks that the same fields exist, not their order</button>
+        <button data-correct="true">No — schema equality is order-sensitive</button>
+        <button data-correct="false">It depends on whether either field is nullable</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Order matters for schema equality, as the exercise's reordered-schema comparison shows returning <code>False</code>.</p>
+      <p class="quiz-feedback incorrect">No. Schema equality is order-sensitive — reordering fields with otherwise identical content makes schemas compare unequal.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Where does per-column metadata (e.g. a description of just the "id" field) get attached, versus metadata about the whole dataset?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Field metadata via <code>pa.field(..., metadata={...})</code>; schema metadata separately via <code>pa.schema(fields, metadata={...})</code></button>
+        <button data-correct="false">Both live in the same single metadata dict on the Schema object</button>
+        <button data-correct="false">Metadata isn't supported on Fields, only on the Schema</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Field metadata and schema metadata are stored and inspected separately — conflating them is a common early mistake.</p>
+      <p class="quiz-feedback incorrect">No. Field-level and schema-level metadata are two distinct mechanisms, attached and read separately.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Build a schema for a dataset you actually work with: 3+ fields, at least one nested type (<code>list_</code> or <code>struct</code>).</li>
+      <li>Print it and state which fields are nullable — and why that's correct for <em>your</em> data, not just "because it's the default."</li>
+    </ol>
+
+    <p>New terms — <a href="../reference/glossary.html">Schema, Field</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask the agent: "Show me a schema with a timestamp field and explain the difference between <code>pa.timestamp('us')</code> and <code>pa.timestamp('us', tz='UTC')</code>." Next lesson moves from this abstract description to the concrete columnar data structure it describes: Array.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0001-what-arrow-is-and-why.html" title="Previous: What Arrow Is and Why It Exists">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-array-and-the-validity-bitmap.html" title="Next: Array and the Validity Bitmap">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

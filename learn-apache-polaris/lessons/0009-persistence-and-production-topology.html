@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Persistence and Production Topology</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #a3720a; --color-accent-light: #fdf1dc; }
+    a:hover { color: #8a5f08; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #ffd23f; }
+    }
+    [data-theme="dark"] { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+    [data-theme="dark"] a:hover { color: #ffd23f; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0008-catalog-federation.html" title="Previous: Catalog Federation">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Persistence and Production Topology</h1>
+    <p class="lesson-meta">Time: ~8 minutes. Tangible win: explain what a Polaris persistence backend actually stores, why the quickstart's default isn't safe to run in production, and what changes operationally when Polaris serves many engines and teams instead of one laptop.</p>
+
+    <p>Everything in Lessons 3–6 ran against one Polaris process on one machine. That's the right way to <em>learn</em> the API; it's the wrong way to <em>run</em> it. This lesson is the "next capability" that turns this course into an actual deployment decision instead of a demo.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://polaris.apache.org/releases/1.7.0/configuration/">Polaris server configuration reference (1.7.0)</a> — source for <code>metaStoreManager.type</code> and other persistence-backend settings.
+    </section>
+
+    <h2>Two separate failure domains</h2>
+    <ul>
+      <li>Polaris's own state — every catalog, namespace pointer, principal, role, and grant from Lessons 2–6 — lives in a <strong>metastore/persistence backend</strong> that is itself pluggable (<code>metaStoreManager.type</code> in the server config), separate from wherever the actual Iceberg table data (Parquet files, manifests) lives.</li>
+      <li>A default or in-memory/embedded persistence backend, useful for a quickstart, does not survive a container restart or scale past one process — every entity created in this course would be gone. Production deployments swap this for a real relational store (e.g. the EclipseLink-backed JDBC option) instead.</li>
+      <li>Because catalog metadata and table data are separate concerns, scaling Polaris horizontally (multiple Polaris instances behind a load balancer, all sharing one persistence backend) is a realistic topology — any instance can serve any request, because none of them hold state locally.</li>
+      <li>Multi-realm support (Lesson 3) is what lets one production Polaris deployment serve multiple isolated tenants (e.g., separate business units or environments) without standing up a separate fleet per tenant.</li>
+    </ul>
+
+    <h2>Exercise: inspect what your quickstart is actually persisting to</h2>
+    <pre><code>docker inspect polaris --format '{{json .Mounts}}' | python3 -m json.tool
+docker exec polaris grep -A2 -i "metaStoreManager" polaris-server.yml</code></pre>
+
+    <p class="lesson-meta">Verified output from a real local run:</p>
+
+    <pre><code>[{"Type":"bind","Source":".../icebergdata","Destination":"/data","Mode":"rw","RW":true,...}]
+
+metaStoreManager:
+  type: in-memory
+  # type: eclipse-link # uncomment to use eclipse-link as metastore</code></pre>
+
+    <section class="callout danger">
+      <span class="callout-title">Only half of this quickstart is durable</span>
+      Only <code>/data</code> (table <em>data</em>) is a mounted, durable volume here. There is no volume backing catalog <em>metadata</em> at all — it's <code>in-memory</code>, with <code>eclipse-link</code> (a real JDBC-backed option) sitting right there, commented out.
+    </section>
+
+    <p>Then answer: if you ran <code>docker compose down -v</code> right now (removing volumes) or just restarted this container, which of Lessons 2–6's objects would survive, and which would you have to recreate?</p>
+
+    <h2>Evidence of competence</h2>
+    <p>Paste your own inspection output and your answer. A correct answer recognizes that with <code>metaStoreManager.type: in-memory</code>, every catalog/principal/role/grant from Lessons 2–6 lives only in the running process's heap — a plain container restart loses all of it and forces a fresh bootstrap (Lesson 3), even though the actual table files under <code>/data</code> would survive because that's a separate, mounted volume.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Your quickstart's <code>metaStoreManager.type</code> is <code>in-memory</code> and you restart the container. What happens to the <code>course_engineer</code> principal from Lesson 6?</p>
+      <div class="quiz-options">
+        <button data-correct="false">It survives, because principals are always written to disk</button>
+        <button data-correct="true">It's gone — in-memory catalog metadata doesn't survive a process restart</button>
+        <button data-correct="false">It survives only if the underlying table data volume is also mounted</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Catalog metadata (principals, roles, grants) and table data are separate failure domains — an in-memory metastore loses everything on restart regardless of whether the table-data volume is mounted.</p>
+      <p class="quiz-feedback incorrect">Not quite. With <code>metaStoreManager.type: in-memory</code>, nothing about principals or grants is written to disk — a restart forces a fresh bootstrap.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Why can multiple Polaris instances safely sit behind one load balancer, each serving any request?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Each instance keeps its own independent copy of catalog state</button>
+        <button data-correct="true">They share one persistence backend, so no instance holds state locally</button>
+        <button data-correct="false">Polaris instances synchronize state directly with each other over gRPC</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Horizontal scaling works specifically because catalog state lives in a shared external persistence backend, not because instances talk to each other or diverge independently.</p>
+      <p class="quiz-feedback incorrect">No. Independent per-instance state (or direct instance-to-instance sync) is not how this works — a shared persistence backend is what makes any instance interchangeable.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Run the inspection commands against your own quickstart and note whether table data, catalog metadata, both, or neither are on durable storage.</li>
+      <li>Restart your container and confirm which Lesson 2–6 objects actually survived.</li>
+      <li>Read the EclipseLink JDBC option in the configuration reference and note what you'd need (a running database) to switch to it.</li>
+    </ol>
+
+    <section class="callout warning">
+      <span class="callout-title">Common failure modes</span>
+      Treating a working local quickstart as evidence the deployment is production-ready — the API surface is identical either way; only the persistence backend tells you whether state survives a restart. Also: standing up multiple Polaris instances without confirming they share the same persistence backend — that's not horizontal scaling, it's multiple catalogs silently diverging.
+    </section>
+
+    <p>New terms — <a href="../reference/glossary.html">persistence backend, metaStoreManager, realm</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask the agent: "What would it actually take to switch this quickstart's metastore from in-memory to eclipse-link locally, and confirm state survives a restart?" That's the natural next step once this course's foundations are solid — along with pointing a second engine (Trino, DuckDB, or Flink) at the same catalog from Lesson 5 with a scoped-down principal from Lesson 6, and confirming both engines see the same table state without either one knowing the other exists.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0008-catalog-federation.html" title="Previous: Catalog Federation">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

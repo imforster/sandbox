@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Entity Model</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #a3720a; --color-accent-light: #fdf1dc; }
+    a:hover { color: #8a5f08; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #ffd23f; }
+    }
+    [data-theme="dark"] { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+    [data-theme="dark"] a:hover { color: #ffd23f; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0001-what-polaris-is-and-why.html" title="Previous: What Polaris Is and the Problem It Solves">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-bootstrapping-a-realm.html" title="Next: Bootstrapping a Realm">Next</a>
+    </nav>
+
+    <h1>The Entity Model</h1>
+    <p class="lesson-meta">Time: ~8 minutes. Tangible win: place every core Polaris entity in the right layer of the hierarchy, so later REST calls and RBAC grants read as structural instead of arbitrary.</p>
+
+    <p>Every REST call in this course targets one of six entities. Without a map of how they nest, the URL paths and grant chain in later lessons look like syntax to memorize instead of a structure to reason about.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml">Iceberg REST Catalog Open API spec</a> — the protocol Polaris implements for catalog, namespace, and table entities.
+    </section>
+
+    <h2>Data-plane entities</h2>
+    <ul>
+      <li><strong>Catalog</strong> — the top-level container. Each catalog is bound to one storage configuration (<code>FILE</code>, <code>S3</code>, <code>AZURE</code>, or <code>GCS</code>) and a <code>default-base-location</code> — where table data physically lands unless overridden.</li>
+      <li><strong>Namespace</strong> — lives inside a catalog, groups tables the way a schema/database groups tables in a traditional RDBMS. Namespaces can nest (<code>a.b.c</code>), each level tracked as its own entity.</li>
+      <li><strong>Table</strong> (and <strong>View</strong>) — live inside a namespace. This course treats Iceberg tables as the default; Lesson 7 covers the newer non-Iceberg "Generic Table" entity.</li>
+    </ul>
+
+    <h2>Access-control entities</h2>
+    <ul>
+      <li><strong>Principal</strong> — an identity, a user or service, that authenticates to Polaris. Distinct from a database user; it's scoped to Polaris itself.</li>
+      <li><strong>Principal Role</strong> — a label attached to one or more Principals, purely for grouping ("all data engineers get this role").</li>
+      <li><strong>Catalog Role</strong> — scoped to <em>one specific catalog</em>, and it's the object that actually holds <strong>privileges</strong> (e.g. <code>TABLE_WRITE_DATA</code>). A Catalog Role is meaningless outside the catalog it belongs to.</li>
+    </ul>
+
+    <section class="callout tip">
+      <span class="callout-title">The access chain, previewed</span>
+      Fully worked in Lesson 6: <strong>Privilege → Catalog Role → Principal Role → Principal</strong>. Nothing is granted directly to a Principal or directly to a Principal Role — privileges always flow through a Catalog Role first.
+    </section>
+
+    <h2>Exercise: list the entities in your running server</h2>
+    <pre><code>TOKEN="principal:root;password:&lt;your-root-secret&gt;;realm:default-realm;role:ALL"
+
+curl -s "http://localhost:8181/api/management/v1/catalogs" -H "Authorization: Bearer $TOKEN"
+curl -s "http://localhost:8181/api/catalog/v1/&lt;your-catalog&gt;/namespaces" -H "Authorization: Bearer $TOKEN"
+curl -s "http://localhost:8181/api/management/v1/principals" -H "Authorization: Bearer $TOKEN"</code></pre>
+
+    <p class="lesson-meta">Verified output shape (this run's actual catalog/principal list):</p>
+
+    <pre><code>{"catalogs":[{"type":"INTERNAL","name":"coursecatalog","properties":{"default-base-location":"file:///data"},...,"storageConfigInfo":{"storageType":"FILE","allowedLocations":["file:///data"]}}]}
+{"namespaces":[["course_db"]],"next-page-token":null}
+{"principals":[{"name":"root","clientId":"f103ea289b7df858",...},{"name":"course_engineer","clientId":"c44d2961a45293c7",...}]}</code></pre>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Where can a privilege like <code>TABLE_WRITE_DATA</code> actually be attached?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Directly to a Principal</button>
+        <button data-correct="false">Directly to a Principal Role</button>
+        <button data-correct="true">To a Catalog Role</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Privileges only attach to Catalog Roles — Principal Roles are purely a grouping label one level up.</p>
+      <p class="quiz-feedback incorrect">Not quite. The API won't let you attach a privilege there — only a Catalog Role holds privileges.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>You create a Catalog Role named <code>writer</code> under <code>catalog-a</code>. Can you reuse it under <code>catalog-b</code> by referencing the same name?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes, Catalog Roles are shared across every catalog by name</button>
+        <button data-correct="true">No, a Catalog Role is namespaced to the one catalog it was created under</button>
+        <button data-correct="false">Yes, but only if both catalogs use the same storage type</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A Catalog Role is meaningless outside the catalog it belongs to, even if another catalog's role happens to share the same name.</p>
+      <p class="quiz-feedback incorrect">No. Catalog Roles don't transfer across catalogs — you'd need to create and grant a separate one under <code>catalog-b</code>.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Run the exercise against your own server and note your actual catalog, namespace, and principal names.</li>
+      <li>Draw (ASCII or prose) the entity tree: catalog → namespace(s) → table(s).</li>
+      <li>Draw the separate principal → principal role → catalog role tree, and mark with an arrow exactly where the two trees connect.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "If I nest a namespace three levels deep (<code>a.b.c</code>), does every level need its own explicit grant, or does a grant on <code>a</code> cover <code>a.b.c</code>?" Next lesson bootstraps a real server and finds the one credential every later call depends on.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0001-what-polaris-is-and-why.html" title="Previous: What Polaris Is and the Problem It Solves">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-bootstrapping-a-realm.html" title="Next: Bootstrapping a Realm">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

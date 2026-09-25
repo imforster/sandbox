@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Iceberg REST Catalog API</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #a3720a; --color-accent-light: #fdf1dc; }
+    a:hover { color: #8a5f08; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #ffd23f; }
+    }
+    [data-theme="dark"] { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+    [data-theme="dark"] a:hover { color: #ffd23f; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0003-bootstrapping-a-realm.html" title="Previous: Running Polaris and Bootstrapping a Realm">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-connecting-spark.html" title="Next: Connecting a Query Engine (Spark)">Next</a>
+    </nav>
+
+    <h1>The Iceberg REST Catalog API</h1>
+    <p class="lesson-meta">Time: ~9 minutes. Tangible win: exchange client credentials for a bearer token, create a catalog, and create a namespace — using nothing but <code>curl</code>, no query engine involved.</p>
+
+    <p>Every engine integration in the next lesson is this same API underneath a driver. Seeing the raw HTTP calls first means Spark's catalog config later reads as "the engine doing this for me" instead of magic.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://datatracker.ietf.org/doc/html/rfc6749#section-4.4">RFC 6749 §4.4 — OAuth 2.0 Client Credentials Grant</a>, the auth flow used against <code>/api/catalog/v1/oauth/tokens</code>.
+    </section>
+
+    <h2>Two URL prefixes, two concerns</h2>
+    <p>Catalog administration (creating catalogs, principals, roles, grants) lives under <code>/api/management/v1/...</code>. Actual Iceberg data-plane operations (namespaces, tables) live under <code>/api/catalog/v1/{catalog}/...</code> — two different path prefixes for two different concerns, both behind the same bearer token.</p>
+
+    <p>Creating a catalog requires a <code>storageConfigInfo</code> block naming a <code>storageType</code> (<code>FILE</code> for local disk/dev, <code>S3</code>/<code>AZURE</code>/<code>GCS</code> for production) and an <code>allowedLocations</code> allowlist.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">The allowlist is a guardrail, not a bug</span>
+      Polaris will refuse to let tables be created outside <code>allowedLocations</code>. A mismatch here surfaces as a storage-validation error at <em>table-create</em> time, not at catalog-create time — which makes it look unrelated to how the catalog was configured if you don't already know to check this.
+    </section>
+
+    <h2>Exercise</h2>
+    <pre><code># 1. Get a token with the root credentials from Lesson 3
+curl -s -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
+  -d 'grant_type=client_credentials&client_id=f103ea289b7df858&client_secret=&lt;root-secret&gt;&scope=PRINCIPAL_ROLE:ALL'
+
+# 2. Create a catalog backed by local disk (swap TOKEN in for the access_token above)
+curl -s -i -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  http://localhost:8181/api/management/v1/catalogs \
+  -d '{"name": "coursecatalog", "type": "INTERNAL",
+       "properties": {"default-base-location": "file:///data"},
+       "storageConfigInfo": {"storageType": "FILE", "allowedLocations": ["file:///data"]}}'
+
+# 3. Create a namespace inside it via the data-plane API
+curl -s -i -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  http://localhost:8181/api/catalog/v1/coursecatalog/namespaces \
+  -d '{"namespace": ["course_db"]}'</code></pre>
+
+    <p class="lesson-meta">Verified output from a real local run:</p>
+
+    <pre><code>Step 2 -> HTTP/1.1 201 Created
+Step 3 -> HTTP/1.1 200 OK
+           {"namespace":["course_db"],"properties":{"location":"file:///data/course_db"}}</code></pre>
+
+    <p>Note the namespace response: Polaris computed <code>file:///data/course_db</code> by combining the catalog's <code>default-base-location</code> with the namespace name — that path was never specified directly.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You need to create a new namespace. Which URL prefix does that call live under?</p>
+      <div class="quiz-options">
+        <button data-correct="false"><code>/api/management/v1/...</code></button>
+        <button data-correct="true"><code>/api/catalog/v1/{catalog}/...</code></button>
+        <button data-correct="false">Either prefix works interchangeably</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Namespaces and tables are Iceberg data-plane objects, which live under <code>/api/catalog/v1/{catalog}/...</code> — <code>management/v1</code> is for admin objects like catalogs, principals, and grants.</p>
+      <p class="quiz-feedback incorrect">Not quite. Data-plane objects (namespaces, tables) and admin objects (catalogs, principals, grants) live under different prefixes — mixing them up produces a 404, not a permissions error.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Your bearer token was issued 90 minutes ago with the default 3600-second expiry. A request now returns 401. What's the most likely cause?</p>
+      <div class="quiz-options">
+        <button data-correct="false">The catalog was deleted</button>
+        <button data-correct="true">The token expired and needs to be refreshed</button>
+        <button data-correct="false">The <code>allowedLocations</code> allowlist rejected the request</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Tokens expire (3600s by default here); a script that hardcodes one and outlives that window will start seeing 401s that have nothing to do with the catalog itself.</p>
+      <p class="quiz-feedback incorrect">Not quite. A 401 at 90 minutes on a token issued with a 3600-second (60-minute) expiry is exactly what an expired token looks like — check the clock before suspecting the catalog.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Run all three calls against your own server with your own catalog/namespace names.</li>
+      <li><code>GET</code> the namespace back and confirm the <code>location</code> Polaris derived for you.</li>
+      <li>Deliberately set <code>allowedLocations</code> to a path that doesn't cover where you try to create a table, and observe where in the flow the error actually surfaces.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "What JSON body would I send to list all namespaces instead of creating one — and does that call need a body at all?" Next lesson does the same operations through a real query engine instead of raw curl.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0003-bootstrapping-a-realm.html" title="Previous: Running Polaris and Bootstrapping a Realm">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-connecting-spark.html" title="Next: Connecting a Query Engine (Spark)">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

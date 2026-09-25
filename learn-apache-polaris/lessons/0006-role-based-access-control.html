@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Role-Based Access Control</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #a3720a; --color-accent-light: #fdf1dc; }
+    a:hover { color: #8a5f08; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #ffd23f; }
+    }
+    [data-theme="dark"] { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+    [data-theme="dark"] a:hover { color: #ffd23f; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0005-connecting-spark.html" title="Previous: Connecting a Query Engine (Spark)">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0007-generic-tables.html" title="Next: Generic Tables">Next</a>
+    </nav>
+
+    <h1>Role-Based Access Control</h1>
+    <p class="lesson-meta">Time: ~10 minutes. Tangible win: build the full grant chain from scratch and reproduce both a real authorized call and a real denial.</p>
+
+    <p>The previous two lessons both used the all-powerful root principal — exactly what you should <strong>not</strong> do outside a scratch environment. This lesson is what makes handing Polaris credentials to a real engine or a real teammate safe.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml">Iceberg REST Catalog Open API spec</a> — the same spec Polaris's management endpoints for principals, roles, and grants extend.
+    </section>
+
+    <h2>The chain, end to end</h2>
+    <p>Create a <strong>Principal</strong>, create a <strong>Principal Role</strong>, assign the role to the principal; create a <strong>Catalog Role</strong> <em>inside a specific catalog</em>, assign that catalog role to the principal role; then <strong>grant</strong> a privilege (e.g. <code>CATALOG_MANAGE_CONTENT</code>, or narrower ones like <code>TABLE_READ_DATA</code> / <code>TABLE_WRITE_DATA</code> / <code>NAMESPACE_CREATE</code>) to the catalog role.</p>
+
+    <p>Privileges are additive and scoped to what they name — catalog-level (<code>CATALOG_MANAGE_ACCESS</code>, <code>CATALOG_MANAGE_CONTENT</code>, <code>CATALOG_MANAGE_METADATA</code>), table-level (<code>TABLE_CREATE</code>, <code>TABLE_DROP</code>, <code>TABLE_READ_DATA</code>, <code>TABLE_WRITE_DATA</code>), namespace-level (<code>NAMESPACE_CREATE</code>, <code>NAMESPACE_LIST</code>), and view-level privileges are all separate grants — granting one doesn't imply another.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Zero grants means forbidden, not invisible</span>
+      A principal with no grants in a catalog isn't invisible to it — it's explicitly forbidden. Polaris returns <code>403 Forbidden</code> naming the operation it rejected, not a 404 pretending the catalog doesn't exist. This is server-side authorization checked on every REST call, which is why Lesson 5's Spark session, given a scoped-down credential, would be just as restricted as a raw <code>curl</code> call with the same token.
+    </section>
+
+    <h2>Exercise</h2>
+    <pre><code>ROOT_TOKEN="principal:root;password:&lt;root-secret&gt;;realm:default-realm;role:ALL"
+
+curl -s -X POST "http://localhost:8181/api/management/v1/principals" -H "Authorization: Bearer $ROOT_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"name": "course_engineer", "type": "user"}'
+
+curl -s -X POST "http://localhost:8181/api/management/v1/principal-roles" -H "Authorization: Bearer $ROOT_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"principalRole": {"name": "engineer_role"}}'
+
+curl -s -X PUT "http://localhost:8181/api/management/v1/principals/course_engineer/principal-roles" -H "Authorization: Bearer $ROOT_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"principalRole": {"name": "engineer_role"}}'
+
+curl -s -X POST "http://localhost:8181/api/management/v1/catalogs/coursecatalog/catalog-roles" -H "Authorization: Bearer $ROOT_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"catalogRole": {"name": "catalog_writer"}}'
+
+curl -s -X PUT "http://localhost:8181/api/management/v1/principal-roles/engineer_role/catalog-roles/coursecatalog" -H "Authorization: Bearer $ROOT_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"catalogRole": {"name": "catalog_writer"}}'
+
+curl -s -X PUT "http://localhost:8181/api/management/v1/catalogs/coursecatalog/catalog-roles/catalog_writer/grants" -H "Authorization: Bearer $ROOT_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}}'
+
+# Now prove the new principal actually works, scoped to what it was granted:
+USER_TOKEN="principal:course_engineer;password:&lt;its-secret&gt;;realm:default-realm;role:ALL"
+curl -s -i "http://localhost:8181/api/catalog/v1/coursecatalog/namespaces" -H "Authorization: Bearer $USER_TOKEN"
+
+# ...and prove it's denied against a catalog it was never granted anything on:
+curl -s -i "http://localhost:8181/api/catalog/v1/lockedcatalog/namespaces" -H "Authorization: Bearer $USER_TOKEN"</code></pre>
+
+    <p class="lesson-meta">Verified output from a real local run — the authorized call:</p>
+
+    <pre><code>HTTP/1.1 200 OK
+{"namespaces":[["course_db"]],"next-page-token":null}</code></pre>
+
+    <p class="lesson-meta">...and the denied call against a catalog with no grant:</p>
+
+    <pre><code>HTTP/1.1 403 Forbidden
+{"error":{"message":"Principal 'course_engineer' with activated PrincipalRoles '[]' and activated grants via '[engineer_role]' is not authorized for op LIST_NAMESPACES","type":"ForbiddenException","code":403}}</code></pre>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You grant <code>TABLE_READ_DATA</code> to a Principal Role directly. What happens?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Every principal with that role can now read every table in every catalog</button>
+        <button data-correct="true">Nothing — privileges only attach to Catalog Roles, not Principal Roles</button>
+        <button data-correct="false">The grant applies only to the catalog the principal last accessed</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A Principal Role is purely a grouping label; the grant has no effect until a privilege is attached to a Catalog Role and that Catalog Role is assigned to the Principal Role.</p>
+      <p class="quiz-feedback incorrect">Not quite. The API doesn't attach privileges to Principal Roles at all — the grant chain always routes through a Catalog Role.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>A principal gets a 403 hitting a catalog. What should you check first?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Whether the catalog exists at all</button>
+        <button data-correct="true">The error message's named operation and activated roles, which usually point straight at the missing grant</button>
+        <button data-correct="false">Whether the principal's password has expired</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Polaris's 403 message names the exact operation and the activated roles it checked — read it before guessing, since it's usually enough to spot the missing grant directly.</p>
+      <p class="quiz-feedback incorrect">Not quite. A 403 means the catalog exists and was reached — it's an authorization failure, not a not-found. Read the message's operation and role details first.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Reproduce both outcomes — one authorized call, one real <code>403</code> — with your own principal and catalog names.</li>
+      <li>In one sentence, state which single object in the chain you'd delete to revoke <code>course_engineer</code>'s access without deleting the principal itself.</li>
+      <li>Replace <code>CATALOG_MANAGE_CONTENT</code> (broad) with the narrowest privilege that would satisfy the same read-only exercise, and confirm it still works.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "If I revoke the grant on <code>catalog_writer</code> but leave the principal role and principal assignment intact, does <code>course_engineer</code> lose access immediately or only after its token expires?" Next lesson looks at where Polaris's table model stops assuming Iceberg: Generic Tables.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0005-connecting-spark.html" title="Previous: Connecting a Query Engine (Spark)">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0007-generic-tables.html" title="Next: Generic Tables">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

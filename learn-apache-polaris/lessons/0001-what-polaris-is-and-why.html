@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What Polaris Is and the Problem It Solves</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #a3720a; --color-accent-light: #fdf1dc; }
+    a:hover { color: #8a5f08; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #ffd23f; }
+    }
+    [data-theme="dark"] { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+    [data-theme="dark"] a:hover { color: #ffd23f; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-the-entity-model.html" title="Next: The Entity Model">Next</a>
+    </nav>
+
+    <h1>What Polaris Is and the Problem It Solves</h1>
+    <p class="lesson-meta">Time: ~7 minutes. Tangible win: explain what problem Polaris solves and for whom — every later lesson is a mechanical detail on top of this idea.</p>
+
+    <p>Apache Polaris is a <strong>catalog service</strong>: a system of record for <em>where tables live and what they look like</em>. It is not a query engine and not a storage system — it doesn't execute SQL and it doesn't store table data itself.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://polaris.apache.org/">polaris.apache.org</a> — project homepage covering Polaris's positioning as an Iceberg REST catalog and lakehouse catalog.
+    </section>
+
+    <h2>The problem: one catalog, many engines</h2>
+    <p>Polaris implements the <strong>Iceberg REST Catalog</strong> specification — a vendor-neutral HTTP API for catalog operations (list namespaces, create a table, commit a snapshot). Any engine that speaks that spec — Spark, Trino, Flink, Snowflake, DuckDB, StarRocks, Doris — can read and write the same Iceberg tables through the same catalog, without a bespoke connector per engine-pair.</p>
+
+    <p>Before REST catalogs, each engine's Iceberg integration typically leaned on engine-specific catalog implementations (Hive Metastore, AWS Glue, engine-embedded catalogs). Getting five engines to safely share one set of tables meant either standardizing on one engine's catalog or accepting drift between them. A REST catalog gives every engine the same source of truth over HTTP.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">Where Polaris comes from</span>
+      Polaris was donated by Snowflake to the Apache Software Foundation and is meant to be run as an independent, engine-agnostic service — you stand it up once, then point every engine at it.
+    </section>
+
+    <h2>Exercise: prove the service is alive and speaking Iceberg REST</h2>
+    <p>Start (or confirm running) a local Polaris server and hit its OAuth token endpoint — no table operations, just proof the service is up and speaking the protocol:</p>
+
+    <pre><code>curl -s -i http://localhost:8181/api/catalog/v1/oauth/tokens \
+  -d 'grant_type=client_credentials&client_id=&lt;your-client-id&gt;&client_secret=&lt;your-client-secret&gt;&scope=PRINCIPAL_ROLE:ALL'</code></pre>
+
+    <p class="lesson-meta">Verified output from a real local run. Exact hex IDs, ports, and timestamps will differ on your machine — the shape and status code will not.</p>
+
+    <pre><code>HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"access_token":"principal:root;password:...;realm:default-realm;role:ALL","scope":"PRINCIPAL_ROLE:ALL","token_type":"bearer","expires_in":3600}</code></pre>
+
+    <section class="callout warning">
+      <span class="callout-title">Don't confuse the spec with the implementation</span>
+      The <em>Iceberg REST Catalog spec</em> is a protocol, implementable by anyone. <em>Polaris</em> is one specific, Apache-governed implementation of that protocol. Other REST catalog implementations exist (Tabular's, Nessie, various vendor-hosted ones) — "Polaris" and "Iceberg REST catalog" are not synonyms.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Which best describes what Apache Polaris actually is?</p>
+      <div class="quiz-options">
+        <button data-correct="false">A distributed SQL query engine for Iceberg tables</button>
+        <button data-correct="true">A catalog service implementing the Iceberg REST Catalog spec</button>
+        <button data-correct="false">A managed object-storage system for table data files</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Polaris tracks where tables live and what they look like — it doesn't execute queries and doesn't store the underlying Parquet/Avro files itself.</p>
+      <p class="quiz-feedback incorrect">Not quite. Polaris is neither a query engine nor a storage system — it's the catalog layer that sits between engines and wherever table data actually lives.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Why does a REST-based catalog change the multi-engine story compared to engine-specific catalogs?</p>
+      <div class="quiz-options">
+        <button data-correct="false">It makes every engine faster at executing SQL</button>
+        <button data-correct="true">Any engine implementing the spec shares one source of truth over HTTP, without a bespoke connector per pair</button>
+        <button data-correct="false">It replaces the need for object storage entirely</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The payoff is interoperability, not performance — five engines can safely share one set of tables without standardizing on one engine's native catalog.</p>
+      <p class="quiz-feedback incorrect">No. The REST catalog's value is a shared source of truth across engines, not query speed or replacing storage.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Run the token exercise yourself against your own local Polaris server (or the Quickstart from <code>RESOURCES.md</code> if you don't have one running).</li>
+      <li>In your own words (2–3 sentences), explain to someone who has only used a Hive Metastore why a REST-based catalog changes the multi-engine story.</li>
+      <li>Name one engine other than Spark you'd want to point at the same Polaris catalog, and why.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "What actually happens on the wire when Spark and Trino both read the same Iceberg table through Polaris — do they ever talk to each other?" Next lesson maps the entities Polaris organizes everything around: Catalog, Namespace, Table, and the principal/role objects layered on top.
+    </section>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-the-entity-model.html" title="Next: The Entity Model">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

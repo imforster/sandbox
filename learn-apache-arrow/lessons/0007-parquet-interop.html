@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Parquet Interop</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #0d9488; --color-accent-light: #e6f7f5; }
+    a:hover { color: #0f766e; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #5eead4; }
+    }
+    [data-theme="dark"] { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+    [data-theme="dark"] a:hover { color: #5eead4; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0006-arrow-compute.html" title="Previous: Arrow Compute">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0008-arrow-flight.html" title="Next: Arrow Flight">Next</a>
+    </nav>
+
+    <h1>Parquet Interop</h1>
+    <p class="lesson-meta">Time: ~10 minutes. Tangible win: write a Table to Parquet and read it back with column projection and row-group-level filtering, and read Parquet metadata without touching the data.</p>
+
+    <p>Parquet is Arrow's most common at-rest partner format, specifically because their type systems are close to 1:1 — that's why this interop feels "free" instead of requiring a translation layer.</p>
+
+    <ul>
+      <li><code>pyarrow.parquet</code> (<code>pq</code>) provides <code>write_table</code> / <code>read_table</code>, operating on the same Table object from earlier lessons.</li>
+      <li><strong>Column projection</strong> (<code>columns=[...]</code>) is not just "select these columns after reading" — Parquet's on-disk layout is columnar too, so unrequested columns are never read off disk at all.</li>
+      <li>Parquet files are split into <strong>row groups</strong>, each carrying its own statistics (min/max per column). A <code>filters=</code> predicate can let the reader skip entire row groups whose stats prove no row could match — this is pushdown, distinct from reading everything and filtering in memory afterward.</li>
+      <li>Reading <code>ParquetFile(path).schema_arrow</code> or <code>.metadata</code> costs effectively nothing — it doesn't decode any row data.</li>
+    </ul>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arrow.apache.org/docs/python/parquet.html">pyarrow Parquet documentation</a> and <a href="https://parquet.apache.org/">Apache Parquet</a>.
+    </section>
+
+    <h2>Exercise</h2>
+    <pre><code>import pyarrow as pa
+import pyarrow.parquet as pq
+
+table = pa.table({
+    "id": [1, 2, 3, 4, 5],
+    "region": ["east", "east", "west", "west", "west"],
+    "amount": [100, 150, 200, 175, 50],
+})
+
+path = "/tmp/arrow_course_demo.parquet"
+pq.write_table(table, path)
+
+pf = pq.ParquetFile(path)
+print("Row groups:", pf.metadata.num_row_groups)
+print("Schema from metadata only (no data read):")
+print(pf.schema_arrow)
+
+projected = pq.read_table(path, columns=["id", "amount"])
+print("Projected columns:", projected.column_names)
+
+filtered = pq.read_table(path, filters=[("region", "=", "west")])
+print("Filtered rows (region=west):", filtered.num_rows)
+print(filtered.to_pydict())</code></pre>
+
+    <p class="lesson-meta">Verified output (pyarrow 25.0.1):</p>
+
+    <pre><code>Row groups: 1
+Schema from metadata only (no data read):
+id: int64
+region: string
+amount: int64
+Projected columns: ['id', 'amount']
+Filtered rows (region=west): 3
+{'id': [3, 4, 5], 'region': ['west', 'west', 'west'], 'amount': [200, 175, 50]}</code></pre>
+
+    <section class="callout warning">
+      <span class="callout-title">Parquet still decodes — it doesn't hand Arrow raw bytes</span>
+      Parquet's on-disk bytes are not literally reused as Arrow's in-memory buffers with zero decode step. Parquet uses its own encodings (dictionary, RLE, etc.) and gets decoded into Arrow buffers on read. The real efficiency story is "skips columns and row groups it doesn't need," not "shares raw bytes with Arrow."
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You call <code>pq.read_table(path, columns=["id", "amount"])</code> on a 10-column Parquet file. What happens to the other 8 columns?</p>
+      <div class="quiz-options">
+        <button data-correct="false">They're read from disk and then discarded in memory</button>
+        <button data-correct="true">They're never read off disk at all, because Parquet's on-disk layout is columnar too</button>
+        <button data-correct="false">They're read but left compressed until accessed</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Column projection skips unrequested columns at the disk-read level, not just after decoding.</p>
+      <p class="quiz-feedback incorrect">Not quite. Because Parquet is columnar on disk, unrequested columns are never read at all — projection isn't a post-read filter.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Does every <code>filters=</code> predicate get pushed down to skip entire row groups?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes, all predicates always skip row groups when possible</button>
+        <button data-correct="true">No — pushdown only works when the predicate can be evaluated against row-group statistics; some predicates still require reading and filtering afterward</button>
+        <button data-correct="false">No, <code>filters=</code> never skips row groups; it only filters in memory after a full read</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Pushdown depends on the predicate being evaluable against stored min/max stats — not every predicate qualifies.</p>
+      <p class="quiz-feedback incorrect">No. Some predicates do get pushed down via row-group statistics, but not universally — it depends on whether the predicate can be checked against those stats.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Write a Parquet file with 4+ columns.</li>
+      <li>Show that <code>columns=[...]</code> returns exactly the requested subset.</li>
+      <li>Show a <code>filters=</code> result matching what you'd get by filtering in pandas.</li>
+      <li>State in one sentence why the schema-only read didn't need to decode any rows.</li>
+    </ol>
+
+    <p>New terms — <a href="../reference/glossary.html">Parquet</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask the agent: "Which kinds of filter predicates actually get pushed down to row-group stats, and which ones don't?" Next lesson moves data across a network between processes, not just within one process: Arrow Flight.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0006-arrow-compute.html" title="Previous: Arrow Compute">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0008-arrow-flight.html" title="Next: Arrow Flight">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

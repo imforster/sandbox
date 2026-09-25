@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Apache Polaris Glossary</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #a3720a; --color-accent-light: #fdf1dc; }
+    a:hover { color: #8a5f08; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #ffd23f; }
+    }
+    [data-theme="dark"] { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+    [data-theme="dark"] a:hover { color: #ffd23f; }
+  </style>
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="../lessons/index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Apache Polaris Glossary</h1>
+    <p class="lesson-meta">Reference — the vocabulary of Apache Polaris's entity model, RBAC, and ecosystem. All lessons use terms consistently with this page.</p>
+
+    <h2>Entity model</h2>
+    <dl class="glossary">
+      <dt>Catalog</dt>
+      <dd>The top-level container in Polaris. Bound to one storage configuration (<code>FILE</code>, <code>S3</code>, <code>AZURE</code>, or <code>GCS</code>) and a <code>default-base-location</code>. <a href="https://polaris.apache.org/">[docs]</a></dd>
+
+      <dt>Namespace</dt>
+      <dd>Lives inside a catalog, groups tables the way a schema/database groups tables in a traditional RDBMS. Namespaces can nest (<code>a.b.c</code>), each level tracked as its own entity.</dd>
+
+      <dt>Table / View</dt>
+      <dd>Live inside a namespace. This course treats Iceberg tables as the default; see <a href="#generic-table">Generic Table</a> for the non-Iceberg alternative.</dd>
+
+      <dt>Realm</dt>
+      <dd>A top-level tenant boundary inside one Polaris deployment — catalogs, principals, and roles all live inside exactly one realm. Sits above the entity tree entirely, not a peer of Catalog.</dd>
+    </dl>
+
+    <h2>Access control</h2>
+    <dl class="glossary">
+      <dt>Principal</dt>
+      <dd>An identity — a user or service — that authenticates to Polaris. Scoped to Polaris itself, distinct from a database user.</dd>
+
+      <dt>Principal Role</dt>
+      <dd>A label attached to one or more Principals, purely for grouping. Holds no privileges directly.</dd>
+
+      <dt>Catalog Role</dt>
+      <dd>Scoped to one specific catalog; the object that actually holds privileges. Meaningless outside the catalog it belongs to, even if reused by name elsewhere.</dd>
+
+      <dt>Privilege</dt>
+      <dd>A named permission (e.g. <code>TABLE_READ_DATA</code>, <code>CATALOG_MANAGE_CONTENT</code>, <code>NAMESPACE_CREATE</code>) granted to a Catalog Role. Additive and scoped to what it names — granting one never implies another.</dd>
+
+      <dt>Grant chain</dt>
+      <dd>The full access path: Privilege → Catalog Role → Principal Role → Principal. Nothing is granted directly to a Principal or a Principal Role.</dd>
+
+      <dt>403 Forbidden</dt>
+      <dd>Polaris's response when a principal has zero grants for an operation — an explicit denial naming the operation and activated roles checked, not a 404 pretending the catalog doesn't exist.</dd>
+    </dl>
+
+    <h2>Protocol and auth</h2>
+    <dl class="glossary">
+      <dt>Iceberg REST Catalog spec</dt>
+      <dd>The vendor-neutral HTTP API for catalog operations that Polaris implements. A protocol, implementable by anyone — Polaris is one specific, Apache-governed implementation of it. <a href="https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml">[docs]</a></dd>
+
+      <dt>OAuth2 client credentials grant</dt>
+      <dd>The auth flow used against <code>/api/catalog/v1/oauth/tokens</code>: POST <code>client_id</code>, <code>client_secret</code>, and a <code>scope</code>, get back a bearer token. <a href="https://datatracker.ietf.org/doc/html/rfc6749#section-4.4">[docs]</a></dd>
+
+      <dt>Bearer token</dt>
+      <dd>The access token returned by the OAuth exchange, sent as <code>Authorization: Bearer &lt;token&gt;</code> on every subsequent call. Expires after <code>expires_in</code> seconds (3600s by default in this course).</dd>
+
+      <dt>Management API (<code>/api/management/v1/...</code>)</dt>
+      <dd>The URL prefix for admin objects: catalogs, principals, principal roles, catalog roles, grants.</dd>
+
+      <dt>Catalog API (<code>/api/catalog/v1/{catalog}/...</code>)</dt>
+      <dd>The URL prefix for Iceberg data-plane objects: namespaces, tables. A different prefix from the Management API, both behind the same bearer token.</dd>
+
+      <dt>storageConfigInfo</dt>
+      <dd>The block required when creating a catalog, naming a <code>storageType</code> and an <code>allowedLocations</code> allowlist. Polaris refuses to create tables outside those locations.</dd>
+
+      <dt>RESTCatalog (Spark)</dt>
+      <dd>The <code>catalog-impl</code> value (<code>org.apache.iceberg.rest.RESTCatalog</code>) that tells Spark to talk Iceberg REST to a configured URI, instead of a Hive Metastore or Spark's built-in catalog.</dd>
+
+      <dt>token-refresh-enabled</dt>
+      <dd>A Spark catalog property that makes Spark re-authenticate automatically instead of failing once its bearer token expires mid-session.</dd>
+    </dl>
+
+    <h2>Beyond Iceberg</h2>
+    <dl class="glossary">
+      <dt id="generic-table">Generic Table</dt>
+      <dd>A Polaris entity for non-Iceberg tables (e.g. <code>delta</code>, <code>csv</code>): name, format, optional location, free-form properties — deliberately no schema or partition spec. <a href="https://polaris.apache.org/releases/1.7.0/generic-table/">[docs]</a></dd>
+
+      <dt>Commit coordination</dt>
+      <dd>Polaris's server-side handling of concurrent-write conflicts for Iceberg tables. Generic Tables get none of it — that responsibility falls to the table format's own concurrency control.</dd>
+
+      <dt>Credential vending</dt>
+      <dd>Polaris handing out short-lived, scoped storage credentials per request for Iceberg tables. Not provided for Generic Tables.</dd>
+
+      <dt>Catalog federation</dt>
+      <dd>A Polaris catalog proxying requests through to an external catalog system (Iceberg REST, Hive Metastore, or BigQuery Metastore) instead of managing entities itself. Changes how engines talk to the catalog, not where the data lives. <a href="https://polaris.apache.org/releases/1.7.0/federation/">[docs]</a></dd>
+    </dl>
+
+    <h2>Persistence and topology</h2>
+    <dl class="glossary">
+      <dt>Persistence backend / metastore</dt>
+      <dd>Where Polaris's own state (catalogs, namespace pointers, principals, roles, grants) is stored — pluggable via <code>metaStoreManager.type</code>, separate from wherever the actual Iceberg table data lives. <a href="https://polaris.apache.org/releases/1.7.0/configuration/">[docs]</a></dd>
+
+      <dt>metaStoreManager.type: in-memory</dt>
+      <dd>The quickstart default. Does not survive a container restart — all catalogs, principals, and grants are lost. Not production-safe.</dd>
+
+      <dt>EclipseLink</dt>
+      <dd>The JDBC-backed persistence backend option for production deployments, offered as an alternative to <code>in-memory</code>.</dd>
+
+      <dt>Horizontal scaling (Polaris)</dt>
+      <dd>Running multiple Polaris instances behind a load balancer, all sharing one persistence backend — viable because no instance holds catalog state locally.</dd>
+    </dl>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="../lessons/index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

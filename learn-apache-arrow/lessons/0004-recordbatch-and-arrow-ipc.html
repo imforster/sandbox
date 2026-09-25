@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RecordBatch and Arrow IPC</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #0d9488; --color-accent-light: #e6f7f5; }
+    a:hover { color: #0f766e; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #5eead4; }
+    }
+    [data-theme="dark"] { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+    [data-theme="dark"] a:hover { color: #5eead4; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0003-array-and-the-validity-bitmap.html" title="Previous: Array and the Validity Bitmap">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-table-and-chunked-columns.html" title="Next: Table and Chunked Columns">Next</a>
+    </nav>
+
+    <h1>RecordBatch and Arrow IPC</h1>
+    <p class="lesson-meta">Time: ~9 minutes. Tangible win: build a RecordBatch from a Schema and a matching set of Arrays, and round-trip it through Arrow's IPC stream format.</p>
+
+    <p>RecordBatch — not Array, not Table — is the unit that actually gets sent across Arrow IPC and Arrow Flight (Lesson 8). Understanding it is a prerequisite for understanding how Arrow moves data between processes.</p>
+
+    <ul>
+      <li>A <strong>RecordBatch</strong> = one Schema + one Array per field, <strong>all the same length</strong>. It's a fixed-size, fixed-row-count chunk of columnar data.</li>
+      <li>Mismatched array lengths are a hard error at construction time — the batch cannot exist in an inconsistent state.</li>
+      <li>The <strong>Arrow IPC format</strong> (<code>pyarrow.ipc</code>) is how a stream of RecordBatches gets serialized to bytes for writing to a socket or file, and deserialized back into RecordBatches on the other end — with no row-by-row translation.</li>
+      <li>Preview of Lesson 5: a Table can span many RecordBatches; a RecordBatch cannot span multiple row-count chunks by definition.</li>
+    </ul>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arrow.apache.org/docs/python/ipc.html">pyarrow IPC documentation</a> — <code>pa.ipc.new_stream</code> / <code>pa.ipc.open_stream</code> used below.
+    </section>
+
+    <h2>Exercise</h2>
+    <pre><code>import pyarrow as pa
+
+schema = pa.schema([
+    pa.field("id", pa.int64()),
+    pa.field("value", pa.float64()),
+])
+
+batch = pa.record_batch(
+    [pa.array([1, 2, 3]), pa.array([1.1, 2.2, 3.3])],
+    schema=schema,
+)
+print("num_rows:", batch.num_rows)
+print("schema:\n", batch.schema)
+
+sink = pa.BufferOutputStream()
+with pa.ipc.new_stream(sink, batch.schema) as writer:
+    writer.write_batch(batch)
+
+buf = sink.getvalue()
+reader = pa.ipc.open_stream(buf)
+roundtrip_batch = reader.read_next_batch()
+
+print("Round-trip equal:", batch.equals(roundtrip_batch))
+
+try:
+    pa.record_batch([pa.array([1, 2, 3]), pa.array([1.1, 2.2])], schema=schema)
+except Exception as e:
+    print("Mismatched-length error (expected):", type(e).__name__)</code></pre>
+
+    <p class="lesson-meta">Verified output (pyarrow 25.0.1):</p>
+
+    <pre><code>num_rows: 3
+schema:
+ id: int64
+value: double
+Round-trip equal: True
+Mismatched-length error (expected): ValueError</code></pre>
+
+    <section class="callout tip">
+      <span class="callout-title">The error is the feature</span>
+      Trying to build a RecordBatch from arrays of different lengths raises immediately — don't work around it, expect it. The fixed-length-per-batch invariant is intentional, not a bug.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You build a RecordBatch with a 3-element <code>id</code> array and a 2-element <code>value</code> array against a 2-field schema. What happens?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Arrow pads the shorter array with nulls automatically</button>
+        <button data-correct="true">Construction raises a <code>ValueError</code> immediately</button>
+        <button data-correct="false">The batch is created with <code>num_rows</code> equal to the shorter array's length</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Mismatched array lengths are a hard error at construction time — a RecordBatch cannot exist in an inconsistent state.</p>
+      <p class="quiz-feedback incorrect">Not quite. Arrow doesn't pad or silently truncate — it raises a <code>ValueError</code> so the batch never exists in a bad state.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>What's the actual difference between a RecordBatch and a Table, given both "hold columns"?</p>
+      <div class="quiz-options">
+        <button data-correct="false">They're interchangeable names for the same object</button>
+        <button data-correct="true">A RecordBatch is one fixed-size chunk; a Table is the multi-batch container that can span several RecordBatches</button>
+        <button data-correct="false">A Table can only hold one column; a RecordBatch can hold many</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. RecordBatch is a single fixed-row-count chunk by definition; Table is the higher-level container spanning multiple batches (next lesson).</p>
+      <p class="quiz-feedback incorrect">No. RecordBatch and Table are distinct: a RecordBatch is one fixed-size chunk, while a Table can span many RecordBatches.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Build a RecordBatch with at least 3 columns of different types.</li>
+      <li>Round-trip it through IPC and confirm <code>.equals(...)</code> returns <code>True</code>.</li>
+      <li>Deliberately pass one array of the wrong length and capture the <code>ValueError</code> you get.</li>
+    </ol>
+
+    <p>New terms — <a href="../reference/glossary.html">RecordBatch, IPC</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask the agent: "What's inside the IPC stream format's schema message versus its record batch message?" Next lesson works with the higher-level container that spans multiple RecordBatches: Table.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0003-array-and-the-validity-bitmap.html" title="Previous: Array and the Validity Bitmap">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-table-and-chunked-columns.html" title="Next: Table and Chunked Columns">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

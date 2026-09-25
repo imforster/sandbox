@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Generic Tables</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #a3720a; --color-accent-light: #fdf1dc; }
+    a:hover { color: #8a5f08; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #ffd23f; }
+    }
+    [data-theme="dark"] { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+    [data-theme="dark"] a:hover { color: #ffd23f; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0006-role-based-access-control.html" title="Previous: Role-Based Access Control">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0008-catalog-federation.html" title="Next: Catalog Federation">Next</a>
+    </nav>
+
+    <h1>Generic Tables</h1>
+    <p class="lesson-meta">Time: ~7 minutes. Tangible win: explain what a Generic Table is, why Polaris added a table type that isn't Iceberg, and what capabilities you deliberately give up by using one.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">Reading-only lesson</span>
+      Everything so far assumed "table in Polaris" means "Iceberg table with Polaris-managed commits and credential vending." Generic Tables are Polaris's answer to "I have Delta/CSV/other-format tables I still want cataloged in the same namespace." This is a beta feature with no bundled local exercise, so treat this lesson as a close reading rather than a script — the same pattern Lesson 9 (Flight SQL) used in the Arrow course.
+    </section>
+
+    <ul>
+      <li>A <strong>Generic Table</strong> is a Polaris entity that records just enough to identify a non-Iceberg table: name, format (e.g. <code>delta</code>, <code>csv</code>), an optional base location, and free-form properties. There is deliberately <strong>no schema or partition spec</strong> stored — Polaris isn't trying to understand Delta's or CSV's internal structure.</li>
+      <li>The tradeoff for that simplicity: Generic Tables get none of Iceberg tables' Polaris-side machinery — no <strong>commit coordination</strong> (concurrent-write conflict handling) and no <strong>credential vending</strong> (Polaris handing out short-lived, scoped storage credentials per request). "It is the responsibility of the engine to coordinate loading and committing data," per the Polaris docs — Polaris is a directory entry here, not an active participant in writes.</li>
+      <li>Generic Tables and Iceberg tables are <strong>not interchangeable through each other's APIs</strong> — you can't load or drop a Generic Table via the Iceberg table endpoints or vice versa, even inside the same namespace. This is intentional, to stop an engine from treating a CSV pointer as if it had Iceberg guarantees.</li>
+    </ul>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://polaris.apache.org/releases/1.7.0/generic-table/">Polaris Generic Table documentation (1.7.0)</a>.
+    </section>
+
+    <p>Read this as evidence Polaris is positioning itself as a general lakehouse catalog, not narrowly an Iceberg catalog — the REST Catalog spec (Lesson 4) stays the primary, fully-featured path; Generic Tables are a lighter-weight registry for everything else.</p>
+
+    <h2>Exercise (written, not scripted)</h2>
+    <p>Read the Generic Table documentation linked above, then write 3–4 sentences answering:</p>
+    <ol class="checklist">
+      <li>If you registered a Delta table as a Generic Table in Polaris, what would break if two engines wrote to it concurrently?</li>
+      <li>Whose responsibility would that failure be, given what this lesson told you about commit coordination?</li>
+    </ol>
+
+    <h2>Evidence of competence</h2>
+    <p>A correct answer identifies that Polaris does nothing to serialize or detect conflicting concurrent writes on a Generic Table (no commit coordination), so two engines racing to write the same underlying Delta table would rely entirely on Delta's own concurrency control (or the engines' coordination), not anything Polaris enforces — unlike an Iceberg table in Polaris, where the REST catalog's commit protocol is the referee.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Common failure modes</span>
+      Assuming a Generic Table gets the same optimistic-concurrency safety as an Iceberg table just because it's "in Polaris" — it explicitly does not. Also: trying to <code>DROP TABLE</code> a Generic Table through an Iceberg-table code path (or a client library that assumes every catalog table is Iceberg) and hitting a confusing not-found/type-mismatch error instead of a clear "wrong API for this table type" message.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>What does a Generic Table entity actually store about the underlying table?</p>
+      <div class="quiz-options">
+        <button data-correct="false">A full schema and partition spec, just like an Iceberg table</button>
+        <button data-correct="true">Just enough to identify it: name, format, optional location, and free-form properties — no schema</button>
+        <button data-correct="false">A cached copy of the table's data for fast reads</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Polaris deliberately doesn't parse or store Delta's/CSV's internal structure for a Generic Table — it's a directory entry, not a schema-aware catalog record.</p>
+      <p class="quiz-feedback incorrect">Not quite. Generic Tables deliberately omit schema and partition spec — that's exactly what distinguishes them from Iceberg tables in Polaris.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Two engines concurrently write to a Delta table registered in Polaris as a Generic Table. Who resolves the conflict?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Polaris, via its commit coordination machinery</button>
+        <button data-correct="true">Delta's own concurrency control (or the engines' own coordination) — Polaris does nothing here</button>
+        <button data-correct="false">Whichever engine's write reaches Polaris first wins automatically</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Generic Tables get no commit coordination from Polaris — that responsibility falls entirely on the table format's own concurrency control or the engines involved.</p>
+      <p class="quiz-feedback incorrect">No. Polaris explicitly does not coordinate commits for Generic Tables — only Iceberg tables get that protection through the REST catalog's commit protocol.</p>
+    </div>
+
+    <p>New terms — <a href="../reference/glossary.html">Generic Table, commit coordination, credential vending</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask the agent: "If a Generic Table gets no credential vending, how does an engine actually get permission to read the underlying files — does it need its own separate storage credentials?" Next lesson zooms out from a single Polaris instance to a Polaris instance that fronts other catalogs: Catalog Federation.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0006-role-based-access-control.html" title="Previous: Role-Based Access Control">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0008-catalog-federation.html" title="Next: Catalog Federation">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

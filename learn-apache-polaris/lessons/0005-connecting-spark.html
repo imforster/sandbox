@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connecting a Query Engine (Spark)</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #a3720a; --color-accent-light: #fdf1dc; }
+    a:hover { color: #8a5f08; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #ffd23f; }
+    }
+    [data-theme="dark"] { --color-accent: #f2b705; --color-accent-light: rgba(242, 183, 5, 0.12); }
+    [data-theme="dark"] a:hover { color: #ffd23f; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0004-the-iceberg-rest-catalog-api.html" title="Previous: The Iceberg REST Catalog API">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0006-role-based-access-control.html" title="Next: Role-Based Access Control">Next</a>
+    </nav>
+
+    <h1>Connecting a Query Engine (Spark)</h1>
+    <p class="lesson-meta">Time: ~9 minutes. Tangible win: create a namespace, create a table, insert rows, and query them entirely through Spark SQL, with Spark talking Iceberg REST underneath — no Polaris-specific code required.</p>
+
+    <p>The previous lesson proved the catalog works in isolation. This lesson proves the actual point of Lesson 1: an engine you didn't write any Polaris-specific code for can read and write the same catalog using a standard Iceberg Spark connector.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://iceberg.apache.org/docs/latest/spark-configuration/">Iceberg Spark integration docs</a> — reference for every <code>spark.sql.catalog.&lt;name&gt;.*</code> property used below.
+    </section>
+
+    <h2>What the config actually says</h2>
+    <ul>
+      <li>Spark needs the <code>iceberg-spark-runtime</code> package for your Spark/Scala version (this run: <code>iceberg-spark-runtime-3.5_2.12:1.5.2</code> against Spark 3.5.2) plus the Iceberg SQL extensions enabled via <code>spark.sql.extensions</code>.</li>
+      <li>The catalog is registered as <code>spark.sql.catalog.&lt;name&gt;</code>, set to <code>org.apache.iceberg.spark.SparkCatalog</code> with <code>catalog-impl=org.apache.iceberg.rest.RESTCatalog</code> — this is what tells Spark "talk Iceberg REST to this URI" instead of using a Hive Metastore or Spark's built-in catalog.</li>
+      <li>Credentials travel as <code>spark.sql.catalog.&lt;name&gt;.credential</code> in <code>clientId:clientSecret</code> form, with <code>token-refresh-enabled=true</code> so Spark re-authenticates instead of failing when the token expires mid-session.</li>
+      <li>Once configured, <code>&lt;name&gt;.&lt;namespace&gt;.&lt;table&gt;</code> in SQL resolves through Polaris exactly like <code>coursecatalog</code>/<code>course_db</code> did via <code>curl</code> — same entities, different client.</li>
+    </ul>
+
+    <h2>Exercise</h2>
+    <pre><code>import pyspark
+from pyspark.sql import SparkSession
+
+conf = (
+    pyspark.SparkConf()
+    .setAppName("polaris_demo")
+    .set("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+    .set("spark.sql.catalog.polaris", "org.apache.iceberg.spark.SparkCatalog")
+    .set("spark.sql.catalog.polaris.warehouse", "coursecatalog")
+    .set("spark.sql.catalog.polaris.catalog-impl", "org.apache.iceberg.rest.RESTCatalog")
+    .set("spark.sql.catalog.polaris.uri", "http://polaris:8181/api/catalog")
+    .set("spark.sql.catalog.polaris.credential", "&lt;clientId&gt;:&lt;clientSecret&gt;")
+    .set("spark.sql.catalog.polaris.scope", "PRINCIPAL_ROLE:ALL")
+    .set("spark.sql.catalog.polaris.token-refresh-enabled", "true")
+)
+spark = SparkSession.builder.config(conf=conf).getOrCreate()
+
+spark.sql("CREATE NAMESPACE IF NOT EXISTS polaris.course_db")
+spark.sql("CREATE TABLE IF NOT EXISTS polaris.course_db.people (name STRING, role STRING) USING iceberg")
+spark.sql("INSERT INTO polaris.course_db.people VALUES ('Bilbo', 'engineer'), ('Gandalf', 'staff')")
+spark.sql("SELECT * FROM polaris.course_db.people ORDER BY name").show()</code></pre>
+
+    <p class="lesson-meta">Verified output:</p>
+
+    <pre><code>SELECT RESULT:
++-------+--------+
+|   name|    role|
++-------+--------+
+|  Bilbo|engineer|
+|Gandalf|   staff|
++-------+--------+
+
+SNAPSHOT COUNT:
++--------------+
+|snapshot_count|
++--------------+
+|             1|
++--------------+</code></pre>
+
+    <p><code>snapshot_count</code> is 1, not 2, because Iceberg's <code>CREATE TABLE</code> doesn't produce a snapshot by itself (no data yet) — the single multi-row <code>INSERT</code> is the first and only commit.</p>
+
+    <p>Confirming the round trip: the same table is now visible from the previous lesson's raw REST API, even though it was only ever created from Spark —</p>
+
+    <pre><code>curl -s "http://localhost:8181/api/catalog/v1/coursecatalog/namespaces/course_db/tables" -H "Authorization: Bearer $TOKEN"
+# {"identifiers":[{"namespace":["course_db"],"name":"people"}],"next-page-token":null}</code></pre>
+
+    <p>That's Lesson 1's thesis made concrete: Spark never talked to <code>curl</code>, <code>curl</code> never talked to Spark, and they still agree perfectly on what tables exist — because both went through the same Polaris REST catalog.</p>
+
+    <section class="callout danger">
+      <span class="callout-title">If Spark hangs silently for minutes after <code>getOrCreate()</code></span>
+      On a containerized JVM under emulation (e.g. an amd64 image via Rosetta on Apple Silicon), a silent hang with near-zero CPU right after <code>SparkSession.builder.getOrCreate()</code> is classic entropy-starved <code>SecureRandom</code> initialization — not a Polaris or network problem. Fix with <code>--conf spark.driver.extraJavaOptions=-Djava.security.egd=file:/dev/./urandom</code>. This is exactly what happened verifying this exercise: the first attempt hung silently for 11+ minutes until this flag was added.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>What does <code>catalog-impl=org.apache.iceberg.rest.RESTCatalog</code> actually tell Spark?</p>
+      <div class="quiz-options">
+        <button data-correct="false">To use Spark's built-in in-memory catalog</button>
+        <button data-correct="true">To talk to the configured URI using the Iceberg REST protocol instead of a Hive Metastore</button>
+        <button data-correct="false">To cache table metadata locally instead of calling Polaris</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. This is the line that redirects Spark's catalog operations to Polaris's REST endpoint instead of a Hive Metastore or Spark's default catalog.</p>
+      <p class="quiz-feedback incorrect">Not quite. <code>catalog-impl</code> selects the REST protocol as the transport to Polaris — it doesn't add caching or switch to an in-memory catalog.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>A table created with plain <code>CREATE TABLE</code> (no <code>USING iceberg</code>) behaves nothing like the rest of this course. Why?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Spark silently retried with <code>USING iceberg</code> anyway</button>
+        <button data-correct="true">Without <code>USING iceberg</code>, Spark silently falls back to its default (non-Iceberg) table format</button>
+        <button data-correct="false">Polaris rejects any <code>CREATE TABLE</code> missing that clause</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Omitting <code>USING iceberg</code> doesn't error — it silently produces a non-Iceberg table that won't show up through the Iceberg REST endpoints used everywhere else in this course.</p>
+      <p class="quiz-feedback incorrect">No. Polaris doesn't reject the call — Spark just defaults to a different table format, which is what makes this mistake easy to miss.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Run this against your own Polaris catalog with a table of your own design (different columns, different rows).</li>
+      <li>Confirm the table is visible from the raw REST API too, even though you only created it from Spark.</li>
+      <li>If running Spark and Polaris as separate containers, confirm you're using the Docker service name (e.g. <code>polaris</code>) in the URI, not <code>localhost</code> — inside the Spark container, <code>localhost</code> means the Spark container itself.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "What would change in this config if I wanted a second, independently-scoped Spark session reading the same catalog with fewer privileges?" Next lesson builds exactly that: a real RBAC chain and a real denial.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0004-the-iceberg-rest-catalog-api.html" title="Previous: The Iceberg REST Catalog API">Previous</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0006-role-based-access-control.html" title="Next: Role-Based Access Control">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

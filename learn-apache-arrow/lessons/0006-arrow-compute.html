@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arrow Compute</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #0d9488; --color-accent-light: #e6f7f5; }
+    a:hover { color: #0f766e; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #5eead4; }
+    }
+    [data-theme="dark"] { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+    [data-theme="dark"] a:hover { color: #5eead4; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0005-table-and-chunked-columns.html" title="Previous: Table and Chunked Columns">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0007-parquet-interop.html" title="Next: Parquet Interop">Next</a>
+    </nav>
+
+    <h1>Arrow Compute</h1>
+    <p class="lesson-meta">Time: ~9 minutes. Tangible win: use pyarrow.compute to filter, compare, and aggregate a Table without converting to pandas first — and correctly predict how nulls behave in comparisons.</p>
+
+    <p>A lot of pipelines do "load into Arrow → convert to pandas → transform → convert back" purely out of habit. Compute lets you filter/aggregate in Arrow directly, which is faster and skips the extra conversions. It's also required reading before Parquet predicate pushdown (next lesson) makes sense.</p>
+
+    <ul>
+      <li><code>pyarrow.compute</code> provides vectorized kernels (<code>pc.greater</code>, <code>pc.filter</code>, <code>pc.sum</code>, ...) that operate directly on Arrow Arrays/ChunkedArrays/Tables and return new Arrow objects — never in place.</li>
+      <li><code>Table.filter(mask)</code>, <code>Table.group_by(...).aggregate(...)</code> are higher-level, Table-native equivalents built on the same kernels.</li>
+      <li><strong>Null propagation</strong>: a comparison where either side is null produces <code>null</code>, not <code>False</code>. <code>Table.filter()</code> then treats a <code>null</code> mask entry as "exclude," which is easy to misread as "the comparison must have evaluated to False."</li>
+    </ul>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arrow.apache.org/docs/python/api/compute.html">pyarrow.compute API reference</a>.
+    </section>
+
+    <h2>Exercise</h2>
+    <pre><code>import pyarrow as pa
+import pyarrow.compute as pc
+
+table = pa.table({
+    "region": ["east", "east", "west", "west", "west"],
+    "amount": [100, 150, 200, None, 50],
+})
+
+mask = pc.greater(table["amount"], 90)
+print("Mask:", mask.to_pylist())
+
+filtered = table.filter(mask)
+print("Filtered rows:", filtered.num_rows)
+print(filtered.to_pydict())
+
+grouped = table.group_by("region").aggregate([("amount", "sum")])
+print(grouped.to_pydict())</code></pre>
+
+    <p class="lesson-meta">Verified output (pyarrow 25.0.1):</p>
+
+    <pre><code>Mask: [True, True, True, None, False]
+Filtered rows: 3
+{'region': ['east', 'east', 'west'], 'amount': [100, 150, 200]}
+{'region': ['east', 'west'], 'amount_sum': [250, 250]}</code></pre>
+
+    <section class="callout warning">
+      <span class="callout-title">Null is not False</span>
+      The row with <code>amount=None</code> produces a mask entry of <code>None</code>, not <code>False</code> or <code>True</code>, and <code>.filter()</code> drops it — it never "failed the comparison," it was simply unknown. Code that does <code>if not mask[i]:</code> instead of proper null-aware filtering will misclassify those rows.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p><code>pc.greater(table["amount"], 90)</code> is evaluated on a row where <code>amount</code> is null. What does that mask entry contain?</p>
+      <div class="quiz-options">
+        <button data-correct="false"><code>False</code>, because null fails every comparison</button>
+        <button data-correct="true"><code>null</code> — the comparison result is unknown, not false</button>
+        <button data-correct="false">The kernel raises an exception on null input</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Comparisons involving null propagate null, not <code>False</code>. Treating them as equivalent misclassifies rows.</p>
+      <p class="quiz-feedback incorrect">Not quite. A comparison against null produces <code>null</code>, distinct from both <code>True</code> and <code>False</code>.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>After calling <code>pc.greater(table["amount"], 90)</code>, is <code>table</code> itself modified?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes — compute functions mutate their input Table in place</button>
+        <button data-correct="true">No — compute functions always return new objects, never mutate in place</button>
+        <button data-correct="false">Only the "amount" column is mutated; the rest of the table is untouched</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Every pyarrow.compute kernel returns a new Arrow object. <code>table</code> is unchanged after the call.</p>
+      <p class="quiz-feedback incorrect">No. pyarrow.compute kernels never mutate in place — they return new Arrow objects, leaving the input Table untouched.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>On your own table with at least one null in the filtered column, show the raw mask (proving it contains <code>None</code>, not <code>False</code>, for the null row).</li>
+      <li>Show the filtered result.</li>
+      <li>Compute one <code>group_by(...).aggregate(...)</code> and confirm the numbers by hand.</li>
+    </ol>
+
+    <p>New terms — <a href="../reference/glossary.html">compute kernel</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask the agent: "How would I write a filter that treats null <code>amount</code> as 'include' instead of 'exclude'?" Next lesson gets this same data on and off disk efficiently, in a format Arrow reads natively: Parquet.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0005-table-and-chunked-columns.html" title="Previous: Table and Chunked Columns">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0007-parquet-interop.html" title="Next: Parquet Interop">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

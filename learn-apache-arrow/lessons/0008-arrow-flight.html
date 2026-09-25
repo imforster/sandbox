@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arrow Flight</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #0d9488; --color-accent-light: #e6f7f5; }
+    a:hover { color: #0f766e; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #5eead4; }
+    }
+    [data-theme="dark"] { --color-accent: #2dd4bf; --color-accent-light: rgba(45, 212, 191, 0.12); }
+    [data-theme="dark"] a:hover { color: #5eead4; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0007-parquet-interop.html" title="Previous: Parquet Interop">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0009-arrow-flight-sql.html" title="Next: Arrow Flight SQL">Next</a>
+    </nav>
+
+    <h1>Arrow Flight</h1>
+    <p class="lesson-meta">Time: ~10 minutes. Tangible win: run a minimal Flight server and client, and confirm a Table sent across the wire arrives byte-identical to the source.</p>
+
+    <p>Everything so far has been about avoiding copies <em>within</em> one process (Lessons 1–3) or between memory and disk (Lesson 7). Flight is the same idea applied across a network: RecordBatches go out as Arrow IPC-formatted streams over gRPC, with no per-row (de)serialization.</p>
+
+    <ul>
+      <li>Flight is a <strong>gRPC-based streaming protocol</strong>, not a request/response REST API. Client and server exchange streams of RecordBatches.</li>
+      <li>A <code>FlightDescriptor</code> identifies a dataset (by path or an opaque command); <code>FlightInfo</code> describes it (schema, row count, where to fetch it — a <code>Ticket</code>); a <code>Ticket</code> is what you hand to <code>do_get</code> to actually retrieve the data.</li>
+      <li><code>do_get</code> (server → client stream) and <code>do_put</code> (client → server stream) are the two core data-movement RPCs; <code>list_flights</code> / <code>get_flight_info</code> are metadata/discovery RPCs.</li>
+      <li>In Python: implement a server by subclassing <code>pyarrow.flight.FlightServerBase</code> and overriding the RPCs you support; talk to it with <code>pyarrow.flight.FlightClient</code>.</li>
+    </ul>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arrow.apache.org/docs/format/Flight.html">Arrow Flight RPC documentation</a>.
+    </section>
+
+    <h2>Exercise</h2>
+    <pre><code>import threading
+import time
+
+import pyarrow as pa
+import pyarrow.flight as flight
+
+table = pa.table({
+    "id": [1, 2, 3],
+    "amount": [100, 150, 200],
+})
+
+
+class DemoFlightServer(flight.FlightServerBase):
+    def __init__(self, location, table):
+        super().__init__(location)
+        self._table = table
+
+    def do_get(self, context, ticket):
+        return flight.RecordBatchStream(self._table)
+
+    def list_flights(self, context, criteria):
+        descriptor = flight.FlightDescriptor.for_path(b"demo")
+        info = flight.FlightInfo(self._table.schema, descriptor, [], self._table.num_rows, 0)
+        yield info
+
+
+location = "grpc://0.0.0.0:0"
+server = DemoFlightServer(location, table)
+server_thread = threading.Thread(target=server.serve, daemon=True)
+server_thread.start()
+time.sleep(0.3)
+
+client = flight.FlightClient(f"grpc://127.0.0.1:{server.port}")
+reader = client.do_get(flight.Ticket(b"demo"))
+result_table = reader.read_all()
+
+print("Client received rows:", result_table.num_rows)
+print("Round-trip equal to original:", result_table.equals(table))
+
+server.shutdown()</code></pre>
+
+    <p class="lesson-meta">Verified output (pyarrow 25.0.1):</p>
+
+    <pre><code>Client received rows: 3
+Round-trip equal to original: True</code></pre>
+
+    <section class="callout warning">
+      <span class="callout-title">Flight is a stream, not a REST endpoint</span>
+      Buffering the entire <code>do_get</code> response before doing anything with it defeats the point of a streaming protocol; large results are meant to be consumed batch-by-batch as they arrive. Also: forgetting to override the RPC you actually need (e.g. calling <code>do_get</code> on a server that never overrode it) gets you an unhelpful "not implemented" failure instead of a clear error about a missing method.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>What does a client actually hand to <code>do_get</code> to retrieve data from a Flight server?</p>
+      <div class="quiz-options">
+        <button data-correct="false">A raw SQL query string</button>
+        <button data-correct="true">A <code>Ticket</code>, obtained from a prior <code>FlightInfo</code> lookup or known in advance</button>
+        <button data-correct="false">The full <code>FlightDescriptor</code> object</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. <code>Ticket</code> is what <code>do_get</code> consumes to actually retrieve the data stream — <code>FlightDescriptor</code>/<code>FlightInfo</code> are how you discover which ticket to use.</p>
+      <p class="quiz-feedback incorrect">Not quite. <code>do_get</code> takes a <code>Ticket</code>. The descriptor/info pair is how a client discovers what ticket to ask for.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Is Arrow Flight a request/response REST-style API?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes — each call returns one JSON response</button>
+        <button data-correct="true">No — it's a gRPC-based streaming protocol exchanging streams of RecordBatches</button>
+        <button data-correct="false">It's built on top of HTTP/1.1 long-polling</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Flight is fundamentally a stream of RecordBatches over gRPC, not a REST request/response model.</p>
+      <p class="quiz-feedback incorrect">No. Flight is a gRPC-based streaming protocol — treating it like REST (e.g. buffering the whole response) defeats its purpose.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Extend the server to serve a Table you built earlier in this course (Lesson 5 or 7's table works well).</li>
+      <li>Fetch it with a client on a different <code>Ticket</code> value.</li>
+      <li>Confirm <code>.equals(...)</code> returns <code>True</code>.</li>
+      <li>Explain in one sentence what would be serialized instead of shared if this were plain gRPC without Arrow (i.e., row-by-row protobuf messages).</li>
+    </ol>
+
+    <p>New terms — <a href="../reference/glossary.html">Flight</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask the agent: "What would <code>do_put</code> look like for this same server, accepting a Table from a client instead of serving one?" Next lesson sees what Flight looks like specialized for SQL workloads: Arrow Flight SQL.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0007-parquet-interop.html" title="Previous: Parquet Interop">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0009-arrow-flight-sql.html" title="Next: Arrow Flight SQL">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
