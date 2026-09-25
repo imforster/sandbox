@@ -263,6 +263,8 @@
       { text: 'All Courses', href: '/sandbox/learning/' },
       { text: '3D Printing', href: '/sandbox/learn-3d-printing/' },
       { text: 'Agents at Scale', href: '/sandbox/agents-at-scale/' },
+      { text: 'Apache Arrow', href: '/sandbox/learn-apache-arrow/' },
+      { text: 'Apache Polaris', href: '/sandbox/learn-apache-polaris/' },
       { text: 'Building Better Skills', href: '/sandbox/learn-skills/' },
       { text: 'Cadence + Go', href: '/sandbox/learn-cadence-go/' },
       { text: 'chezmoi', href: '/sandbox/learn-chezmoi/' },
