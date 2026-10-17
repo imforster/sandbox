@@ -4,6 +4,22 @@ High-trust sources for grounding lessons. Cadence is maintained by the
 cadence-workflow org (originally Uber). Primary sources are the official docs and the
 Go client/samples repos.
 
+## Agent CLIs (the stage executors — added 2026-10-16, verified against docs)
+
+- **Claude Code — Run programmatically (headless)** —
+  https://docs.claude.com/en/docs/claude-code/headless
+  READ. `claude -p "<prompt>"` runs one prompt non-interactively, stdout + exit code.
+  `--output-format` text/json/stream-json; `--allowedTools` to scope; `--bare` for a
+  reproducible env (skips hooks/skills/MCP/CLAUDE.md, needs ANTHROPIC_API_KEY). Maps to
+  a blocking Cadence activity. Anchor for Lesson 0007 (Claude half).
+- **Devin API — Common Flows** — https://docs.devin.ai/api-reference/common-flows
+  READ. Async: `POST /v1/sessions` {prompt} → {session_id, url, status}; poll
+  `GET /sessions/{id}` until status terminal (exit/error/suspended). Service-user key
+  (cog_…) with UseDevinSessions permission. Anchor for Lesson 0007 (Devin half).
+- **Devin API — Create Session (v3)** —
+  https://docs.devin.ai/api-reference/v3/sessions/post-organizations-sessions
+  The exact create-session endpoint and request/response shape.
+
 ## Primary (official — the source of truth)
 
 - **Concepts: Workflows** — https://cadenceworkflow.io/docs/concepts/workflows

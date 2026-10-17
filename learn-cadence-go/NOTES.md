@@ -58,3 +58,19 @@
   inside research-assistant-workflow. Lean: scratch-then-port. Lesson 6 assumes scratch.
 - Next natural step: pair with Ian to write the 2-stage durable slice (Lesson 6 Step 6),
   OR Lesson 7 synthesis (map full 7 stages, decide Cadence vs ICM with evidence).
+
+## Session 4 (2026-10-16) — agent-execution requirement
+
+- New requirement: stages driven by CLI agents (Claude Code / Devin). Scope narrowed to
+  **Reading A** (Cadence orchestrates agents). Reading B (agents write the code) parked.
+  See LR 0002.
+- Verified against primary docs (NOT parametric): Claude headless `claude -p … --output-format json`
+  (sync subprocess, exit code), `--bare` for reproducible worker env; Devin async
+  `POST /v1/sessions` → poll `GET /sessions/{id}` until exit/error/suspended, cog_ service key.
+- Shipped Lesson 0007 (agents-as-activities). Index gained an "Agents" section (7 lessons / ~67 min).
+  Glossary gained "Agents as activities" section. MISSION + RESOURCES + LR 0002 updated.
+  Lesson 6 next-link chained 6→7.
+- Synthesis lesson renumbered in planning to **Lesson 8** (was "Lesson 7") since 7 is now agents.
+- Teaching frame that worked: agent call = canonical activity (non-deterministic/slow/networked/paid),
+  so Lesson 7 is a payoff of L1–L2, not new theory. The genuinely-new bit is sync (Claude) vs
+  async create-then-poll (Devin).

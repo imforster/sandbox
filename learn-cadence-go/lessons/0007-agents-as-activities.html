@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agents as activities — driving Claude &amp; Devin from a workflow</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=2">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0006-hands-on-run-it.html" title="Previous: Hands-on run it">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="index.html" title="All lessons">Next</a>
+    </nav>
+
+    <h1>Agents as activities</h1>
+    <p class="lesson-meta">Time: ~10 minutes. Tangible win: you can wrap a Claude Code or Devin agent call as a Cadence activity so each of your 7 research stages is run by an agent — retried, timed out, and replay-safe — without poisoning workflow determinism.</p>
+
+    <p>Ian — until now the "work" inside each stage was a hand-wave. This lesson makes it concrete: the work is <strong>an AI agent you invoke from the command line</strong>. Claude Code and Devin become the engines that actually execute a stage. The whole point of Lessons 1–2 pays off here, because an agent call is the textbook example of what must live in an activity, never in the workflow.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary sources</span>
+      <a href="https://docs.claude.com/en/docs/claude-code/headless">Claude Code — Run programmatically</a> (headless <code>claude -p</code>) and <a href="https://docs.devin.ai/api-reference/common-flows">Devin API — Common Flows</a> (create session, then poll). Read the "Basic usage" and "Getting started: API key to first session" sections respectively.
+    </section>
+
+    <h2>Why an agent call is an activity, always</h2>
+    <p>Workflow code must be deterministic — replay has to produce the same decisions every time (Lesson 1). An LLM is the opposite of deterministic: the same prompt yields different text, at a different latency, with a non-zero chance of failure. It also reaches the network and spends money. Every property that bans code from a workflow is present here.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Never call an agent from workflow code</span>
+      Not <code>exec.Command("claude", ...)</code>, not an HTTP call to Devin, not reading the result. All of it goes inside an activity. The workflow only decides <em>which</em> agent to run, <em>in what order</em>, and <em>what to do with the result</em>. The non-determinism is sealed inside the activity, where Cadence records only the final output into history — so replay reuses that recorded output and never re-runs the model.
+    </section>
+
+    <h2>The two agents have two shapes</h2>
+    <p>This is the one distinction that changes your code. Claude headless is a <strong>synchronous subprocess</strong>: one command runs, blocks, and exits. Devin is an <strong>asynchronous job</strong>: you create a session, get an ID, and poll until it finishes.</p>
+    <table>
+      <tr><th></th><th>Claude Code (headless)</th><th>Devin</th></tr>
+      <tr><td>Invocation</td><td><code>claude -p "…"</code> subprocess</td><td><code>POST /v1/sessions</code> (HTTP)</td></tr>
+      <tr><td>Model</td><td>Synchronous — blocks till exit</td><td>Async — returns a <code>session_id</code></td></tr>
+      <tr><td>Get result</td><td>Read stdout, check exit code</td><td>Poll <code>GET /sessions/{id}</code></td></tr>
+      <tr><td>Cadence pattern</td><td>One activity, blocking</td><td>Create activity + poll (timer loop or heartbeat)</td></tr>
+    </table>
+
+    <h2>Claude as a blocking activity</h2>
+    <p>Headless mode is <code>claude -p "&lt;prompt&gt;" --output-format json</code>: single prompt to stdout, then exit code 0 on success, non-zero on failure (<a href="https://docs.claude.com/en/docs/claude-code/headless">docs</a>). That maps cleanly onto a normal activity — the kind you already know how to time out and retry.</p>
+    <pre><code>// ACTIVITY — side effects live here, non-determinism is fine.
+func ClaudeStage(ctx context.Context, prompt string) (string, error) {
+    cmd := exec.CommandContext(ctx, "claude", "-p", prompt,
+        "--output-format", "json",
+        "--allowedTools", "Read,Edit,Bash") // scope the blast radius
+    out, err := cmd.Output()
+    if err != nil {
+        // non-zero exit → return err so Cadence can retry
+        return "", fmt.Errorf("claude failed: %w", err)
+    }
+    var res struct{ Result string `json:"result"` }
+    json.Unmarshal(out, &amp;res)
+    return res.Result, nil
+}</code></pre>
+    <p>In the workflow you call it like any activity, with the timeouts and retry policy from Lesson 2. An agent run is slow, so <code>StartToClose</code> is minutes, not seconds:</p>
+    <pre><code>ao := workflow.ActivityOptions{
+    StartToCloseTimeout: 10 * time.Minute,   // one agent run's ceiling
+    RetryPolicy: &amp;cadence.RetryPolicy{
+        InitialInterval: 5 * time.Second,
+        BackoffCoefficient: 2.0,
+        MaximumAttempts: 3,
+        NonRetryableErrorReasons: []string{"BadRequestError"},
+    },
+}
+ctx = workflow.WithActivityOptions(ctx, ao)
+var draft string
+err := workflow.ExecuteActivity(ctx, ClaudeStage, prompt).Get(ctx, &amp;draft)</code></pre>
+
+    <section class="callout tip">
+      <span class="callout-title">Use <code>--bare</code> for reproducible runs</span>
+      Plain <code>claude -p</code> auto-loads hooks, skills, MCP servers, and <code>CLAUDE.md</code> from the working directory and <code>~/.claude</code> — so the same activity behaves differently on a teammate's worker. <code>claude --bare -p "…"</code> skips all of that for a deterministic environment (you then set <code>ANTHROPIC_API_KEY</code> explicitly). For a Cadence worker you want the <code>--bare</code> behaviour. (<a href="https://docs.claude.com/en/docs/claude-code/headless">docs: "Start faster with bare mode"</a>)
+    </section>
+
+    <h2>Devin as a create-then-poll pair</h2>
+    <p>Devin's API is async: <code>POST /v1/sessions</code> with a prompt returns <code>{session_id, url, status}</code>, then you <code>GET</code> the session until <code>status</code> is terminal — the docs' Python loop breaks on <code>exit</code>, <code>error</code>, or <code>suspended</code> (<a href="https://docs.devin.ai/api-reference/common-flows">Common Flows</a>). You have two Cadence-idiomatic ways to model the wait.</p>
+
+    <p><strong>Option 1 — poll inside one activity with heartbeats.</strong> The activity creates the session then loops, calling <code>activity.RecordHeartbeat</code> each cycle. If the worker dies, Cadence restarts the activity; the heartbeat payload carries the <code>session_id</code> so the retry rejoins the existing session instead of starting a new one.</p>
+    <pre><code>func DevinStage(ctx context.Context, prompt string) (string, error) {
+    id := createSession(prompt)             // POST /v1/sessions
+    for {
+        activity.RecordHeartbeat(ctx, id)   // checkpoint the session id
+        s := getSession(id)                 // GET /sessions/{id}
+        switch s.Status {
+        case "blocked", "finished":         // terminal → done
+            return s.Output, nil
+        case "expired":
+            return "", fmt.Errorf("devin session failed")
+        }
+        time.Sleep(10 * time.Second)        // fine: this is activity code
+    }
+}</code></pre>
+
+    <p><strong>Option 2 — split into "start" and "wait" with a durable timer.</strong> One activity creates the session; the workflow then <code>workflow.Sleep</code>s (Lesson 5) and a second activity checks status, looping in deterministic workflow code. This frees the worker between polls — right when a Devin task runs for hours.</p>
+
+    <section class="callout note">
+      <span class="callout-title">Which option?</span>
+      Short agent runs (minutes): Option 1 — simpler, one activity. Long runs (hours/days) or many parallel sessions: Option 2 — the worker isn't pinned waiting, and the sleep is durable across restarts. This is the same activity-vs-child decision discipline from Lesson 5: reach for the lighter tool first.
+    </section>
+
+    <h2>Idempotency bites harder with agents</h2>
+    <p>Lesson 2's at-least-once rule is sharper here because agent runs cost money and mutate repos. A retried <code>ClaudeStage</code> runs the model again — a second charge, and possibly a second commit. Two defenses, both your responsibility:</p>
+    <ul>
+      <li><strong>Stable keys:</strong> pass a deterministic run ID (from <code>workflow.GetInfo</code>) into the agent prompt/branch name so a re-run overwrites rather than duplicates.</li>
+      <li><strong>Devin's own idempotency:</strong> on Option 1, the heartbeated <code>session_id</code> lets a retry re-attach to the <em>same</em> session instead of creating a new paid one.</li>
+    </ul>
+
+    <h2>Mapping onto your 7 stages</h2>
+    <p>Each stage becomes an activity that invokes an agent; the workflow is the durable coordinator that was previously your ICM folder structure. Intent and evaluation are cheap, fast Claude calls (blocking activities). Execution — the heavy "go build/research this" stage — is the natural Devin candidate (async, long-running, Option 2). The human-review boundary between stages is the signal gate from Lesson 4. Nothing about the agent lives in the workflow; the workflow just sequences the activities and decides what each result means.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Where does the <code>exec.Command("claude", ...)</code> call belong, and why?</p>
+      <div class="quiz-options">
+        <button data-correct="true">In an activity, because the agent call is non-deterministic</button>
+        <button data-correct="false">In the workflow, because it decides the stage ordering</button>
+        <button data-correct="false">In either place, as long as you record a heartbeat</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. An LLM call is non-deterministic, slow, networked, and costs money — every reason code is banned from a workflow. It goes in an activity; Cadence records only the output for replay.</p>
+      <p class="quiz-feedback incorrect">No. The agent call is non-deterministic, so it must be an activity. The workflow only sequences activities and interprets results — it never runs the model.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Why does Devin need a different Cadence pattern than Claude headless?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Devin is deterministic, so it can run in workflow code directly</button>
+        <button data-correct="true">Devin is async — you create a session and poll, not block</button>
+        <button data-correct="false">Devin cannot be retried, so it must run as a child workflow</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Claude headless blocks until the subprocess exits; Devin returns a session_id immediately and you poll until the status is terminal. The async shape forces a create-then-poll pattern.</p>
+      <p class="quiz-feedback incorrect">No. Devin is async: POST returns a session_id and you poll GET until terminal. That create-then-poll shape differs from Claude's single blocking subprocess.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>A Devin poll activity dies mid-session and Cadence retries it. How do you avoid starting a second paid session?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Heartbeat the session id so the retry re-attaches to it</button>
+        <button data-correct="false">Lower the StartToClose timeout so the retry never fires</button>
+        <button data-correct="false">Move the poll loop into deterministic workflow code</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Recording the session_id as a heartbeat payload lets the retried activity read it back and resume polling the existing session rather than creating a new one.</p>
+      <p class="quiz-feedback incorrect">No. The fix is heartbeating the session_id so a retry re-attaches to the same session. Timeouts don't prevent the duplicate, and polling can't move into a workflow (it's a network call).</p>
+    </div>
+
+    <p>New terms — <a href="../reference/glossary.html">headless mode, bare mode, create-then-poll, session polling, agent activity</a> — are in the glossary.</p>
+
+    <section class="ask-teacher">
+      Ask me anything. Good follow-ups: "Show me the full Go worker that registers both ClaudeStage and DevinStage" or "How do I pass the deterministic run ID into the agent so retries overwrite?" You've now got the model-call half of the mission — next we can pair-build the real 2-stage slice (one Claude activity, one Devin activity) against your research-assistant-workflow, or jump to the Lesson 8 synthesis: map all 7 stages and make the Cadence-vs-ICM call with evidence.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0006-hands-on-run-it.html" title="Previous: Hands-on run it">Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="index.html" title="All lessons">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=2"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

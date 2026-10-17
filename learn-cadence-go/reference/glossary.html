@@ -122,6 +122,24 @@
       <dd>Cadence's deterministic replacement for Go's <code>select</code>. Waits on multiple sources (signal channels, timers, futures) inside workflow code; whichever is ready first wins. <a href="https://cadenceworkflow.io/docs/go-client">[docs]</a></dd>
     </dl>
 
+    <h2>Agents as activities</h2>
+    <dl class="glossary">
+      <dt>Agent activity</dt>
+      <dd>An activity whose work is invoking an AI coding agent (Claude Code, Devin). Lives in an activity, never workflow code, because the agent call is non-deterministic, networked, slow, and costs money. <a href="https://docs.claude.com/en/docs/claude-code/headless">[claude]</a> <a href="https://docs.devin.ai/api-reference/common-flows">[devin]</a></dd>
+
+      <dt>Headless mode</dt>
+      <dd>Claude Code's non-interactive mode: <code>claude -p "&lt;prompt&gt;"</code> runs a single prompt to stdout and exits (0 on success, non-zero on failure). Supports <code>--output-format</code> text/json/stream-json. Maps to a blocking Cadence activity. <a href="https://docs.claude.com/en/docs/claude-code/headless">[docs]</a></dd>
+
+      <dt>Bare mode</dt>
+      <dd>Claude's <code>--bare</code> flag skips auto-discovery of hooks, skills, MCP servers, and <code>CLAUDE.md</code> for a reproducible environment — the right default for a Cadence worker. Requires <code>ANTHROPIC_API_KEY</code> explicitly. <a href="https://docs.claude.com/en/docs/claude-code/headless">[docs]</a></dd>
+
+      <dt>Create-then-poll</dt>
+      <dd>Devin's async pattern: <code>POST /v1/sessions</code> returns a <code>session_id</code>; you then <code>GET /sessions/{id}</code> until status is terminal (exit/error/suspended). Modeled in Cadence as a heartbeating poll activity, or a start activity plus a durable-timer wait loop. <a href="https://docs.devin.ai/api-reference/common-flows">[docs]</a></dd>
+
+      <dt>Session polling</dt>
+      <dd>Repeatedly querying an async agent session's status until it finishes. Heartbeat the <code>session_id</code> so a retried activity re-attaches to the same (paid) session rather than creating a new one.</dd>
+    </dl>
+
     <h2>Ian's context</h2>
     <dl class="glossary">
       <dt>ICM (Interpretable Context Methodology)</dt>

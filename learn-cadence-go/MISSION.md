@@ -43,6 +43,24 @@ By the end, Ian can:
    the ICM approach handles with folders + humans.
 5. Decide, with evidence, where Cadence earns its operational cost for *this* workflow
    and where the simpler ICM/folder model is still the right call.
+6. **Drive a CLI agent (Claude Code headless or Devin) from inside an activity** — so
+   each of the 7 stages is executed by an agent, retried and replay-safe, with the
+   model's non-determinism sealed inside the activity. (Added 2026-10-16.)
+
+## The agent-execution dimension (added 2026-10-16)
+
+The 7 stages don't just need orchestration — they need an *executor*. That executor is a
+CLI agent. Two shapes, both confirmed against primary docs:
+
+- **Claude Code (headless):** `claude -p "<prompt>" --output-format json` — a synchronous
+  subprocess. One blocking activity. (docs.claude.com/en/docs/claude-code/headless)
+- **Devin:** `POST /v1/sessions` → `session_id` → poll `GET /sessions/{id}` until terminal.
+  Async job. Heartbeating poll activity, or start-activity + durable-timer wait.
+  (docs.devin.ai/api-reference/common-flows)
+
+Scope decision (2026-10-16): **Reading A only** — Cadence orchestrates the agents (agent
+runs *are* the stage work). Reading B (agents writing the Cadence code) was raised and
+set aside; the focus is driving the CLIs as activities.
 
 ## Non-goals
 
