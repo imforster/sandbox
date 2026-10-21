@@ -259,9 +259,10 @@
       { text: 'IDEO Design Sprint', href: 'https://blog.imfsoftware.com/ideo-design-sprint-game/' },
       { text: 'LLM Wiki', href: 'https://blog.imfsoftware.com/llm-wiki/docs/' },
     ]},
-    { label: 'Learning', items: [
+    { label: 'Learning Academy', items: [
       { text: 'All Courses', href: '/sandbox/learning/' },
       { text: '3D Printing', href: '/sandbox/learn-3d-printing/' },
+      { text: 'Agentic Workflows', href: '/sandbox/learn-agentic-workflows/' },
       { text: 'Agents at Scale', href: '/sandbox/agents-at-scale/' },
       { text: 'Apache Arrow', href: '/sandbox/learn-apache-arrow/' },
       { text: 'Apache Polaris', href: '/sandbox/learn-apache-polaris/' },
@@ -270,6 +271,7 @@
       { text: 'chezmoi', href: '/sandbox/learn-chezmoi/' },
       { text: 'Cloudflare Workers', href: '/sandbox/learn-cloudflare/' },
       { text: 'Codex', href: '/sandbox/learn-codex/' },
+      { text: 'Flink Connectors', href: '/sandbox/learn-flink-connectors/' },
       { text: 'Fullstack Agent', href: '/sandbox/learn-fullstack-agent/' },
       { text: 'Graphify', href: '/sandbox/learn-graphify/' },
       { text: 'Jujutsu (jj)', href: '/sandbox/learn-jj/' },
