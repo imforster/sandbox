@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Connector Map</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #2e7d32; --color-accent-light: #e6f4e7; }
+    a:hover { color: #1b5e20; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #98ee99; }
+    }
+    [data-theme="dark"] { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+    [data-theme="dark"] a:hover { color: #98ee99; }
+    .muted-cell { color: var(--color-muted); font-size: 0.82rem; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0001-the-flink-connector-model.html" title="Previous: The Flink Connector Model">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0003-local-flink-sql-and-reading-files.html" title="Next: Local Flink SQL">Next →</a>
+    </nav>
+
+    <h1>The Connector Map</h1>
+    <p class="lesson-meta">Time: ~8 minutes. Tangible win: name the four connectors this engagement needs and the one tradeoff that defines each — enough to say "reach for this one, because…" in a design conversation.</p>
+
+    <p>Lesson 1 gave you the skeleton: sources → transforms → sinks, declared as tables. This lesson populates it with the specific connectors the <strong>Dremio</strong> engagement calls for, and — more importantly — the single defining tradeoff of each. Memorising option names is low value; knowing <em>why you'd pick one</em> is what a client pays for.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/table/overview/">Flink SQL Connectors — Overview</a> — the built-in connector list, including which are source-only, sink-only, or both.
+    </section>
+
+    <h2>Two axes that classify every connector</h2>
+    <p>Before the map, two questions sort any connector you'll meet:</p>
+    <ul>
+      <li><strong>Direction</strong> — can it be a <em>source</em>, a <em>sink</em>, or both? Some are strictly one.</li>
+      <li><strong>Boundedness</strong> — does it produce a <em>bounded</em> stream (finite, ends) or an <em>unbounded</em> one (continuous)? And if unbounded, is it an <em>append</em> stream or a <em>changelog</em> stream?</li>
+    </ul>
+    <p>Those two axes are the whole reason the four connectors below behave differently. Keep them in mind as you read the map.</p>
+
+    <h2>The map for this engagement</h2>
+    <table>
+      <thead>
+        <tr><th>Connector</th><th>Direction</th><th>Produces</th><th>Defining tradeoff</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>filesystem</code><br><span class="muted-cell">job-history logs</span></td>
+          <td>Source &amp; sink</td>
+          <td>Bounded by default; unbounded append in continuous mode</td>
+          <td>Simplest possible source — but you choose bounded (read once) vs. continuous (watch for new files), and you must pick a <code>format</code>.</td>
+        </tr>
+        <tr>
+          <td><code>mongodb</code><br><span class="muted-cell">operational data</span></td>
+          <td>Source &amp; sink</td>
+          <td>Bounded append (point-in-time read)</td>
+          <td>Reads the collection <em>as it is now</em>. Simple, but it does not see later changes — rerun to refresh.</td>
+        </tr>
+        <tr>
+          <td><code>mongodb-cdc</code><br><span class="muted-cell">operational data, live</span></td>
+          <td>Source only</td>
+          <td>Unbounded changelog (snapshot, then live changes)</td>
+          <td>Captures inserts/updates/deletes continuously via Debezium — but cannot be a sink, needs a Mongo replica set, and emits a changelog, not plain rows.</td>
+        </tr>
+        <tr>
+          <td><code>iceberg</code><br><span class="muted-cell">the output</span></td>
+          <td>Source &amp; sink</td>
+          <td>Table-format writes through a catalog</td>
+          <td>What Dremio reads natively — but every write goes <em>through a catalog</em>, so the catalog choice is a real decision (covered later).</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <section class="callout tip">
+      <span class="callout-title">The one asymmetry worth memorising</span>
+      <code>mongodb</code> and <code>mongodb-cdc</code> are two <em>different connectors</em>, not one connector with a flag. The plain <code>mongodb</code> connector gives you a bounded snapshot and can also sink. The <code>mongodb-cdc</code> connector gives you a live changelog and is <strong>source-only</strong>. Lesson 6 drills exactly how their output differs.
+    </section>
+
+    <h2>Why "append vs. changelog" is the hinge</h2>
+    <p>The deepest split in the map is not file-vs-database — it's what the stream <em>means</em>:</p>
+    <ul>
+      <li>An <strong>append stream</strong> says "here is another row." A bounded file read and a plain Mongo read are both append streams. Writing them to Iceberg is a straight accumulation of inserts.</li>
+      <li>A <strong>changelog stream</strong> says "this row was inserted / updated / deleted." A CDC source emits this, because it reflects edits to rows that already exist. Writing it to Iceberg means the sink has to apply updates and deletes, not just append.</li>
+    </ul>
+
+    <section class="callout warning">
+      <span class="callout-title">This decides your Iceberg write mode</span>
+      Append sources map cleanly to append-only Iceberg writes. A changelog source (MongoDB CDC) requires an Iceberg table configured to accept upserts/deletes, with a primary key. If you only remember one consequence from this lesson, make it this one — it's the question that most often surprises people on their first CDC-to-Iceberg pipeline.
+    </section>
+
+    <h2>Beyond the engagement (breadth, not depth)</h2>
+    <p>Flink ships many more connectors — <code>kafka</code>, <code>jdbc</code>, <code>kinesis</code>, <code>firehose</code>, <code>dynamodb</code>, <code>elasticsearch</code>, <code>hbase</code>, and testing helpers like <code>datagen</code> and <code>print</code>. You won't drill these, but knowing they exist — and that they classify on the same two axes — means you can place any new source a client mentions. The <a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/table/overview/">overview table</a> marks the direction of each.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Which statement about the two MongoDB connectors is correct?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Both are source-only and both emit a live changelog stream always</button>
+        <button data-correct="true">Plain mongodb is a bounded source and sink; mongodb-cdc is a source-only changelog</button>
+        <button data-correct="false">Plain mongodb emits a changelog; mongodb-cdc is a bounded sink only</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The plain connector reads a point-in-time snapshot (and can sink); the CDC connector streams inserts/updates/deletes and cannot be a sink.</p>
+      <p class="quiz-feedback incorrect">Not quite. Plain mongodb is bounded append and can sink; mongodb-cdc is a source-only changelog stream — don't swap their roles.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Why does a changelog source change how you write to Iceberg?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Because changelog streams are always slower than append streams are</button>
+        <button data-correct="true">Because the sink must apply updates and deletes, not only append new rows</button>
+        <button data-correct="false">Because Iceberg cannot accept any data from a changelog source at all</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A changelog carries insert/update/delete, so the Iceberg table needs upsert/delete handling and a primary key — not plain append.</p>
+      <p class="quiz-feedback incorrect">No — it's about meaning, not speed. A changelog carries updates and deletes, so the sink must apply them, which append-only writes can't.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>From memory, write the four connectors and one tradeoff each. Check against the table above and the <a href="../reference/glossary.html">glossary</a>.</li>
+      <li>For each of the client's two inputs — job-history files and MongoDB — decide: bounded or continuous? append or changelog? Note why.</li>
+      <li>A teammate says "just use the MongoDB connector for live changes." State the one-sentence correction.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "If the client needs live Mongo changes <em>and</em> a batch of old log files in the same table, is that one job or two?" Next up: standing up a local Flink SQL environment and actually reading a directory of job-history files — your first hands-on win.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0001-the-flink-connector-model.html" title="Previous: The Flink Connector Model">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0003-local-flink-sql-and-reading-files.html" title="Next: Local Flink SQL">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

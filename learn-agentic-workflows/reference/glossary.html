@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Glossary</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+  <link rel="stylesheet" href="../assets/reference.css">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+  <style>
+    /* Apple Developer glossary format: flat A to Z, term as heading, quiet search field */
+    main > h1 { font-weight: 700; letter-spacing: -0.028em; margin-bottom: 0.5rem; }
+
+    .glossary-intro {
+      font-size: 1.15rem;
+      line-height: 1.5;
+      color: var(--color-muted);
+      letter-spacing: -0.012em;
+      max-width: 34em;
+      margin: 0 0 2rem;
+    }
+
+    .glossary-search {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 0 0 1.5rem;
+    }
+    .glossary-search input {
+      flex: 1;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      color: var(--color-text);
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 980px;
+      padding: 0.6rem 1.1rem;
+      outline: none;
+    }
+    .glossary-search input:focus { border-color: var(--color-accent); }
+    .glossary-search button {
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      color: var(--color-accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.4rem 0.2rem;
+    }
+
+    .alpha-index {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 0.6rem;
+      font-size: 0.95rem;
+      padding-bottom: 2rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .alpha-index a { color: var(--color-accent); font-weight: 500; }
+
+    .letter {
+      font-family: var(--font-heading);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--color-muted);
+      letter-spacing: 0.04em;
+      margin: 2.5rem 0 0.25rem;
+      scroll-margin-top: 1rem;
+    }
+
+    .term {
+      margin: 0 0 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--color-border);
+      scroll-margin-top: 1rem;
+    }
+    .term:last-child { border-bottom: none; }
+    .term h2 {
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--color-text);
+      margin: 0 0 0.5rem;
+      padding: 0;
+      border: none;
+    }
+    .term p { margin: 0 0 0.6rem; font-size: 1rem; line-height: var(--line-height); }
+    .term p.term-link { font-size: 0.95rem; margin-bottom: 0; }
+    .term p.term-link + p.term-link { margin-top: 0.25rem; }
+    .term code {
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 0.08em 0.4em;
+    }
+
+    .glossary-noresults { color: var(--color-muted); display: none; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="references.html" title="Previous: References">← References</a>
+      <a class="nav-home" href="../index.html" title="Course home"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="../lessons/index.html" title="All lessons">Lessons →</a>
+    </nav>
+
+    <h1>Glossary</h1>
+    <p class="glossary-intro">Terms used across the agentic workflows lessons, from the agent loop to multi-agent design.</p>
+
+    <div class="glossary-search">
+      <input type="search" id="glossary-filter" placeholder="Search" aria-label="Search the glossary" autocomplete="off">
+      <button type="button" id="glossary-reset">Reset</button>
+    </div>
+
+    <nav class="alpha-index" aria-label="Jump to letter">
+      <a href="#letter-a">A</a><a href="#letter-c">C</a><a href="#letter-e">E</a><a href="#letter-g">G</a><a href="#letter-h">H</a><a href="#letter-j">J</a><a href="#letter-m">M</a><a href="#letter-o">O</a><a href="#letter-p">P</a><a href="#letter-r">R</a><a href="#letter-s">S</a><a href="#letter-t">T</a><a href="#letter-w">W</a>
+    </nav>
+
+    <div id="glossary-terms">
+
+      <h3 class="letter" id="letter-a">A</h3>
+
+      <div class="term" id="agent">
+        <h2>Agent</h2>
+        <p>A system in which the model chooses its own next step and tool use in a loop, rather than following a path your code fixes.</p>
+        <p class="term-link"><a href="../lessons/0002-workflows-versus-agents.html">Taught in lesson 0002</a></p>
+      </div>
+
+      <div class="term" id="agent-loop">
+        <h2>Agent loop</h2>
+        <p>The repeating cycle of calling the model, running any requested tool, returning the result, and calling the model again until it finishes.</p>
+        <p class="term-link"><a href="../lessons/0001-the-agent-loop.html">Taught in lesson 0001</a></p>
+      </div>
+
+      <div class="term" id="aci">
+        <h2>Agent-computer interface (ACI)</h2>
+        <p>The design of tools, parameters, and return values as seen by the model. Anthropic recommends investing in it as much as in a human-facing interface.</p>
+        <p class="term-link"><a href="https://www.anthropic.com/research/building-effective-agents">View documentation</a></p>
+        <p class="term-link"><a href="../lessons/0003-designing-tools.html">Taught in lesson 0003</a></p>
+      </div>
+
+      <div class="term" id="agentic-system">
+        <h2>Agentic system</h2>
+        <p>The umbrella term Anthropic uses for both workflows and agents. Use it when you do not need to specify which one.</p>
+        <p class="term-link"><a href="../lessons/0002-workflows-versus-agents.html">Taught in lesson 0002</a></p>
+      </div>
+
+      <div class="term" id="attention-budget">
+        <h2>Attention budget</h2>
+        <p>Anthropic's term for the finite capacity of a model to draw on the tokens in its context. Each added token spends some of it.</p>
+        <p class="term-link"><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">View documentation</a></p>
+        <p class="term-link"><a href="../lessons/0004-context-and-state.html">Taught in lesson 0004</a></p>
+      </div>
+
+      <div class="term" id="augmented-llm">
+        <h2>Augmented LLM</h2>
+        <p>The basic building block of agentic systems: a model enhanced with retrieval, tools, and memory.</p>
+        <p class="term-link"><a href="../lessons/0007-workflow-patterns.html">Taught in lesson 0007</a></p>
+      </div>
+
+      <h3 class="letter" id="letter-c">C</h3>
+
+      <div class="term" id="capability-eval">
+        <h2>Capability eval</h2>
+        <p>An eval that measures what an agent can do now. It is expected to pass only part of the time at first, and shows progress.</p>
+        <p class="term-link"><a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">View documentation</a></p>
+        <p class="term-link"><a href="../lessons/0006-evaluating-agents.html">Taught in lesson 0006</a></p>
+      </div>
+
+      <div class="term" id="code-grader">
+        <h2>Code-based grader</h2>
+        <p>A script that checks an agent's output, such as a test suite or a query result comparison. Cheap, repeatable, and preferred wherever the answer is checkable.</p>
+        <p class="term-link"><a href="../lessons/0006-evaluating-agents.html">Taught in lesson 0006</a></p>
+      </div>
+
+      <div class="term" id="compaction">
+        <h2>Compaction</h2>
+        <p>Summarizing a long conversation and starting a fresh context window from the summary.</p>
+        <p class="term-link"><a href="../lessons/0004-context-and-state.html">Taught in lesson 0004</a></p>
+      </div>
+
+      <div class="term" id="context-rot">
+        <h2>Context rot</h2>
+        <p>The decline in a model's ability to recall information accurately as the number of tokens in its context grows.</p>
+        <p class="term-link"><a href="../lessons/0004-context-and-state.html">Taught in lesson 0004</a></p>
+      </div>
+
+      <div class="term" id="context-window">
+        <h2>Context window</h2>
+        <p>The set of tokens the model sees when it generates a response. In an agent it includes instructions, tool definitions, messages, and tool results.</p>
+        <p class="term-link"><a href="../lessons/0004-context-and-state.html">Taught in lesson 0004</a></p>
+      </div>
+
+      <h3 class="letter" id="letter-e">E</h3>
+
+      <div class="term" id="end-turn">
+        <h2><code>end_turn</code></h2>
+        <p>The stop reason that means the model has finished its answer and has no further tool requests.</p>
+        <p class="term-link"><a href="../lessons/0001-the-agent-loop.html">Taught in lesson 0001</a></p>
+      </div>
+
+      <div class="term" id="eval">
+        <h2>Eval</h2>
+        <p>A test that gives an agent an input and applies grading logic to what it produces.</p>
+        <p class="term-link"><a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">View documentation</a></p>
+        <p class="term-link"><a href="../lessons/0006-evaluating-agents.html">Taught in lesson 0006</a></p>
+      </div>
+
+      <div class="term" id="evaluator-optimizer">
+        <h2>Evaluator-optimizer</h2>
+        <p>A workflow pattern in which one model call generates output, another critiques it, and the loop repeats against clear criteria.</p>
+        <p class="term-link"><a href="../lessons/0007-workflow-patterns.html">Taught in lesson 0007</a></p>
+      </div>
+
+      <h3 class="letter" id="letter-g">G</h3>
+
+      <div class="term" id="guardrail">
+        <h2>Guardrail</h2>
+        <p>A control in your code that limits what an agent may do or how long it may run. Budgets, permissions, approvals, and validation are guardrails.</p>
+        <p class="term-link"><a href="../lessons/0005-guardrails-and-approval.html">Taught in lesson 0005</a></p>
+      </div>
+
+      <h3 class="letter" id="letter-h">H</h3>
+
+      <div class="term" id="human-grader">
+        <h2>Human grader</h2>
+        <p>A person who reviews an output. Used to calibrate model-based graders and to spot-check results.</p>
+        <p class="term-link"><a href="../lessons/0006-evaluating-agents.html">Taught in lesson 0006</a></p>
+      </div>
+
+      <div class="term" id="human-approval">
+        <h2>Human-in-the-loop approval</h2>
+        <p>A gate that pauses a run until a person approves or rejects a specific tool call.</p>
+        <p class="term-link"><a href="https://learn.microsoft.com/en-us/agent-framework/agents/tools/tool-approval">View documentation</a></p>
+        <p class="term-link"><a href="../lessons/0005-guardrails-and-approval.html">Taught in lesson 0005</a></p>
+      </div>
+
+      <h3 class="letter" id="letter-j">J</h3>
+
+      <div class="term" id="just-in-time-retrieval">
+        <h2>Just-in-time retrieval</h2>
+        <p>Giving an agent references such as file paths or queries, and letting it load the data only when needed.</p>
+        <p class="term-link"><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">View documentation</a></p>
+        <p class="term-link"><a href="../lessons/0004-context-and-state.html">Taught in lesson 0004</a></p>
+      </div>
+
+      <h3 class="letter" id="letter-m">M</h3>
+
+      <div class="term" id="model-grader">
+        <h2>Model-based grader</h2>
+        <p>A model that scores an output against a written rubric. Use it where code cannot judge quality, and check it against human review.</p>
+        <p class="term-link"><a href="../lessons/0006-evaluating-agents.html">Taught in lesson 0006</a></p>
+      </div>
+
+      <h3 class="letter" id="letter-o">O</h3>
+
+      <div class="term" id="orchestrator-workers">
+        <h2>Orchestrator-workers</h2>
+        <p>A workflow pattern in which a central model decides the subtasks at runtime and delegates them to workers.</p>
+        <p class="term-link"><a href="../lessons/0007-workflow-patterns.html">Taught in lesson 0007</a></p>
+      </div>
+
+      <h3 class="letter" id="letter-p">P</h3>
+
+      <div class="term" id="parallelization">
+        <h2>Parallelization</h2>
+        <p>A workflow pattern that runs independent subtasks at once (sectioning) or runs the same task several times (voting).</p>
+        <p class="term-link"><a href="../lessons/0007-workflow-patterns.html">Taught in lesson 0007</a></p>
+      </div>
+
+      <div class="term" id="pass-at-k">
+        <h2>pass@k</h2>
+        <p>A metric asking whether at least one of k attempts succeeds. Use it when one success is enough.</p>
+        <p class="term-link"><a href="../lessons/0006-evaluating-agents.html">Taught in lesson 0006</a></p>
+      </div>
+
+      <div class="term" id="pass-hat-k">
+        <h2>pass^k</h2>
+        <p>A metric asking whether all k attempts succeed. It is the stricter measure and usually the right one for customer-facing agents.</p>
+        <p class="term-link"><a href="../lessons/0006-evaluating-agents.html">Taught in lesson 0006</a></p>
+      </div>
+
+      <div class="term" id="poka-yoke">
+        <h2>Poka-yoke</h2>
+        <p>A design practice that makes errors hard or impossible to make. In tool design, it means changing arguments so a wrong value cannot be passed.</p>
+        <p class="term-link"><a href="../lessons/0003-designing-tools.html">Taught in lesson 0003</a></p>
+      </div>
+
+      <div class="term" id="prompt-chaining">
+        <h2>Prompt chaining</h2>
+        <p>A workflow pattern in which sequential model calls each process the previous output, with optional programmatic gates between steps.</p>
+        <p class="term-link"><a href="../lessons/0007-workflow-patterns.html">Taught in lesson 0007</a></p>
+      </div>
+
+      <h3 class="letter" id="letter-r">R</h3>
+
+      <div class="term" id="regression-eval">
+        <h2>Regression eval</h2>
+        <p>An eval that protects behavior that already works. It should stay near full pass, and confirms that a change did not break anything.</p>
+        <p class="term-link"><a href="../lessons/0006-evaluating-agents.html">Taught in lesson 0006</a></p>
+      </div>
+
+      <div class="term" id="routing">
+        <h2>Routing</h2>
+        <p>A workflow pattern that classifies an input and sends it to a specialized path, such as a smaller model for easy cases.</p>
+        <p class="term-link"><a href="../lessons/0007-workflow-patterns.html">Taught in lesson 0007</a></p>
+      </div>
+
+      <h3 class="letter" id="letter-s">S</h3>
+
+      <div class="term" id="stop-reason">
+        <h2><code>stop_reason</code></h2>
+        <p>The field in a model response that tells your loop why the model stopped. The two values used in this course are <code>tool_use</code> and <code>end_turn</code>.</p>
+        <p class="term-link"><a href="https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons">View documentation</a></p>
+        <p class="term-link"><a href="../lessons/0001-the-agent-loop.html">Taught in lesson 0001</a></p>
+      </div>
+
+      <div class="term" id="step-limit">
+        <h2>Step limit</h2>
+        <p>A maximum number of loop iterations enforced by your code. It is a budget guardrail that the model cannot override.</p>
+        <p class="term-link"><a href="../lessons/0001-the-agent-loop.html">Taught in lesson 0001</a></p>
+      </div>
+
+      <div class="term" id="structured-note-taking">
+        <h2>Structured note-taking</h2>
+        <p>The agent writes progress notes to storage outside the context window and rereads them later.</p>
+        <p class="term-link"><a href="../lessons/0004-context-and-state.html">Taught in lesson 0004</a></p>
+      </div>
+
+      <div class="term" id="sub-agent">
+        <h2>Sub-agent</h2>
+        <p>An agent that works in its own context window on a focused task and returns a short summary to a lead agent.</p>
+        <p class="term-link"><a href="../lessons/0008-multi-agent-systems.html">Taught in lesson 0008</a></p>
+      </div>
+
+      <h3 class="letter" id="letter-t">T</h3>
+
+      <div class="term" id="tool-definition">
+        <h2>Tool definition</h2>
+        <p>The name, description, parameter schema, and return contract that tell the model what a tool does and how to call it.</p>
+        <p class="term-link"><a href="../lessons/0003-designing-tools.html">Taught in lesson 0003</a></p>
+      </div>
+
+      <div class="term" id="tool-result-clearing">
+        <h2>Tool result clearing</h2>
+        <p>Removing old raw tool outputs from the context once the agent no longer needs them. The lightest form of compaction.</p>
+        <p class="term-link"><a href="../lessons/0004-context-and-state.html">Taught in lesson 0004</a></p>
+      </div>
+
+      <div class="term" id="tool-result">
+        <h2><code>tool_result</code></h2>
+        <p>The message your code sends back after running a requested tool, containing the output or an error the model can act on.</p>
+        <p class="term-link"><a href="../lessons/0001-the-agent-loop.html">Taught in lesson 0001</a></p>
+      </div>
+
+      <div class="term" id="tool-use">
+        <h2><code>tool_use</code></h2>
+        <p>The stop reason, and the content block, in which the model requests that your application run a tool.</p>
+        <p class="term-link"><a href="../lessons/0001-the-agent-loop.html">Taught in lesson 0001</a></p>
+      </div>
+
+      <h3 class="letter" id="letter-w">W</h3>
+
+      <div class="term" id="workflow">
+        <h2>Workflow</h2>
+        <p>A system in which LLMs and tools follow predefined code paths that your code controls.</p>
+        <p class="term-link"><a href="https://www.anthropic.com/research/building-effective-agents">View documentation</a></p>
+        <p class="term-link"><a href="../lessons/0002-workflows-versus-agents.html">Taught in lesson 0002</a></p>
+      </div>
+
+    </div>
+
+    <p id="glossary-noresults" class="glossary-noresults">No matching terms. Try a different word.</p>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="references.html">← References</a>
+      <a class="nav-home" href="../index.html" title="Course home"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="../lessons/index.html">Lessons →</a>
+    </nav>
+  </main>
+  <script>
+    (function () {
+      var input = document.getElementById('glossary-filter');
+      var reset = document.getElementById('glossary-reset');
+      var terms = Array.prototype.slice.call(document.querySelectorAll('.term'));
+      var letters = Array.prototype.slice.call(document.querySelectorAll('.letter'));
+      var empty = document.getElementById('glossary-noresults');
+
+      function applyFilter() {
+        var q = input.value.trim().toLowerCase();
+        var shown = 0;
+        terms.forEach(function (t) {
+          var match = !q || t.textContent.toLowerCase().indexOf(q) !== -1;
+          t.style.display = match ? '' : 'none';
+          if (match) shown++;
+        });
+        letters.forEach(function (l) {
+          var next = l.nextElementSibling;
+          var hasVisible = false;
+          while (next && !next.classList.contains('letter')) {
+            if (next.classList.contains('term') && next.style.display !== 'none') { hasVisible = true; break; }
+            next = next.nextElementSibling;
+          }
+          l.style.display = hasVisible ? '' : 'none';
+        });
+        empty.style.display = shown === 0 ? 'block' : 'none';
+      }
+
+      input.addEventListener('input', applyFilter);
+      reset.addEventListener('click', function () { input.value = ''; applyFilter(); input.focus(); });
+    })();
+  </script>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

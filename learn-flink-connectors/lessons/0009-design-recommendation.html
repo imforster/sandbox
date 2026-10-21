@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design Recommendation</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #2e7d32; --color-accent-light: #e6f4e7; }
+    a:hover { color: #1b5e20; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #98ee99; }
+    }
+    [data-theme="dark"] { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+    [data-theme="dark"] a:hover { color: #98ee99; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0008-delivery-guarantees.html" title="Previous: Delivery Guarantees">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <span class="nav-next nav-disabled">Next →</span>
+    </nav>
+
+    <h1>Design Recommendation</h1>
+    <p class="lesson-meta">Time: ~9 minutes. Tangible win: a defensible, written recommendation for the client's two pipelines — source mode, delivery guarantee, catalog — with every choice traceable to an earlier lesson. This is the deliverable.</p>
+
+    <p>Eight lessons of parts; now the assembly. The client has two inputs — <strong>job-history log files</strong> and <strong>MongoDB</strong> operational data — both landing in <strong>Iceberg</strong> for Dremio. This lesson makes the calls and justifies each, the way you would in a design review.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      Your own earlier lessons — each recommendation below cites the lesson that establishes it. For the end-to-end reference pattern, <a href="https://www.dremio.com/blog/getting-started-with-flink-sql-and-apache-iceberg/">Dremio's Flink SQL + Iceberg guide</a>.
+    </section>
+
+    <h2>Pipeline A — Dremio job-history logs → Iceberg</h2>
+    <p>Files landing continuously as engines run jobs, needed in Iceberg for analysis in Dremio.</p>
+    <table>
+      <thead>
+        <tr><th>Decision</th><th>Recommendation</th><th>Why (lesson)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Connector</td><td><code>filesystem</code> + <code>json</code> format</td><td>Logs are files; connector and format are separate choices (L1)</td></tr>
+        <tr><td>Source mode</td><td>Two jobs: bounded backfill, then continuous</td><td>Backfill the history once; keep up with new files via <code>source.monitor-interval</code> (L3, L4)</td></tr>
+        <tr><td>Sink</td><td>Iceberg, plain append table</td><td>A file read is an append stream — no upserts needed (L2, L5)</td></tr>
+        <tr><td>Guarantee</td><td>Exactly-once (checkpointing on)</td><td>Checkpoints + Iceberg atomic commits; no dropped or doubled job records (L8)</td></tr>
+        <tr><td>Catalog</td><td>Polaris REST in prod; Hadoop locally</td><td>Dremio's Open Catalog is Polaris; only the catalog block changes (L7)</td></tr>
+      </tbody>
+    </table>
+
+    <section class="callout warning">
+      <span class="callout-title">The one flag to raise with the client</span>
+      The FileSystem source assumes write-once files (L4). If an engine <em>rewrites</em> a job-history file in place rather than rolling a new one, continuous mode won't re-read it. Confirm the logs are append-only/rolled before committing to this design — it's the question most likely to bite later.
+    </section>
+
+    <h2>Pipeline B — MongoDB operational data → Iceberg</h2>
+    <p>Here the recommendation forks on a question only the client can answer: <em>do they need a live view, or a periodic snapshot?</em></p>
+    <table>
+      <thead>
+        <tr><th>Decision</th><th>If live view needed</th><th>If periodic snapshot</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Connector</td><td><code>mongodb-cdc</code> (source-only)</td><td><code>mongodb</code> (bounded)</td></tr>
+        <tr><td>Stream kind</td><td>Upsert changelog</td><td>Append</td></tr>
+        <tr><td>Iceberg table</td><td>v2, upsert enabled, <code>PRIMARY KEY(_id)</code></td><td>Plain append table</td></tr>
+        <tr><td>Infra cost</td><td>Replica set + always-on job</td><td>Any Mongo + scheduled run</td></tr>
+        <tr><td>Lesson</td><td>L2, L6</td><td>L2, L6</td></tr>
+      </tbody>
+    </table>
+
+    <p><strong>Recommendation:</strong> default to the plain <code>mongodb</code> bounded read unless the client has a concrete need for sub-minute freshness. CDC is strictly more powerful and strictly more operationally expensive — a replica set, an always-running job, and the upsert-table complexity. Reach for it only when "live" is a real requirement, not a nice-to-have. This is the laziest-that-works call, and it's defensible precisely because it names what CDC costs.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">Both pipelines share one catalog — that's the architecture</span>
+      Pipelines A and B write to different Iceberg tables but through the <em>same</em> catalog, and Dremio reads them through that same catalog (L7). That single shared catalog is the whole integration: Flink fills, the catalog governs, Dremio reads. If you remember one diagram from this course, make it that triangle.
+    </section>
+
+    <h2>What you can now do</h2>
+    <ul>
+      <li>Classify any source a client names by two axes — direction and boundedness (L2).</li>
+      <li>Stand up Flink SQL and run a real file-to-Iceberg pipeline, and read the files it produced (L3–L5).</li>
+      <li>Choose a source mode, a delivery guarantee, and a catalog, and defend each (L4, L7, L8).</li>
+      <li>Explain why CDC changes the Iceberg write, and when its cost is justified (L6, L9).</li>
+    </ul>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Why default to plain <code>mongodb</code> over <code>mongodb-cdc</code> for Pipeline B?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Because the CDC connector cannot ever write into Iceberg tables</button>
+        <button data-correct="true">Because CDC adds real cost and is justified only by a live requirement</button>
+        <button data-correct="false">Because the plain connector is the only one supporting a primary key</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. CDC needs a replica set, an always-on job, and an upsert table — worth it only when sub-minute freshness is a genuine requirement.</p>
+      <p class="quiz-feedback incorrect">Not quite. CDC can feed Iceberg (via upsert); the point is it costs more, so default to the simpler read unless "live" is truly needed.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>What ties both pipelines into one coherent architecture?</p>
+      <div class="quiz-options">
+        <button data-correct="false">They both read from exactly the same MongoDB collection source</button>
+        <button data-correct="true">They write through one shared catalog that Dremio also reads from</button>
+        <button data-correct="false">They must both run as a single combined Flink job always</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Different tables, same catalog — Flink fills, the catalog governs, Dremio reads. The shared catalog is the integration.</p>
+      <p class="quiz-feedback incorrect">No — they use different sources and can be separate jobs. The shared catalog is what unifies them for Dremio.</p>
+    </div>
+
+    <h2>Practice — the deliverable</h2>
+    <ol class="checklist">
+      <li>Write the two recommendation tables above in your own words, from memory, as a one-page design note for the client.</li>
+      <li>For Pipeline B, write the single question you'd ask the client to settle the live-vs-snapshot fork.</li>
+      <li>Draw the Flink → catalog → Dremio triangle, and mark where each of this course's nine lessons sits on it.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "Review my one-page design note — where would a Dremio architect push back?" You've finished the connector course. The natural next step is the Java DataStream API (for logic beyond SQL) and closing the loop by querying these tables from a real Dremio instance — both flagged in <code>MISSION.md</code> as follow-ons.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0008-delivery-guarantees.html" title="Previous: Delivery Guarantees">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <span class="nav-next nav-disabled">Next →</span>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

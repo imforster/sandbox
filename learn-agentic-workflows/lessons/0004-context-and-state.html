@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Context and State</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0003-designing-tools.html" title="Previous: Designing Tools">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0005-guardrails-and-approval.html" title="Next: Guardrails and Approval">Next →</a>
+    </nav>
+
+    <h1>Context and State</h1>
+    <p class="lesson-meta">Time: ~12 minutes. Tangible win: name the context problem your loop will hit first, and choose one technique from four to address it.</p>
+
+    <p>Every step of the loop appends to the conversation. Tool results, model replies, and retrieved documents all compete for the same finite window. Anthropic's context engineering guidance frames this as the central engineering problem for agents: find the smallest set of high-signal tokens that makes the desired behavior likely.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Effective context engineering for AI agents, Anthropic</a>. Read the sections on the attention budget, just-in-time retrieval, and long-horizon techniques.
+    </section>
+
+    <h2>Why more context can hurt</h2>
+    <p>Anthropic describes <em>context rot</em>: as the number of tokens grows, the model's ability to recall specific information from that context decreases. Context is therefore a finite resource with diminishing returns. Every token you add spends some of the model's attention budget, so each addition should earn its place.</p>
+
+    <h2>Upfront or just in time</h2>
+    <p>You can load information before the run, or give the agent references and let it load what it needs. Anthropic calls the second approach just-in-time retrieval. An agent that holds a file path or a stored query, and loads the file only when it needs it, usually spends less context than one that loads everything first. The trade-off is that exploration takes more steps and needs clear guidance so the agent does not wander.</p>
+
+    <h2>Four techniques for long tasks</h2>
+    <table>
+      <thead>
+        <tr><th>Technique</th><th>What it does</th><th>Best when</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Tool result clearing</td><td>Removes old raw tool outputs the agent no longer needs</td><td>Tool calls return large payloads</td></tr>
+        <tr><td>Compaction</td><td>Summarizes a long history and starts a fresh window from the summary</td><td>Long back-and-forth with many decisions</td></tr>
+        <tr><td>Structured note-taking</td><td>The agent writes progress notes outside the window and rereads them</td><td>Iterative work with clear milestones</td></tr>
+        <tr><td>Sub-agents</td><td>A focused agent explores in its own window and returns a short summary</td><td>Deep research that would flood the main context</td></tr>
+      </tbody>
+    </table>
+
+    <section class="callout tip">
+      <span class="callout-title">Start with the lightest lever</span>
+      Anthropic's guidance favors the simplest thing that works. Clearing old tool results is the lightest touch. Reach for sub-agents only when the lighter techniques fail a measured test.
+    </section>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Add a counter to your loop from lesson 0001 that prints the total characters in <code>messages</code> after each step. Run a multi-step task and watch the growth.</li>
+      <li>Identify the largest tool result in that run. Decide whether the agent needs the full payload later or only a summary.</li>
+      <li>Implement one technique from the table. Clearing old results is the simplest. Measure the character count again and confirm the task still succeeds.</li>
+    </ol>
+
+    <h2>Retrieval check</h2>
+
+    <div class="quiz" data-quiz>
+      <p>Why can adding more tokens to an agent's context sometimes make it worse?</p>
+      <div class="quiz-options">
+        <button data-correct="false">The model stops reading its system prompt</button>
+        <button data-correct="true">Attention is finite, and recall degrades as context grows</button>
+        <button data-correct="false">Tokens are billed twice and then discarded</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Anthropic calls this context rot. The attention budget is finite, so each new token competes with the ones that matter.</p>
+      <p class="quiz-feedback incorrect">Not quite. The cause is the finite attention budget. Recall degrades as the window fills, which is why every token should be high-signal.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Which technique keeps a long task's progress outside the context window?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Structured note-taking</button>
+        <button data-correct="false">Raising the maximum output tokens</button>
+        <button data-correct="false">Repeating the system prompt each step</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The agent writes notes to persistent storage and rereads them when needed, so progress survives beyond the window.</p>
+      <p class="quiz-feedback incorrect">Not quite. Only note-taking stores state outside the window. The other options either add tokens or increase the output limit.</p>
+    </div>
+
+    <section class="ask-teacher">
+      Ask the agent: "Show me how to implement tool result clearing in my loop, and how to test that the task still succeeds." Next lesson covers guardrails, the limits and approvals that keep a loop safe.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0003-designing-tools.html">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0005-guardrails-and-approval.html">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

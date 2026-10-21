@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workflow Patterns</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0006-evaluating-agents.html" title="Previous: Evaluating Agents">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0008-multi-agent-systems.html" title="Next: Multi-Agent Systems">Next →</a>
+    </nav>
+
+    <h1>Workflow Patterns</h1>
+    <p class="lesson-meta">Time: ~12 minutes. Tangible win: choose one of five composable patterns for a task and state its main trade-off in one sentence.</p>
+
+    <p>Most production agent systems are assembled from a small set of patterns. Anthropic describes them as building blocks rather than rules. Each one trades something for something else, and recognizing the trade lets you pick the right one without trying every option.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://www.anthropic.com/research/building-effective-agents">Building effective AI agents, Anthropic</a>: the section "Building block: The augmented LLM" and the five workflow patterns that follow it. Each pattern has a "when to use" note worth reading.
+    </section>
+
+    <h2>The five patterns</h2>
+    <table>
+      <thead>
+        <tr><th>Pattern</th><th>Shape</th><th>Use it when</th><th>Trade-off</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Prompt chaining</td><td>Sequential steps, with checks between them</td><td>A task splits cleanly into fixed subtasks</td><td>Higher latency for higher accuracy</td></tr>
+        <tr><td>Routing</td><td>Classify the input, then send it to a specialized path</td><td>Distinct categories need separate prompts or tools</td><td>Classification errors send work down the wrong path</td></tr>
+        <tr><td>Parallelization</td><td>Run subtasks at once, or run the same task several times</td><td>Subtasks are independent, or you want several opinions</td><td>More total cost, and results must be merged</td></tr>
+        <tr><td>Orchestrator-workers</td><td>A central model plans subtasks and delegates them</td><td>You cannot predict the subtasks in advance</td><td>Flexible, but harder to test and predict</td></tr>
+        <tr><td>Evaluator-optimizer</td><td>One call generates, another critiques, and the loop repeats</td><td>Clear criteria exist and feedback measurably helps</td><td>Costs extra rounds, and needs good criteria</td></tr>
+      </tbody>
+    </table>
+
+    <p>Routing has a useful cost detail. Anthropic's example sends easy questions to a smaller, cheaper model such as Claude Haiku and hard questions to a more capable one such as Claude Sonnet. In your own systems, use <code>claude-haiku-5-5</code> and <code>claude-sonnet-5-5</code>, the approved models for this course.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">Combine patterns</span>
+      These are building blocks, not exclusive choices. A common shape routes a request, runs a chain for the chosen category, and gates the result with an evaluator. Add each piece only when it measurably improves outcomes.
+    </section>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Take a task from lesson 0002 that you classified as a workflow. Name the pattern that fits and write its trade-off in one sentence.</li>
+      <li>Sketch the pattern as boxes and arrows on paper. Mark where a check or gate belongs.</li>
+      <li>Identify one place in the sketch where a cheaper model could handle the step. Note the eval from lesson 0006 that would confirm the cheaper model is good enough.</li>
+    </ol>
+
+    <h2>Retrieval check</h2>
+
+    <div class="quiz" data-quiz>
+      <p>A drafted document must be translated next, with a quality check between the two steps. Which pattern fits?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Prompt chaining with a gate</button>
+        <button data-correct="false">Parallelization by voting</button>
+        <button data-correct="false">Orchestrator-workers</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The steps are fixed and ordered, and a programmatic gate checks the intermediate output before the next step runs.</p>
+      <p class="quiz-feedback incorrect">Not quite. The steps run in a fixed order with a check between them, which is the defining shape of prompt chaining with a gate.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>A coding task needs an unknown number of file edits, and the subtasks depend on what the code contains. Which pattern fits?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Routing to a single specialist</button>
+        <button data-correct="true">Orchestrator-workers</button>
+        <button data-correct="false">Parallelization by sectioning</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The orchestrator decides the subtasks from the input, which suits work where the steps cannot be listed in advance.</p>
+      <p class="quiz-feedback incorrect">Not quite. Here the subtasks are not known in advance, so a fixed split or single route will not work. An orchestrator plans the subtasks from the input.</p>
+    </div>
+
+    <section class="ask-teacher">
+      Ask the agent: "Compare two patterns for this task: [describe it], and tell me which trade-off matters more." Next lesson covers multi-agent systems, and when adding more agents is worth the cost.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0006-evaluating-agents.html">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0008-multi-agent-systems.html">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

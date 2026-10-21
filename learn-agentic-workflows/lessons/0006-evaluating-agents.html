@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Evaluating Agents</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0005-guardrails-and-approval.html" title="Previous: Guardrails and Approval">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0007-workflow-patterns.html" title="Next: Workflow Patterns">Next →</a>
+    </nav>
+
+    <h1>Evaluating Agents</h1>
+    <p class="lesson-meta">Time: ~12 minutes. Tangible win: write one eval with a grader, run it several times, and interpret the result as a pass rate rather than a single pass or fail.</p>
+
+    <p>An agent that worked once has not proven much. Agents take many actions across many turns, and the same input can lead to different paths. Anthropic's position is that evals let a team catch behavior problems before users do, and that agents need evals more than single-turn models because the failure modes are harder to see.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents, Anthropic</a>. Read it before you design your first eval. It covers graders, capability and regression evals, and metrics for non-deterministic runs.
+    </section>
+
+    <h2>An eval is an input plus a grader</h2>
+    <p>An eval gives the agent a task and applies grading logic to what it produces. The grading logic is the part people underestimate. Anthropic describes three kinds of grader, and each suits different outputs.</p>
+
+    <table>
+      <thead>
+        <tr><th>Grader</th><th>How it works</th><th>Best for</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Code-based</td><td>A script checks the result, such as a test suite or a query comparison</td><td>Outputs with a verifiable answer</td></tr>
+        <tr><td>Model-based</td><td>A model scores the output against a written rubric</td><td>Open-ended outputs such as summaries</td></tr>
+        <tr><td>Human</td><td>A person reviews the output</td><td>Calibrating the other two graders, and spot checks</td></tr>
+      </tbody>
+    </table>
+
+    <p>Prefer code-based graders wherever the answer is checkable. They are cheap, repeatable, and do not drift. Use a model-based rubric only where code cannot judge the quality, and check it against human review on a sample.</p>
+
+    <h2>Two kinds of eval</h2>
+    <p>A <em>capability</em> eval asks what the agent can do now, and is expected to pass only some of the time at first. A <em>regression</em> eval protects behavior that already works, and should stay near full pass. Keep both. A capability eval shows progress, and a regression eval shows that a change did not break anything.</p>
+
+    <h2>Run each task more than once</h2>
+    <p>Because runs are non-deterministic, one result proves little. Run each task several times and report the rate. Anthropic discusses metrics for this, including pass@k, which asks whether at least one of k attempts succeeds, and pass^k, which asks whether all k attempts succeed. For a customer-facing agent, pass^k is usually the stricter and more honest measure.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Check the definitions before you rely on them</span>
+      The exact grader and metric definitions in the Anthropic article should be read in the original before you use them in a report. Confirm the wording against the page.
+    </section>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Write five tasks your agent should handle, drawn from real failures you have seen. For each, write the expected outcome in one sentence.</li>
+      <li>For one task with a checkable answer, write a code-based grader. It should return pass or fail with a reason.</li>
+      <li>Run that task three times. Record the pass rate. Then decide whether the rate is good enough to ship, and what you would need to see to change that decision.</li>
+    </ol>
+
+    <h2>Retrieval check</h2>
+
+    <div class="quiz" data-quiz>
+      <p>An agent passed a task on one run. Does that show it is reliable?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes, one pass is enough evidence</button>
+        <button data-correct="true">No, one sample from a non-deterministic system proves little</button>
+        <button data-correct="false">Yes, as long as a model grades the output</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Agent runs vary, so you need several runs to estimate a rate. One pass could be luck.</p>
+      <p class="quiz-feedback incorrect">Not quite. Agent output varies from run to run. A single pass says little about the rate, and a model grader does not fix that.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>An agent writes a SQL query. Which grader fits best?</p>
+      <div class="quiz-options">
+        <button data-correct="true">A code-based grader that runs the query and compares rows</button>
+        <button data-correct="false">A human reviewing every single run</button>
+        <button data-correct="false">A model rubric judging the tone of the query</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The result is checkable, so a script can verify it cheaply and repeatedly. Tone is not the thing to measure here.</p>
+      <p class="quiz-feedback incorrect">Not quite. The query result can be checked by code. A human on every run is slow, and tone does not measure whether the query is correct.</p>
+    </div>
+
+    <section class="ask-teacher">
+      Ask the agent: "Help me write a code-based grader for this task: [describe the task and expected output]." Next lesson covers workflow patterns, the reusable shapes that many agent systems are built from.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0005-guardrails-and-approval.html">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0007-workflow-patterns.html">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

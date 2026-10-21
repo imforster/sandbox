@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flink Connectors Course</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #2e7d32; --color-accent-light: #e6f4e7; }
+    a:hover { color: #1b5e20; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #98ee99; }
+    }
+    [data-theme="dark"] { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+    [data-theme="dark"] a:hover { color: #98ee99; }
+  </style>
+</head>
+<body>
+  <main>
+    <nav class="course-top-nav">
+      <a class="nav-catalog" href="../../learning/index.html" title="All courses"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1 1 6v1h1v7h4V9h4v5h4V7h1V6z"/></svg>All Courses</a>
+    </nav>
+    <div class="course-header">
+      <h1>Flink Connectors Course</h1>
+      <p>A hands-on course on <a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/table/overview/">Apache Flink's connector surface</a> — the input sources data arrives from and the output sinks it lands in — grounded in a real Dremio engagement: pulling from <strong>MongoDB</strong> and <strong>job-history log files</strong>, writing to <strong>Apache Iceberg</strong> for Dremio to query. Flink SQL first. Lessons 3–5 were run for real against a local Flink 1.18 + Iceberg Docker stack; Lessons 6–9 are close-reading and design, grounded in the official Flink/Iceberg docs. Work through them in order — each builds on the previous one's model.</p>
+    </div>
+
+    <div class="section-label">Foundations</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0001-the-flink-connector-model.html">
+          <span class="lesson-num">01</span>
+          <span class="lesson-info">
+            <span class="lesson-title">The Flink Connector Model</span>
+            <span class="lesson-desc">Sources → transforms → sinks, the Flink SQL table as a declaration, and connector vs. format.</span>
+          </span>
+          <span class="lesson-time">~7 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0002-the-connector-map.html">
+          <span class="lesson-num">02</span>
+          <span class="lesson-info">
+            <span class="lesson-title">The Connector Map</span>
+            <span class="lesson-desc">FileSystem, MongoDB, MongoDB CDC, and Iceberg — the defining tradeoff of each, and the append-vs-changelog hinge.</span>
+          </span>
+          <span class="lesson-time">~8 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Getting Hands-On <span style="color: var(--color-muted); font-weight: 400; font-size: 0.8rem;">(verified on a real Flink 1.18 + Iceberg stack)</span></div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0003-local-flink-sql-and-reading-files.html">
+          <span class="lesson-num">03</span>
+          <span class="lesson-info">
+            <span class="lesson-title">A Local Flink SQL Environment + Reading Files</span>
+            <span class="lesson-desc">Stand up Flink SQL in Docker and read a directory of job-history files into a table (bounded).</span>
+          </span>
+          <span class="lesson-time">~10 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0004-filesystem-source-bounded-vs-continuous.html">
+          <span class="lesson-num">04</span>
+          <span class="lesson-info">
+            <span class="lesson-title">The FileSystem Source: Bounded vs. Continuous</span>
+            <span class="lesson-desc">Read once vs. watch a directory for new files, and what changes when the job never ends.</span>
+          </span>
+          <span class="lesson-time">~8 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0005-the-iceberg-sink.html">
+          <span class="lesson-num">05</span>
+          <span class="lesson-info">
+            <span class="lesson-title">The Iceberg Sink</span>
+            <span class="lesson-desc">Write a Flink table into Iceberg through a catalog, and see the snapshot, manifests, and Parquet files it produced.</span>
+          </span>
+          <span class="lesson-time">~10 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0006-mongodb-source-vs-cdc.html">
+          <span class="lesson-num">06</span>
+          <span class="lesson-info">
+            <span class="lesson-title">MongoDB Source vs. MongoDB CDC</span>
+            <span class="lesson-desc">A bounded append read against a live changelog stream — and why CDC forces a primary key on your Iceberg table.</span>
+          </span>
+          <span class="lesson-time">~9 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Decisions</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="0007-catalogs-and-the-dremio-seam.html">
+          <span class="lesson-num">07</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Catalogs and the Dremio Seam</span>
+            <span class="lesson-desc">Filesystem, Polaris, Nessie, Glue — and why the catalog choice is what lets Dremio read the result.</span>
+          </span>
+          <span class="lesson-time">~8 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0008-delivery-guarantees.html">
+          <span class="lesson-num">08</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Delivery Guarantees</span>
+            <span class="lesson-desc">What exactly-once means for a file-to-Iceberg pipeline, and the two mechanisms that deliver it.</span>
+          </span>
+          <span class="lesson-time">~8 min</span>
+        </a>
+      </li>
+      <li>
+        <a class="lesson-card" href="0009-design-recommendation.html">
+          <span class="lesson-num">09</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Design Recommendation</span>
+            <span class="lesson-desc">The client's two pipelines decided and defended: source mode, guarantee, catalog — each traced to a lesson.</span>
+          </span>
+          <span class="lesson-time">~9 min</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="section-label">Reference</div>
+    <ul class="lesson-list">
+      <li>
+        <a class="lesson-card" href="../reference/glossary.html">
+          <span class="lesson-num">--</span>
+          <span class="lesson-info">
+            <span class="lesson-title">Flink Connectors Glossary</span>
+            <span class="lesson-desc">Quick lookup for source, sink, connector, format, bounded/unbounded, append/changelog, CDC, Iceberg catalog, exactly-once, and more.</span>
+          </span>
+          <span class="lesson-time">ref</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="resources-link">
+      <p><strong>Course:</strong> Flink Connectors — exploring Apache Flink's input sources and output sinks for a Dremio engagement (MongoDB + job-history logs → Iceberg).</p>
+      <p style="color: var(--color-muted); font-size: 0.85rem; margin-top: 0.5rem;">9 lessons · ~77 minutes · Interactive checks in each lesson · Flink SQL first, Java later · Lessons 3–5 verified on a real Flink 1.18 + Iceberg run</p>
+    </div>
+  </main>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

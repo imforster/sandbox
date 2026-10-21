@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flink Connectors Glossary</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #2e7d32; --color-accent-light: #e6f4e7; }
+    a:hover { color: #1b5e20; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #98ee99; }
+    }
+    [data-theme="dark"] { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+    [data-theme="dark"] a:hover { color: #98ee99; }
+
+    /* ---- Apple Developer glossary format (flat A–Z, term-as-heading) ---- */
+
+    main > h1 { font-weight: 700; letter-spacing: -0.028em; margin-bottom: 0.5rem; }
+
+    .glossary-intro {
+      font-size: 1.15rem;
+      line-height: 1.5;
+      color: var(--color-muted);
+      letter-spacing: -0.012em;
+      max-width: 34em;
+      margin: 0 0 2rem;
+    }
+
+    /* Search box — quiet, rounded, Apple field */
+    .glossary-search {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 0 0 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .glossary-search input {
+      flex: 1;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      color: var(--color-text);
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 980px;
+      padding: 0.6rem 1.1rem;
+      outline: none;
+    }
+    .glossary-search input:focus { border-color: var(--color-accent); }
+    .glossary-search button {
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      color: var(--color-accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.4rem 0.2rem;
+    }
+
+    /* Each entry: term is the heading, definition is plain paragraphs */
+    .term {
+      margin: 0 0 2.25rem;
+      scroll-margin-top: 1rem;
+    }
+    .term h2 {
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--color-text);
+      margin: 0 0 0.5rem;
+      padding: 0;
+      border: none;
+    }
+    .term p {
+      margin: 0 0 0.6rem;
+      font-size: 1rem;
+      line-height: var(--line-height);
+    }
+    .term p.term-link {
+      font-size: 0.95rem;
+      margin-bottom: 0;
+    }
+    .term code {
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 0.08em 0.4em;
+    }
+    .glossary-noresults {
+      color: var(--color-muted);
+      font-size: 1rem;
+      display: none;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span></span>
+      <a class="nav-home" href="../lessons/index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <span></span>
+    </nav>
+
+    <h1>Glossary</h1>
+    <p class="glossary-intro">Learn about the words and phrases related to ingesting data with Apache Flink and writing it to Apache Iceberg for Dremio.</p>
+
+    <div class="glossary-search">
+      <input type="search" id="glossary-filter" placeholder="Search" aria-label="Search the glossary" autocomplete="off">
+      <button type="button" id="glossary-reset">Reset</button>
+    </div>
+
+    <div id="glossary-terms">
+
+      <div class="term">
+        <h2>Apache Iceberg</h2>
+        <p><em>Apache Iceberg</em> is an open table format for large analytic datasets, sitting between a query engine and data files on object storage. It adds ACID commits, schema evolution, hidden partitioning, and time travel. It is what Dremio reads.</p>
+        <p class="term-link"><a href="https://iceberg.apache.org/docs/latest/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2>append stream</h2>
+        <p>An <em>append stream</em> is a stream where every record is a new row — insert-only. A bounded file read produces an append stream. Contrast with a changelog stream.</p>
+      </div>
+
+      <div class="term">
+        <h2>at-least-once</h2>
+        <p><em>At-least-once</em> means every record is processed, but a failure-and-replay can process some records more than once, so duplicates are possible.</p>
+      </div>
+
+      <div class="term">
+        <h2>at-most-once</h2>
+        <p><em>At-most-once</em> means there is no replay on failure — whatever was in flight is lost. It is the weakest guarantee, and risks dropped records.</p>
+      </div>
+
+      <div class="term">
+        <h2>atomic commit</h2>
+        <p>An <em>atomic commit</em> is Iceberg making a write visible all-at-once as a new snapshot, never partially. It is tied to a Flink checkpoint through <code>flink.max-committed-checkpoint-id</code> in the snapshot summary — the handshake that gives exactly-once on the sink.</p>
+      </div>
+
+      <div class="term">
+        <h2>bounded stream</h2>
+        <p>A <em>bounded stream</em> (batch) is a finite input with a known end — a fixed set of files read once. The job reads everything, finishes, and stops.</p>
+      </div>
+
+      <div class="term">
+        <h2>catalog (Iceberg)</h2>
+        <p>An Iceberg <em>catalog</em> is the system of record for where Iceberg tables live and what they look like. Flink writes to Iceberg through a catalog. Options include filesystem/Hadoop (local), REST (for example, Apache Polaris), Nessie, AWS Glue, and Hive.</p>
+        <p class="term-link"><a href="https://iceberg.apache.org/docs/latest/flink/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2>CDC (Change Data Capture)</h2>
+        <p><em>CDC</em> is capturing row-level changes from a database as they happen, rather than re-reading the whole table. Flink CDC uses Debezium to turn a database's change log into a Flink changelog stream.</p>
+        <p class="term-link"><a href="https://nightlies.apache.org/flink/flink-cdc-docs-stable/docs/connectors/flink-sources/overview/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2>changelog stream</h2>
+        <p>A <em>changelog stream</em> is a stream whose records carry a change kind — insert, update-before, update-after, delete. A CDC source produces a changelog stream, because it reflects edits to existing rows, not just new rows.</p>
+        <p class="term-link"><a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/concepts/dynamic_tables/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2>checkpoint</h2>
+        <p>A <em>checkpoint</em> is a periodic, consistent snapshot of a Flink job's state, used to recover after failure. It is the mechanism underpinning exactly-once.</p>
+        <p class="term-link"><a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/datastream/fault-tolerance/checkpointing/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2>connector</h2>
+        <p>A <em>connector</em> is the pluggable integration that lets a Flink table talk to an external system. It is declared with <code>WITH ('connector' = '...')</code> and decides what system the data moves to or from — not how bytes are encoded.</p>
+        <p class="term-link"><a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/table/overview/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2><code>CREATE CATALOG</code></h2>
+        <p><em>CREATE CATALOG</em> is the Flink SQL statement that registers an Iceberg catalog in a session, naming its type and connection properties, before any Iceberg table can be created or written.</p>
+        <p class="term-link"><a href="https://iceberg.apache.org/docs/latest/flink/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2>Debezium</h2>
+        <p><em>Debezium</em> is the open-source change-capture engine Flink CDC connectors build on. It reads a database's internal change log (for MongoDB, the oplog and change streams) and emits structured change events.</p>
+      </div>
+
+      <div class="term">
+        <h2>exactly-once</h2>
+        <p><em>Exactly-once</em> means every record affects the result exactly one time, even across failures. For a file-to-Iceberg pipeline, Flink's checkpointing plus Iceberg's atomic commits give exactly-once on the sink side.</p>
+      </div>
+
+      <div class="term">
+        <h2>FileSystem connector</h2>
+        <p>The <em>FileSystem connector</em> reads and writes directories of files (local, HDFS, S3), as a source or a sink. It is bounded by default; set <code>source.monitor-interval</code> to make it continuously watch for new files. Pair it with a format. It is the job-history-logs source in this course.</p>
+        <p class="term-link"><a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/table/filesystem/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2>Flink job</h2>
+        <p>A <em>Flink job</em> is a dataflow graph that reads from one or more sources, applies transforms, and writes to one or more sinks. In Flink SQL, you declare tables and then run <code>INSERT INTO sink SELECT ... FROM source</code>.</p>
+        <p class="term-link"><a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/table/overview/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2>format</h2>
+        <p>A <em>format</em> is how records are encoded within a connector's byte stream — <code>csv</code>, <code>json</code>, <code>avro</code>, <code>parquet</code>, <code>debezium-json</code>. It is declared with <code>WITH ('format' = '...')</code> and is orthogonal to the connector: FileSystem + JSON, FileSystem + CSV, and Kafka + Avro are all valid pairings.</p>
+        <p class="term-link"><a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/table/formats/overview/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2>format-version 2 / <code>write.upsert.enabled</code></h2>
+        <p><em>format-version 2</em> and <code>write.upsert.enabled</code> are Iceberg table properties that enable row-level updates and deletes. They are required when the source is an upsert changelog (MongoDB CDC); a plain append source needs neither.</p>
+      </div>
+
+      <div class="term">
+        <h2>Hadoop catalog</h2>
+        <p>The <em>Hadoop catalog</em> is the simplest Iceberg catalog: table state is tracked by files in a warehouse directory (<code>catalog-type = 'hadoop'</code>), with no external service. It is good for local dev and a single writer, but weak for multi-engine sharing and access control. It is used in this course's hands-on lessons.</p>
+      </div>
+
+      <div class="term">
+        <h2>Iceberg connector (sink)</h2>
+        <p>The <em>Iceberg connector</em> writes a Flink table into an Apache Iceberg table through a catalog. It is the output throughout this course, because Dremio queries Iceberg natively.</p>
+        <p class="term-link"><a href="https://iceberg.apache.org/docs/latest/flink/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2>metadata file / manifest</h2>
+        <p>The <em>metadata file</em> (JSON) records the current snapshot and schema; <em>manifest</em> files (Avro) list the data files in each snapshot. They are what a Flink write produces alongside the Parquet data files, and what Dremio reads to plan a query.</p>
+      </div>
+
+      <div class="term">
+        <h2>MongoDB CDC connector</h2>
+        <p>The <em>MongoDB CDC connector</em> is a Flink CDC source that captures inserts, updates, and deletes from MongoDB as a changelog stream, using Debezium underneath. It is source-table only — it cannot be a sink. It does a snapshot first, then streams incremental changes.</p>
+        <p class="term-link"><a href="https://nightlies.apache.org/flink/flink-cdc-docs-stable/docs/connectors/flink-sources/mongodb-cdc/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2>MongoDB connector</h2>
+        <p>The <em>MongoDB connector</em> reads a MongoDB collection as a bounded source, and can also act as a lookup source or a sink. It produces an append stream — a point-in-time read, not a change stream.</p>
+        <p class="term-link"><a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/table/mongodb/">View documentation</a></p>
+      </div>
+
+      <div class="term">
+        <h2>REST catalog</h2>
+        <p>A <em>REST catalog</em> (<code>catalog-type = 'rest'</code>) is an Iceberg catalog served over HTTP — for example, Apache Polaris, Dremio's Open Catalog. It is the production target for this engagement; swapping to it changes only the <code>CREATE CATALOG</code> block.</p>
+      </div>
+
+      <div class="term">
+        <h2>sink</h2>
+        <p>A <em>sink</em> is where data leaves a Flink job — in this course, an Apache Iceberg table. It is a table whose connector can be written to.</p>
+      </div>
+
+      <div class="term">
+        <h2>snapshot</h2>
+        <p>A <em>snapshot</em> is an immutable, point-in-time view of an Iceberg table's data. Every commit creates a new snapshot; time travel reads an older one.</p>
+      </div>
+
+      <div class="term">
+        <h2>source</h2>
+        <p>A <em>source</em> is where data enters a Flink job — a file directory, a MongoDB collection, a Kafka topic. It is a table whose connector can be read from.</p>
+      </div>
+
+      <div class="term">
+        <h2><code>source.monitor-interval</code></h2>
+        <p><em>source.monitor-interval</em> is the FileSystem connector option that flips a bounded read into a continuous one: Flink re-scans the directory on this interval and ingests new files, so the job never finishes. Omit it and the read is bounded.</p>
+      </div>
+
+      <div class="term">
+        <h2>transform</h2>
+        <p>A <em>transform</em> is any processing between source and sink: filter, map, join, window, aggregate. It is expressed as the <code>SELECT</code> body in Flink SQL.</p>
+      </div>
+
+      <div class="term">
+        <h2>unbounded stream</h2>
+        <p>An <em>unbounded stream</em> (streaming) is an input with no end — a directory new files keep landing in, or a change stream from a database. The job runs continuously.</p>
+      </div>
+
+      <div class="term">
+        <h2>upsert changelog</h2>
+        <p>An <em>upsert changelog</em> is a changelog with no update-before image — only insert/update-after and delete, keyed on a primary key. MongoDB CDC produces this (its change events carry no before-image), which is why a MongoDB CDC table must declare a primary key.</p>
+      </div>
+
+    </div>
+
+    <p class="glossary-noresults" id="glossary-noresults">No results.</p>
+
+    <nav class="lesson-nav">
+      <span></span>
+      <a class="nav-home" href="../lessons/index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <span></span>
+    </nav>
+  </main>
+  <script>
+    (function () {
+      var input = document.getElementById('glossary-filter');
+      var reset = document.getElementById('glossary-reset');
+      var terms = Array.prototype.slice.call(document.querySelectorAll('#glossary-terms .term'));
+      var noresults = document.getElementById('glossary-noresults');
+      function apply() {
+        var q = input.value.trim().toLowerCase();
+        var shown = 0;
+        terms.forEach(function (t) {
+          var match = q === '' || t.textContent.toLowerCase().indexOf(q) !== -1;
+          t.style.display = match ? '' : 'none';
+          if (match) shown++;
+        });
+        noresults.style.display = shown === 0 ? 'block' : 'none';
+      }
+      input.addEventListener('input', apply);
+      reset.addEventListener('click', function () { input.value = ''; apply(); input.focus(); });
+    })();
+  </script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

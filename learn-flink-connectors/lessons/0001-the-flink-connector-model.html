@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Flink Connector Model</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #2e7d32; --color-accent-light: #e6f4e7; }
+    a:hover { color: #1b5e20; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #98ee99; }
+    }
+    [data-theme="dark"] { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+    [data-theme="dark"] a:hover { color: #98ee99; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev nav-disabled">← Prev</span>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0002-the-connector-map.html" title="Next: The Connector Map">Next →</a>
+    </nav>
+
+    <h1>The Flink Connector Model</h1>
+    <p class="lesson-meta">Time: ~7 minutes. Tangible win: read a whole Flink pipeline as one <code>INSERT INTO sink SELECT … FROM source</code>, and tell a <em>connector</em> apart from a <em>format</em>. Every later lesson is a detail hung on this skeleton.</p>
+
+    <p>You are learning Flink to feed <strong>Apache Iceberg</strong> tables that a <strong>Dremio</strong> client will query — pulling from their <strong>MongoDB</strong> store and their <strong>job-history log files</strong>. Before any of those specifics, you need one mental model that makes the whole connector landscape read as structure instead of a list to memorise.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/table/overview/">Flink SQL &amp; Table Connectors — Overview</a> — the canonical list of built-in sources, sinks, and formats, and the <code>CREATE TABLE … WITH</code> model.
+    </section>
+
+    <h2>Every Flink job is sources → transforms → sinks</h2>
+    <p>A Flink job is a dataflow: data enters at one or more <strong>sources</strong>, passes through <strong>transforms</strong> (filter, join, aggregate), and leaves at one or more <strong>sinks</strong>. That is the whole shape. Your two client pipelines are both instances of it:</p>
+
+    <pre><code>job-history log files  ─▶ [transform] ─▶  Iceberg table
+MongoDB collection     ─▶ [transform] ─▶  Iceberg table
+      (source)                                (sink)</code></pre>
+
+    <p>In Flink SQL you do not write a graph by hand. You <em>declare</em> a table for each end — the source and the sink — then connect them with a query. The query body is the transform.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">A Flink SQL "table" is not storage</span>
+      When you <code>CREATE TABLE</code> in Flink, you are not creating a table that holds data. You are declaring a <em>named connection</em> to an external system, plus the schema Flink should expect. The data stays in the file directory, the Mongo collection, or the Iceberg table — Flink just reads or writes through the declaration.
+    </section>
+
+    <h2>A source, a sink, and the query that joins them</h2>
+    <p>Here is a complete (if minimal) pipeline: read job-history files, keep the failures, write them to Iceberg. Read it top to bottom — declare source, declare sink, connect.</p>
+
+    <pre><code>-- 1. SOURCE: a directory of JSON job-history files
+CREATE TABLE job_history (
+  job_id     STRING,
+  engine     STRING,
+  status     STRING,
+  duration_ms BIGINT
+) WITH (
+  'connector' = 'filesystem',
+  'path'      = 'file:///data/job-history/',
+  'format'    = 'json'
+);
+
+-- 2. SINK: an Iceberg table (catalog setup comes in a later lesson)
+CREATE TABLE failed_jobs (
+  job_id     STRING,
+  engine     STRING,
+  duration_ms BIGINT
+) WITH (
+  'connector' = 'iceberg',
+  'catalog-name' = 'local',
+  'warehouse'    = 'file:///data/warehouse'
+);
+
+-- 3. TRANSFORM + wire them together
+INSERT INTO failed_jobs
+SELECT job_id, engine, duration_ms
+FROM job_history
+WHERE status = 'FAILED';</code></pre>
+
+    <p>That single <code>INSERT INTO … SELECT … FROM …</code> is the entire job. The <code>FROM</code> names the source, the <code>INSERT INTO</code> names the sink, and the <code>SELECT</code>/<code>WHERE</code> is the transform. Nothing else is required to describe a Flink pipeline at this level.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">The two options doing the real work: connector and format</span>
+      Beginners read <code>'connector'</code> and <code>'format'</code> as two words for the same idea. They are not — and keeping them separate is the single most useful distinction in this whole course.
+    </section>
+
+    <h2>Connector vs. format</h2>
+    <p>These answer two different questions:</p>
+
+    <table>
+      <thead>
+        <tr><th></th><th>Connector</th><th>Format</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Question it answers</td><td><em>Which system</em> does data move to/from?</td><td><em>How are records encoded</em> in that system's bytes?</td></tr>
+        <tr><td>Examples</td><td><code>filesystem</code>, <code>mongodb</code>, <code>kafka</code>, <code>iceberg</code></td><td><code>json</code>, <code>csv</code>, <code>avro</code>, <code>parquet</code></td></tr>
+        <tr><td>Declared with</td><td><code>'connector' = '…'</code></td><td><code>'format' = '…'</code></td></tr>
+      </tbody>
+    </table>
+
+    <p>They are <strong>orthogonal</strong>: FileSystem + JSON, FileSystem + CSV, and Kafka + Avro are all valid pairings. One connector can carry many formats. This is why "read the job logs" has two separate decisions baked in — <em>filesystem</em> (the connector) and <em>which encoding</em> (the format).</p>
+
+    <section class="callout tip">
+      <span class="callout-title">Some connectors don't take a format</span>
+      Not every connector needs a <code>'format'</code>. The <code>iceberg</code> connector and the <code>mongodb</code> connector talk to systems that already have their own on-disk/on-the-wire encoding, so they manage it internally. The <code>'format'</code> option mainly matters for connectors that move raw byte streams — FileSystem and Kafka above all.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>In Flink SQL, what does <code>CREATE TABLE … WITH ('connector' = 'filesystem')</code> actually create?</p>
+      <div class="quiz-options">
+        <button data-correct="false">A new empty table that stores rows inside the Flink engine</button>
+        <button data-correct="true">A named declaration of how Flink reads or writes an external system</button>
+        <button data-correct="false">A permanent copy of the source files kept in Flink memory</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A Flink SQL table is a declared connection plus a schema — the data stays in the external system; Flink reads or writes through the declaration.</p>
+      <p class="quiz-feedback incorrect">Not quite. Flink doesn't store the rows itself — the table is a named connection to an external system, and the data stays where it already lives.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Which pair correctly separates connector from format?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Connector picks the encoding; format picks the external system</button>
+        <button data-correct="true">Connector picks the external system; format picks the encoding</button>
+        <button data-correct="false">Connector and format both pick the external storage system</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The connector decides which system (filesystem, mongodb, iceberg); the format decides how records are encoded (json, csv, parquet) — orthogonal choices.</p>
+      <p class="quiz-feedback incorrect">Reversed. The connector names the system; the format names the encoding. They vary independently.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>In the pipeline above, point to the exact tokens that are the <em>source</em>, the <em>sink</em>, and the <em>transform</em>. Say each one out loud.</li>
+      <li>The job logs could arrive as CSV instead of JSON. Which single option changes, and which stays the same? (Answer: the <code>format</code> changes, the <code>connector</code> stays <code>filesystem</code>.)</li>
+      <li>In one sentence each, state what the <code>connector</code> and <code>format</code> options decide. Check yourself against the <a href="../reference/glossary.html">glossary</a>.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "Show me the same pipeline but reading from MongoDB instead of files — what changes in the <code>WITH</code> clause?" Next lesson lays out the full connector map for this engagement — FileSystem, MongoDB, MongoDB CDC, and Iceberg — and the one key tradeoff that defines each.
+    </section>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev nav-disabled">← Prev</span>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0002-the-connector-map.html" title="Next: The Connector Map">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

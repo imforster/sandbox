@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Multi-Agent Systems</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0007-workflow-patterns.html" title="Previous: Workflow Patterns">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <span class="nav-next nav-disabled">Course complete</span>
+    </nav>
+
+    <h1>Multi-Agent Systems</h1>
+    <p class="lesson-meta">Time: ~10 minutes. Tangible win: decide whether a task needs one agent, a workflow, or a lead agent with sub-agents, and state the reason in writing.</p>
+
+    <p>Multi-agent designs are appealing because they sound like a team. In practice, every added agent adds model calls, coordination, and new failure points. Anthropic's guidance is to start with the simplest design, measure it, and add agents only when measurement shows a gain.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Effective context engineering for AI agents, Anthropic</a>: read the section on sub-agent architectures. It explains the main reason to split work across agents, which is context, not headcount.
+    </section>
+
+    <h2>The real reason to use sub-agents</h2>
+    <p>A sub-agent is worth using when detailed exploration would crowd out the main task. The sub-agent works in its own clean context window, explores as much as it needs, and returns a condensed summary to the lead. Anthropic describes summaries of around 1,000 to 2,000 tokens returned from explorations that may use tens of thousands. The lead agent keeps the plan and synthesizes results, and never sees the raw exploration.</p>
+
+    <p>Parallel exploration is the second reason. Independent research threads can run at the same time, which is faster and keeps each thread focused. Specialization is a weaker third reason, because a single well-prompted agent often handles several roles.</p>
+
+    <h2>The costs</h2>
+    <p>Multi-agent systems use more total tokens than a single agent, because each sub-agent pays its own setup and returns its own summary. Coordination introduces failures where one agent misreads another's output. Debugging becomes harder, because a wrong answer may come from any branch. Each of these costs is real, and each must be justified by a measured gain on your eval.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Do not add agents to fix a prompt</span>
+      If one agent gets an answer wrong, first check the tool descriptions, the context it receives, and the eval. Splitting the work across more agents rarely fixes an unclear tool or a missing fact.
+    </section>
+
+    <h2>A decision test</h2>
+    <p>Work through the options in order and stop at the first that meets the need. A single LLM call first. A workflow second. A single agent with good tools third. A lead agent with sub-agents last, and only when the exploration would flood the main context or parallel work is clearly valuable.</p>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Pick a research-style task from your work. Decide which of the four options above it needs, and write a paragraph defending that choice.</li>
+      <li>If you chose sub-agents, define what each returns to the lead, and set a rough size limit on that summary.</li>
+      <li>Name the eval from lesson 0006 that would prove the added agents are worth their cost. Write down the threshold you would accept.</li>
+    </ol>
+
+    <h2>Retrieval check</h2>
+
+    <div class="quiz" data-quiz>
+      <p>What is the main reason to give a task to a sub-agent?</p>
+      <div class="quiz-options">
+        <button data-correct="false">To give the lead agent a larger context window</button>
+        <button data-correct="true">To keep detailed exploration out of the lead's context</button>
+        <button data-correct="false">To avoid writing tool definitions at all</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The sub-agent does the detailed work in its own window and returns a short summary, which keeps the lead's context focused.</p>
+      <p class="quiz-feedback incorrect">Not quite. Sub-agents protect the lead's context by absorbing the detailed exploration and returning only a summary. They do not enlarge the window or remove tools.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Before adding agents to a system, what should you do first?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Add more agents and measure afterward</button>
+        <button data-correct="true">Measure a simpler design against an eval</button>
+        <button data-correct="false">Switch to the largest available model</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A simpler baseline shows whether added complexity buys anything. Without that measurement, you cannot know whether the extra agents help.</p>
+      <p class="quiz-feedback incorrect">Not quite. Adding agents first and measuring later hides whether they helped. Measure the simpler design against your eval, then decide.</p>
+    </div>
+
+    <section class="ask-teacher">
+      Ask the agent: "Walk me through a design for [your real task] at each of the four levels, and tell me where I should stop." You have now covered the course path. Return to the mission in MISSION.md and pick a real project to build with the eval from lesson 0006.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0007-workflow-patterns.html">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <span class="nav-next nav-disabled">Course complete</span>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

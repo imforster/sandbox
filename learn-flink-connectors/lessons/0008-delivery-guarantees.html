@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Delivery Guarantees</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #2e7d32; --color-accent-light: #e6f4e7; }
+    a:hover { color: #1b5e20; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #98ee99; }
+    }
+    [data-theme="dark"] { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+    [data-theme="dark"] a:hover { color: #98ee99; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0007-catalogs-and-the-dremio-seam.html" title="Previous: Catalogs and the Dremio Seam">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0009-design-recommendation.html" title="Next: Design Recommendation">Next →</a>
+    </nav>
+
+    <h1>Delivery Guarantees</h1>
+    <p class="lesson-meta">Time: ~8 minutes. Tangible win: explain what "exactly-once" means for a file-to-Iceberg pipeline, and point to the two mechanisms that deliver it — enough to answer "will we drop or duplicate job records?" with confidence.</p>
+
+    <p>A client about to depend on a pipeline will ask the correctness question: <em>if a job crashes mid-run, do we lose records, or double-count them?</em> This lesson answers it for the file-to-Iceberg path you built. The good news: Flink and Iceberg together give <strong>exactly-once</strong> on the sink, and you already saw the fingerprint of the mechanism in Lesson 5's snapshot.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/datastream/fault-tolerance/checkpointing/">Flink Checkpointing</a> — the consistent-snapshot mechanism. See also <a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/datastream/filesystem/">FileSystem fault-tolerance guarantees</a>.
+    </section>
+
+    <h2>Three levels of guarantee</h2>
+    <table>
+      <thead>
+        <tr><th>Guarantee</th><th>Meaning on failure + replay</th><th>Risk</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>At-most-once</td><td>No replay; whatever was in flight is lost</td><td>Dropped records</td></tr>
+        <tr><td>At-least-once</td><td>Replays, but may re-emit already-processed records</td><td>Duplicate records</td></tr>
+        <tr><td>Exactly-once</td><td>Replays, and each record affects the result once</td><td>Neither — the goal</td></tr>
+      </tbody>
+    </table>
+
+    <p>"Exactly-once" doesn't mean each record is <em>processed</em> once — on recovery, work is redone. It means each record affects the <em>result</em> once. That distinction is what trips people up.</p>
+
+    <h2>The two mechanisms that make it work</h2>
+    <p>For file-to-Iceberg, exactly-once rests on two cooperating parts:</p>
+    <ul>
+      <li><strong>Flink checkpoints</strong> — periodically, Flink takes a consistent snapshot of the whole job's state, including <em>how far into each source file it has read</em>. On failure, it rewinds every operator to the last checkpoint and resumes. Nothing before the checkpoint is reprocessed into the result.</li>
+      <li><strong>Iceberg atomic commits</strong> — the Iceberg sink doesn't make rows visible as it writes them. It stages data files, then commits them to a new snapshot <em>atomically</em>, tied to a Flink checkpoint. Either the whole checkpoint's data becomes one new snapshot, or none of it does.</li>
+    </ul>
+
+    <section class="callout tip">
+      <span class="callout-title">You already saw the fingerprint</span>
+      Lesson 5's real snapshot summary included <code>flink.max-committed-checkpoint-id</code>. That field is the sink recording which Flink checkpoint this Iceberg snapshot corresponds to — the exact handshake between the two mechanisms. The commit is per-checkpoint, which is why a partial failure can't leave half a batch of job records visible.
+    </section>
+
+    <h2>Why the combination matters</h2>
+    <p>Checkpoints alone give at-least-once: on replay, a sink that already wrote some rows would write them again. Atomic commits alone don't help if the source can't rewind. Put together — rewindable source position <em>plus</em> all-or-nothing commit per checkpoint — and a crash leaves the Iceberg table at the last committed snapshot, with the job resuming exactly where that snapshot ended. No gap, no overlap.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Exactly-once is a sink property here, not a free global promise</span>
+      The guarantee covers what lands in Iceberg. It assumes checkpointing is enabled and the source position is replayable (the FileSystem source tracks which files it consumed — see <a href="0004-filesystem-source-bounded-vs-continuous.html">Lesson 4</a>). It does <em>not</em> cover side effects you bolt on outside Flink, like an external alert fired mid-processing. For the client's "files → Iceberg for Dremio" path, though, the end-to-end story is exactly-once.
+    </section>
+
+    <h2>The CDC case, briefly</h2>
+    <p>For the MongoDB CDC path from <a href="0006-mongodb-source-vs-cdc.html">Lesson 6</a>, the same checkpoint machinery applies, and the connector docs note the CDC source supports exactly-once processing. Because that path is an <em>upsert</em> changelog keyed on <code>_id</code>, a replayed update is idempotent anyway — applying the same upsert twice lands the same row — which reinforces the guarantee rather than fighting it.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>What does "exactly-once" actually promise for the Iceberg result?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Each record is physically processed only one single time ever</button>
+        <button data-correct="true">Each record affects the committed result exactly one single time</button>
+        <button data-correct="false">The job can never fail or be replayed under any condition</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. On recovery, work is redone — but each record affects the committed Iceberg result once. Processing-once and result-once are different claims.</p>
+      <p class="quiz-feedback incorrect">Not quite. Work is reprocessed on replay; the promise is that the committed result reflects each record exactly once.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Which two mechanisms together give file-to-Iceberg exactly-once?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Parallel file reads plus a larger task-manager memory heap size</button>
+        <button data-correct="true">Flink checkpoints plus Iceberg atomic per-checkpoint snapshot commits</button>
+        <button data-correct="false">The JSON format plus the Hadoop catalog warehouse directory path</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Checkpoints give a rewindable source position; atomic commits make each checkpoint's data one all-or-nothing snapshot — together, exactly-once.</p>
+      <p class="quiz-feedback incorrect">No — it's checkpoints (rewindable position) plus Iceberg's atomic per-checkpoint commit. Memory, format, and catalog don't provide the guarantee.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Open your Lesson 5 <code>metadata.json</code> again and find <code>flink.max-committed-checkpoint-id</code> in the snapshot summary. Say what it ties together.</li>
+      <li>In one sentence each, define at-most-once, at-least-once, and exactly-once using the client's job records as the example.</li>
+      <li>A teammate says "exactly-once means Flink never does any work twice." State the correction.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "What breaks the exactly-once guarantee if I turn checkpointing off?" The final lesson pulls everything together into a design recommendation for the client's two real pipelines.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0007-catalogs-and-the-dremio-seam.html" title="Previous: Catalogs and the Dremio Seam">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0009-design-recommendation.html" title="Next: Design Recommendation">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

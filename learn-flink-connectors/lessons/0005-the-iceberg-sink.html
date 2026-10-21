@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Iceberg Sink</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #2e7d32; --color-accent-light: #e6f4e7; }
+    a:hover { color: #1b5e20; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #98ee99; }
+    }
+    [data-theme="dark"] { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+    [data-theme="dark"] a:hover { color: #98ee99; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0004-filesystem-source-bounded-vs-continuous.html" title="Previous: Bounded vs. Continuous">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0006-mongodb-source-vs-cdc.html" title="Next: MongoDB Source vs. CDC">Next →</a>
+    </nav>
+
+    <h1>The Iceberg Sink</h1>
+    <p class="lesson-meta">Time: ~10 minutes. Tangible win: write a Flink table into a real Iceberg table through a catalog, then see the snapshot, manifests, and Parquet files it produced on disk. <strong>Every output below is from a real run</strong> — including the files Dremio would read.</p>
+
+    <p>You can read files (Lessons 3–4). Now you write the result into <strong>Iceberg</strong> — the output the whole engagement exists for, because Dremio queries Iceberg natively. The new idea here is the <strong>catalog</strong>: Flink never writes to an Iceberg table directly, only <em>through</em> a catalog that tracks where tables live.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://iceberg.apache.org/docs/latest/flink/">Iceberg Flink Getting Started</a> — <code>CREATE CATALOG</code>, DDL, and read/write. Dremio's <a href="https://www.dremio.com/blog/getting-started-with-flink-sql-and-apache-iceberg/">Flink SQL + Iceberg guide</a> walks the same path.
+    </section>
+
+    <h2>Step 1 — Register an Iceberg catalog</h2>
+    <p>A catalog is a first-class object you create before any Iceberg table exists. This one is a <strong>Hadoop catalog</strong> backed by a local directory — the simplest catalog, zero external services:</p>
+
+    <pre><code>CREATE CATALOG iceberg WITH (
+  'type'         = 'iceberg',
+  'catalog-type' = 'hadoop',
+  'warehouse'    = 'file:///warehouse'
+);
+
+CREATE DATABASE IF NOT EXISTS iceberg.dremio;</code></pre>
+
+    <section class="callout tip">
+      <span class="callout-title">The catalog is the decision, not the detail</span>
+      <code>catalog-type = 'hadoop'</code> is the laziest choice that works locally. In the client's world it becomes <code>'rest'</code> (Apache Polaris — Dremio's Open Catalog), <code>'nessie'</code>, or AWS Glue. The <code>CREATE TABLE</code> and <code>INSERT</code> that follow are <em>identical</em> regardless — only this one block changes. <a href="0007-catalogs-and-the-dremio-seam.html">Lesson 7</a> is entirely about this choice.
+    </section>
+
+    <h2>Step 2 — Create the Iceberg table and write to it</h2>
+    <p>Note the fully-qualified name: <code>iceberg.dremio.failed_jobs</code> is <em>catalog.database.table</em>. The <code>INSERT</code> is the same transform from Lesson 1 — keep only failed jobs:</p>
+
+    <pre><code>CREATE TABLE IF NOT EXISTS iceberg.dremio.failed_jobs (
+  job_id      STRING,
+  engine      STRING,
+  duration_ms BIGINT
+);
+
+INSERT INTO iceberg.dremio.failed_jobs
+SELECT job_id, engine, duration_ms
+FROM job_history
+WHERE status = 'FAILED';</code></pre>
+
+    <section class="callout warning">
+      <span class="callout-title">Real gotcha: the INSERT returns before the data lands</span>
+      In script mode (<code>sql-client.sh -f</code>), an <code>INSERT</code> is submitted as an <em>asynchronous</em> job and the runner moves on immediately. A <code>SELECT</code> placed right after it in the same script ran <strong>before the commit</strong> and returned <code>Empty set</code> — on a verified run. The write wasn't broken; the read was simply too early. Read the table back in a <em>separate</em> invocation, or wait for the job to finish, and the rows are there. This surprises nearly everyone the first time.
+    </section>
+
+    <h2>Step 3 — Read it back (fresh run)</h2>
+    <p class="lesson-meta">Verified output — reading <code>iceberg.dremio.failed_jobs</code> in a separate run, after the commit:</p>
+
+    <pre><code>+---------+---------+-------------+
+|  job_id |  engine | duration_ms |
++---------+---------+-------------+
+| job-004 | general |         512 |
+| job-002 | preview |         308 |
++---------+---------+-------------+
+2 rows in set</code></pre>
+
+    <p>Two FAILED jobs out of the five source rows — the transform worked, and the result is now a durable Iceberg table.</p>
+
+    <h2>What Flink actually wrote on disk</h2>
+    <p>This is the payoff worth internalising: an Iceberg "table" is a <em>tree of files</em>, not a database object. Here is the real on-disk layout the write produced:</p>
+
+    <pre><code>warehouse/dremio/failed_jobs/
+  data/
+    00000-0-42eaeb5c-...-00001.parquet        ← the actual rows
+  metadata/
+    v1.metadata.json                          ← table before the write (empty)
+    v2.metadata.json                          ← table after the commit
+    snap-4469045629319297262-...-.avro        ← manifest list for the snapshot
+    a9aab11c-...-m0.avro                       ← manifest (lists data files)
+    version-hint.text                          ← points at the current metadata</code></pre>
+
+    <p>Every commit writes a new <code>metadata.json</code> and a new snapshot — that's where Iceberg's time travel and atomic commits come from. The real snapshot summary Flink recorded:</p>
+
+    <pre><code>operation         : append
+added-records     : 2
+total-records     : 2
+added-data-files  : 1
+engine-name       : flink
+engine-version    : 1.18.1
+iceberg-version   : Apache Iceberg 1.6.1</code></pre>
+
+    <section class="callout tip">
+      <span class="callout-title">This is exactly what Dremio reads</span>
+      When Dremio queries this table, it reads <code>version-hint.text</code> → the current <code>metadata.json</code> → the snapshot's manifest list → the manifests → the Parquet data files. Flink produced that whole structure; nothing extra is needed to make it Dremio-readable. The <a href="../reference/glossary.html">glossary</a> defines each piece. The underlying format is the same one covered in the <a href="../../learn-apache-polaris/lessons/index.html">Apache Polaris course</a>.
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Why must you run <code>CREATE CATALOG</code> before creating an Iceberg table?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Because the catalog compresses the Parquet data files for you</button>
+        <button data-correct="true">Because Flink writes Iceberg only through a catalog that tracks tables</button>
+        <button data-correct="false">Because the catalog converts the JSON source into the CSV format</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The catalog is the system of record for where tables live; Flink has no way to address an Iceberg table without one.</p>
+      <p class="quiz-feedback incorrect">Not quite. The catalog isn't about compression or formats — it's the required registry of where Iceberg tables live.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>A <code>SELECT</code> right after an <code>INSERT</code> in one script returned <code>Empty set</code>. Why?</p>
+      <div class="quiz-options">
+        <button data-correct="false">The insert silently failed because the catalog was configured wrong</button>
+        <button data-correct="true">The insert runs asynchronously, so the read happened before the commit</button>
+        <button data-correct="false">Iceberg tables cannot ever be read back in the Flink SQL client</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The <code>INSERT</code> is submitted async and the script moves on; the read ran before the commit landed. Read in a separate run and the rows appear.</p>
+      <p class="quiz-feedback incorrect">No — the write succeeded (the files were on disk). The read was simply too early, because the insert job runs asynchronously.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Run the full pipeline (source from Lesson 3 + this sink). Then <code>find warehouse/ -type f</code> and match each file to the tree above.</li>
+      <li>Open the latest <code>metadata.json</code> and find the <code>current-snapshot-id</code> and the <code>summary</code>. Confirm <code>added-records</code> matches your FAILED count.</li>
+      <li>Insert again (append a new FAILED job to the source first). Watch a <code>v3.metadata.json</code> and a second snapshot appear — proof every commit is a new snapshot.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "If two Flink jobs write to the same Iceberg table at once, what stops them clobbering each other?" (Iceberg's atomic commit + optimistic concurrency.) Next lesson switches sources entirely — MongoDB, and the sharp difference between a plain read and a CDC changelog.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0004-filesystem-source-bounded-vs-continuous.html" title="Previous: Bounded vs. Continuous">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0006-mongodb-source-vs-cdc.html" title="Next: MongoDB Source vs. CDC">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

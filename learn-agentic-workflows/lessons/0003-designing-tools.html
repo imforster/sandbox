@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Designing Tools</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0002-workflows-versus-agents.html" title="Previous: Workflows Versus Agents">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0004-context-and-state.html" title="Next: Context and State">Next →</a>
+    </nav>
+
+    <h1>Designing Tools</h1>
+    <p class="lesson-meta">Time: ~12 minutes. Tangible win: write a tool definition that an agent uses correctly on the first attempt, and recognize the three defects that cause most misuse.</p>
+
+    <p>A tool is the agent's only way to act on the world, and the model reads its definition to decide when and how to use it. Anthropic describes this as the agent-computer interface, and says it deserves the same care as a human-computer interface. Most failures that look like model problems are tool design problems.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://www.anthropic.com/research/building-effective-agents">Building effective AI agents, Appendix 2: Prompt engineering your tools</a>. Read it in full. It is short and includes the file path example that is worth remembering.
+    </section>
+
+    <h2>Five parts of a good tool</h2>
+    <p>Each tool definition is a contract. Treat it like a docstring you would write for a new engineer joining the team.</p>
+
+    <ol>
+      <li><strong>Name.</strong> Use a verb and a noun that describe one action, such as <code>get_invoice</code>.</li>
+      <li><strong>Description.</strong> Say what it does, when to use it, and when not to use it. Naming the alternative tool prevents confusion.</li>
+      <li><strong>Parameters.</strong> Describe each one with its format and an example. Ambiguous names invite wrong arguments.</li>
+      <li><strong>Return value.</strong> Return only what the next decision needs. Large raw payloads waste the context budget.</li>
+      <li><strong>Errors.</strong> Return a message that says what went wrong and what to try next.</li>
+    </ol>
+
+    <pre><code>{
+  "name": "get_invoice",
+  "description": "Fetch one invoice by its ID. Use when the user gives an invoice number such as INV-2026-0042. Do not use to search by customer; use search_invoices for that.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "invoice_id": {
+        "type": "string",
+        "description": "Invoice ID in the form INV-YYYY-NNNN"
+      }
+    },
+    "required": ["invoice_id"]
+  }
+}</code></pre>
+
+    <p>Notice what the description does. It states the trigger, the boundary with a neighboring tool, and the expected input format. An engineer reading only this definition could call the tool correctly.</p>
+
+    <h2>Make mistakes hard to make</h2>
+    <p>Anthropic calls this poka-yoke, after the manufacturing practice of designing errors out. The SWE-bench team found that an agent made mistakes with relative file paths once it had moved out of the root directory. They changed the tool to require absolute paths, and the model used the new form without error. Ask yourself which argument the model could get wrong, then change the tool so that the wrong value is impossible or rejected with a clear message.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Overlapping tools are the common failure</span>
+      If a human engineer cannot say which tool to use in a given situation, the agent will not do better. Merge tools that do the same job, or sharpen the descriptions until the boundary is obvious.
+    </section>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Take a function you already have in your codebase. Rewrite its description following the five parts above.</li>
+      <li>Give the tool five realistic inputs, including one with a typo and one that should fail. Record each mistake the model makes.</li>
+      <li>Change one thing per iteration, such as a parameter description or an error message, and rerun the five inputs. Keep the change only if the mistakes drop.</li>
+    </ol>
+
+    <h2>Retrieval check</h2>
+
+    <div class="quiz" data-quiz>
+      <p>Two tools overlap in purpose, and the agent sometimes picks the wrong one. What is the first fix?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Add more examples to the system prompt</button>
+        <button data-correct="true">Merge them or sharpen each description</button>
+        <button data-correct="false">Raise the maximum number of steps</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Overlap is a defect in the interface. Clarify the boundary in the tools themselves before adding instructions around them.</p>
+      <p class="quiz-feedback incorrect">Not quite. A raised step limit or more prompt text will not fix an ambiguous choice. The boundary belongs in the tool definitions.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>A lookup tool finds no matching record. Which result should it return?</p>
+      <div class="quiz-options">
+        <button data-correct="false">An empty string with no explanation</button>
+        <button data-correct="true">A clear message saying what to try next</button>
+        <button data-correct="false">An exception that stops the entire run</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. An actionable message lets the model recover, for example by searching instead. An empty string gives it nothing to reason about.</p>
+      <p class="quiz-feedback incorrect">Not quite. A silent or fatal result leaves the model without a path forward. A clear message that names the next step lets it recover.</p>
+    </div>
+
+    <section class="ask-teacher">
+      Ask the agent: "Review this tool definition for overlap and missing error cases: [paste a tool]." Next lesson looks at what goes into the context window, since every tool result competes for the same budget.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0002-workflows-versus-agents.html">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0004-context-and-state.html">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

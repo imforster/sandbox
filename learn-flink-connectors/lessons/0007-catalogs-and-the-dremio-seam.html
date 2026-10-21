@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catalogs and the Dremio Seam</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #2e7d32; --color-accent-light: #e6f4e7; }
+    a:hover { color: #1b5e20; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #98ee99; }
+    }
+    [data-theme="dark"] { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+    [data-theme="dark"] a:hover { color: #98ee99; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0006-mongodb-source-vs-cdc.html" title="Previous: MongoDB Source vs. CDC">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0008-delivery-guarantees.html" title="Next: Delivery Guarantees">Next →</a>
+    </nav>
+
+    <h1>Catalogs and the Dremio Seam</h1>
+    <p class="lesson-meta">Time: ~8 minutes. Tangible win: explain why the catalog choice — not the write code — is what lets Dremio read what Flink produced, and name the right catalog for the engagement.</p>
+
+    <p>In <a href="0005-the-iceberg-sink.html">Lesson 5</a> you wrote through a Hadoop catalog, with a note that only the <code>CREATE CATALOG</code> block changes in production. This lesson cashes that in. The catalog is the <strong>seam</strong> between the two halves of the engagement: Flink writes <em>through</em> it, Dremio reads <em>through</em> it. Pick the same catalog on both sides and the loop closes.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://www.dremio.com/blog/apache-polaris-with-apache-flink/">Dremio: Apache Polaris with Apache Flink</a> — Flink writing to Iceberg through Polaris with <code>'catalog-type'='rest'</code>. See also the <a href="../../learn-apache-polaris/lessons/index.html">Apache Polaris course</a> in this repo.
+    </section>
+
+    <h2>What a catalog is, restated</h2>
+    <p>An Iceberg catalog is the <strong>system of record for where tables live and what their current snapshot is</strong>. It is not storage — the Parquet and metadata files you saw in Lesson 5 live in object storage regardless. The catalog just answers "for table <code>dremio.failed_jobs</code>, which <code>metadata.json</code> is current?" Every engine that agrees on the catalog sees the same tables.</p>
+
+    <h2>The catalog options, same table and INSERT either way</h2>
+    <p>The crucial thing: swapping catalogs changes only the <code>CREATE CATALOG</code> block. Your <code>CREATE TABLE</code> and <code>INSERT</code> are untouched.</p>
+
+    <table>
+      <thead>
+        <tr><th>Catalog type</th><th><code>catalog-type</code></th><th>Who tracks tables</th><th>When to reach for it</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Hadoop / filesystem</td><td><code>hadoop</code></td><td>Files in a warehouse dir</td><td>Local dev, single writer, no services (Lesson 5)</td></tr>
+        <tr><td>REST (Apache Polaris)</td><td><code>rest</code></td><td>A Polaris server over HTTP</td><td>Dremio's Open Catalog — the engagement's likely target</td></tr>
+        <tr><td>Nessie</td><td><code>nessie</code></td><td>A Nessie server, Git-like</td><td>Branch/tag versioning of catalog state</td></tr>
+        <tr><td>AWS Glue</td><td><code>glue</code></td><td>The Glue Data Catalog</td><td>AWS-native lakehouse</td></tr>
+      </tbody>
+    </table>
+
+    <h2>The one block that changes: pointing Flink at Polaris</h2>
+    <p>Because Dremio's Open Catalog <em>is</em> Apache Polaris, the production form of Lesson 5's catalog is a REST catalog with OAuth credentials:</p>
+
+    <pre><code>CREATE CATALOG dremio_catalog WITH (
+  'type'          = 'iceberg',
+  'catalog-type'  = 'rest',
+  'uri'           = 'https://&lt;polaris-host&gt;/api/catalog',
+  'warehouse'     = 'dremio',
+  'credential'    = '&lt;client-id&gt;:&lt;client-secret&gt;'
+);</code></pre>
+
+    <p>Everything after this — <code>CREATE TABLE dremio_catalog.dremio.failed_jobs</code>, the <code>INSERT</code> — is byte-for-byte the pipeline you already ran. That's the whole point of the catalog abstraction: the laziness you took locally (Hadoop) costs you nothing when you graduate to Polaris.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">This is where the two courses meet</span>
+      Lesson 5's on-disk snapshot and metadata files are exactly what the <a href="../../learn-apache-polaris/lessons/index.html">Polaris course</a> teaches from the catalog's side. There you learned how Polaris tracks catalogs, namespaces, and tables and vends credentials; here you learned how Flink <em>writes</em> into that. Flink fills the tables; Polaris governs them; Dremio reads them. Same Iceberg table, three roles.
+    </section>
+
+    <section class="callout warning">
+      <span class="callout-title">Both sides must point at the same catalog</span>
+      Dremio can only query what its catalog knows about. If Flink writes through a Hadoop catalog on a laptop and Dremio looks at a Polaris catalog, Dremio sees nothing — the data files exist, but no shared catalog records them. "Point both at the same catalog" is the entire integration requirement, and the most common reason a freshly written table is invisible to the query engine.
+    </section>
+
+    <h2>Why not always just use the filesystem catalog?</h2>
+    <p>The Hadoop catalog is simplest but weakest: it assumes effectively one writer and has no access control or multi-engine coordination. The moment two engines (Flink writing, Dremio reading, maybe Spark too) share tables, you want a service-backed catalog — REST/Polaris, Nessie, or Glue — which is exactly the multi-engine payoff the Polaris course opens with.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>When you switch from a Hadoop catalog to a Polaris REST catalog, what changes?</p>
+      <div class="quiz-options">
+        <button data-correct="false">The CREATE TABLE and the INSERT statements are fully rewritten</button>
+        <button data-correct="true">Only the CREATE CATALOG block changes; the table and insert stay</button>
+        <button data-correct="false">The Parquet data files must be regenerated in a new format</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The catalog abstraction means only the <code>CREATE CATALOG</code> block changes — the table DDL and the write are identical.</p>
+      <p class="quiz-feedback incorrect">Not quite. That's the value of the abstraction: only the catalog block changes, not the table, the insert, or the files.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Why might Dremio see nothing after Flink successfully writes a table?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Because Dremio cannot read any Parquet files that Flink writes</button>
+        <button data-correct="true">Because the two engines are pointed at two different catalogs</button>
+        <button data-correct="false">Because Iceberg tables are always private to the writing engine</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The data files exist, but if no shared catalog records them, Dremio's catalog doesn't know the table — both sides must agree on one catalog.</p>
+      <p class="quiz-feedback incorrect">No — Dremio reads Iceberg natively and tables aren't private. The issue is the two engines using different catalogs.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Take your working Lesson 5 script and rewrite <em>only</em> the <code>CREATE CATALOG</code> block to the Polaris REST form. Note that nothing else needs to change.</li>
+      <li>In one sentence, explain to the client why "Flink wrote it but Dremio can't see it" is almost always a catalog-mismatch, not a data problem.</li>
+      <li>Skim the <a href="../../learn-apache-polaris/lessons/index.html">Polaris course</a> intro and connect its "one catalog, many engines" claim to this lesson's seam.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "If I already did the Polaris course, which lesson there maps to the <code>'catalog-type'='rest'</code> block here?" Next lesson tackles correctness: what exactly-once means when files flow into Iceberg, and why Flink + Iceberg can promise it.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0006-mongodb-source-vs-cdc.html" title="Previous: MongoDB Source vs. CDC">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0008-delivery-guarantees.html" title="Next: Delivery Guarantees">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

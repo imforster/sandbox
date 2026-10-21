@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workflows Versus Agents</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0001-the-agent-loop.html" title="Previous: The Agent Loop">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0003-designing-tools.html" title="Next: Designing Tools">Next →</a>
+    </nav>
+
+    <h1>Workflows Versus Agents</h1>
+    <p class="lesson-meta">Time: ~10 minutes. Tangible win: given a task, classify it as a single call, a workflow, or an agent, and justify the choice in one sentence.</p>
+
+    <p>Lesson 0001 showed the loop. This lesson decides whether you need it. The most useful question in agent design is who decides the next step. If your code decides, you have a workflow. If the model decides, you have an agent. Choosing the wrong one costs you latency, money, and debugging time.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://www.anthropic.com/research/building-effective-agents">Building effective AI agents, Anthropic</a>: read the sections "What are agents?" and "When (and when not) to use agents." It defines workflows and agents and recommends the simplest solution that works.
+    </section>
+
+    <h2>Three options, not two</h2>
+    <p>Most tasks do not need an agent. Start from the bottom of this table and move up only when the simpler option fails on real inputs.</p>
+
+    <table>
+      <thead>
+        <tr><th>Option</th><th>Who decides the next step</th><th>Good for</th><th>Cost profile</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Single LLM call</td><td>Your code</td><td>Classification, extraction, drafting</td><td>Lowest</td></tr>
+        <tr><td>Workflow</td><td>Your code, with LLM steps inside</td><td>Known steps in a known order</td><td>Predictable</td></tr>
+        <tr><td>Agent</td><td>The model, in a loop with tools</td><td>Open-ended tasks with an unknown number of steps</td><td>Highest and least predictable</td></tr>
+      </tbody>
+    </table>
+
+    <p>Anthropic's guidance is direct on this point. Agentic systems trade latency and cost for better performance on hard tasks, so you should only pay that trade when the task requires it. Anthropic also notes that frameworks can hide the prompts and responses underneath, which makes debugging harder. Build the first version with direct API calls, then adopt a framework if it earns its place.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">A useful test</span>
+      Write down the steps a competent engineer would follow. If you can write them as fixed steps, build a workflow. If the number and order of steps depends on what the tools return, an agent may be justified.
+    </section>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Pick three tasks from your current work. For each, classify it as a single call, a workflow, or an agent.</li>
+      <li>For every workflow, list its fixed steps in order. For every agent, name the decision the model must make at each step.</li>
+      <li>For any task you classified as an agent, ask whether a workflow with one LLM step would meet the same need. Write down your answer.</li>
+    </ol>
+
+    <h2>Retrieval check</h2>
+
+    <div class="quiz" data-quiz>
+      <p>A nightly job extracts fields from invoices, checks that the totals add up, and writes valid rows to a database. Which design fits best?</p>
+      <div class="quiz-options">
+        <button data-correct="false">An open-ended agent with every tool available</button>
+        <button data-correct="true">A workflow with fixed steps and LLM extraction</button>
+        <button data-correct="false">A team of several cooperating agents</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The steps are known in advance, so your code should own the sequence. The LLM does the extraction inside one step.</p>
+      <p class="quiz-feedback incorrect">Not quite. The steps and their order are fixed, so a workflow is the simplest design that works. Adding autonomy here adds cost and risk without a benefit.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>What trade-off do agentic systems usually introduce?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Lower latency and lower cost</button>
+        <button data-correct="true">Higher latency and higher cost</button>
+        <button data-correct="false">No change in latency or cost</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Agents make more model calls and wait on tools, so they cost more and run slower. You accept that trade only when the task needs it.</p>
+      <p class="quiz-feedback incorrect">Not quite. Agents make more model calls and wait on tools, which increases latency and cost. Anthropic frames that as a trade for better results.</p>
+    </div>
+
+    <section class="ask-teacher">
+      Ask the agent: "Classify this task for me: [describe a task from your work], and tell me what would change my answer." Next lesson covers tools, the part of an agent that touches the real world.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0001-the-agent-loop.html">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0003-designing-tools.html">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

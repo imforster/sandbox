@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MongoDB Source vs. MongoDB CDC</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #2e7d32; --color-accent-light: #e6f4e7; }
+    a:hover { color: #1b5e20; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #98ee99; }
+    }
+    [data-theme="dark"] { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+    [data-theme="dark"] a:hover { color: #98ee99; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0005-the-iceberg-sink.html" title="Previous: The Iceberg Sink">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0007-catalogs-and-the-dremio-seam.html" title="Next: Catalogs and the Dremio Seam">Next →</a>
+    </nav>
+
+    <h1>MongoDB Source vs. MongoDB CDC</h1>
+    <p class="lesson-meta">Time: ~9 minutes. Tangible win: say exactly how a plain MongoDB read differs from a CDC changelog, and why CDC forces a primary key on your Iceberg table. This is the client's <em>other</em> source.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">How this lesson is grounded</span>
+      Lessons 3–5 were run on a live cluster. This one is <strong>close reading of the official Flink CDC docs</strong> — a MongoDB CDC source needs a replica set, which this course doesn't stand up locally. Every option and behaviour below is quoted from the <a href="https://nightlies.apache.org/flink/flink-cdc-docs-stable/docs/connectors/flink-sources/mongodb-cdc/">MongoDB CDC connector docs</a>, not a local run. Treat the DDL as correct-by-source, not as something I executed here.
+    </section>
+
+    <p>The client stores operational data in MongoDB. Flink reads it two ways, and they are <em>different connectors</em> with different semantics — the asymmetry flagged back in the <a href="0002-the-connector-map.html">connector map</a>. Picking wrong is a real design error, so this lesson is about the difference, not the setup.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://nightlies.apache.org/flink/flink-cdc-docs-stable/docs/connectors/flink-sources/mongodb-cdc/">Flink CDC — MongoDB CDC Connector</a> — DDL, connector options, and the change-stream behaviour.
+    </section>
+
+    <h2>The plain <code>mongodb</code> source: a point-in-time read</h2>
+    <p>The plain connector reads the collection <em>as it is now</em> and produces an append stream — the same shape as a bounded file read. Good for a snapshot or a lookup; it does not see later changes.</p>
+
+    <pre><code>CREATE TABLE jobs_snapshot (
+  _id    STRING,
+  engine STRING,
+  status STRING
+) WITH (
+  'connector' = 'mongodb',
+  'uri'       = 'mongodb://localhost:27017',
+  'database'  = 'dremio',
+  'collection'= 'jobs'
+);</code></pre>
+
+    <h2>The <code>mongodb-cdc</code> source: a live changelog</h2>
+    <p>The CDC connector does a snapshot first, then streams every insert, update, and delete continuously using MongoDB's change streams (via Debezium). It is <strong>source-only</strong> — it can never be a sink. Note the two differences from the plain source: a different <code>connector</code> value, and a mandatory <code>PRIMARY KEY</code>.</p>
+
+    <pre><code>CREATE TABLE jobs_cdc (
+  _id    STRING,
+  engine STRING,
+  status STRING,
+  PRIMARY KEY(_id) NOT ENFORCED
+) WITH (
+  'connector'  = 'mongodb-cdc',
+  'hosts'      = 'localhost:27017,localhost:27018,localhost:27019',
+  'username'   = 'flinkuser',
+  'password'   = 'flinkpw',
+  'database'   = 'dremio',
+  'collection' = 'jobs'
+);</code></pre>
+
+    <section class="callout warning">
+      <span class="callout-title">Why the primary key is mandatory — the key insight</span>
+      Per the docs: MongoDB's change event <em>has no "before" image on updates</em>. So Flink can't produce a full before/after changelog — it produces an <strong>UPSERT changelog</strong> instead. An upsert stream needs a unique key to know <em>which row</em> to replace or delete, so you <strong>must</strong> declare <code>_id</code> as the primary key. You can't use any other column, because a delete event carries only <code>_id</code>. This isn't boilerplate — it's forced by how MongoDB emits changes.
+    </section>
+
+    <h2>The two sources side by side</h2>
+    <table>
+      <thead>
+        <tr><th></th><th><code>mongodb</code></th><th><code>mongodb-cdc</code></th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Direction</td><td>Source &amp; sink</td><td>Source only</td></tr>
+        <tr><td>Boundedness</td><td>Bounded (reads now, stops)</td><td>Unbounded (snapshot, then live)</td></tr>
+        <tr><td>Stream kind</td><td>Append</td><td>Upsert changelog</td></tr>
+        <tr><td>Sees later changes?</td><td>No — rerun to refresh</td><td>Yes — insert/update/delete</td></tr>
+        <tr><td>Primary key</td><td>Not required</td><td>Required (<code>_id</code>)</td></tr>
+        <tr><td>Infra needed</td><td>Any MongoDB</td><td>Replica set / sharded cluster</td></tr>
+      </tbody>
+    </table>
+
+    <h2>What this means for the Iceberg sink</h2>
+    <p>This is where it connects to <a href="0005-the-iceberg-sink.html">Lesson 5</a>. An <strong>append</strong> source (plain Mongo, or files) maps to a plain append-only Iceberg write — the one you already ran. An <strong>upsert changelog</strong> source (Mongo CDC) can't just append: the Iceberg table has to apply updates and deletes, so it must be created with upsert enabled and a matching primary key:</p>
+
+    <pre><code>CREATE TABLE iceberg.dremio.jobs_live (
+  _id    STRING,
+  engine STRING,
+  status STRING,
+  PRIMARY KEY(_id) NOT ENFORCED
+) WITH (
+  'format-version' = '2',
+  'write.upsert.enabled' = 'true'
+);</code></pre>
+
+    <p>Iceberg format-version 2 is what supports row-level deletes. Point an append-only table at a changelog source and the updates/deletes have nowhere to go — the single most common CDC-to-Iceberg mistake, and the reason the <a href="0002-the-connector-map.html">connector map</a> called append-vs-changelog the hinge.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Why must a MongoDB CDC table declare <code>_id</code> as its primary key?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Because MongoDB refuses every read that does not sort by _id</button>
+        <button data-correct="true">Because the upsert changelog needs a key to know which row changed</button>
+        <button data-correct="false">Because the plain mongodb connector also always requires that key</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. MongoDB emits no before-image, so Flink produces an upsert changelog, which needs a unique key — and a delete event carries only <code>_id</code>.</p>
+      <p class="quiz-feedback incorrect">Not quite. It's the upsert changelog that needs the key — a delete event carries only <code>_id</code>, so no other column works.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Which pairing of source and Iceberg write is correct?</p>
+      <div class="quiz-options">
+        <button data-correct="false">A changelog source writes cleanly to a plain append-only table</button>
+        <button data-correct="true">A changelog source needs an upsert table with a matching primary key</button>
+        <button data-correct="false">An append source needs upsert enabled and a declared primary key</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Upsert changelog (Mongo CDC) requires an Iceberg v2 table with upsert enabled and a key; plain append sources write to a plain table.</p>
+      <p class="quiz-feedback incorrect">No — append sources go to append tables; a changelog source is the one that needs upsert enabled and a primary key.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>From memory, fill the six-row comparison table. Check against the <a href="../reference/glossary.html">glossary</a> entries for append vs. changelog.</li>
+      <li>The client asks for a "live view of running jobs" in Iceberg. Which Mongo connector, and what must the Iceberg table declare? Answer in two sentences.</li>
+      <li>If you only need last night's job counts once a day, which connector is the simpler fit, and why?</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "Walk me through what a single MongoDB update becomes as it travels CDC source → Flink → Iceberg upsert table." Next lesson is the catalog decision — the seam where this whole pipeline becomes readable by Dremio.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0005-the-iceberg-sink.html" title="Previous: The Iceberg Sink">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0007-catalogs-and-the-dremio-seam.html" title="Next: Catalogs and the Dremio Seam">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

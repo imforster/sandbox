@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The FileSystem Source: Bounded vs. Continuous</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #2e7d32; --color-accent-light: #e6f4e7; }
+    a:hover { color: #1b5e20; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #98ee99; }
+    }
+    [data-theme="dark"] { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+    [data-theme="dark"] a:hover { color: #98ee99; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0003-local-flink-sql-and-reading-files.html" title="Previous: Local Flink SQL">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0005-the-iceberg-sink.html" title="Next: The Iceberg Sink">Next →</a>
+    </nav>
+
+    <h1>The FileSystem Source: Bounded vs. Continuous</h1>
+    <p class="lesson-meta">Time: ~8 minutes. Tangible win: turn the same source from a read-once batch into a never-ending stream with <em>one option</em>, and know which the client's job-history pipeline needs. <strong>The job-state difference below is from a real run.</strong></p>
+
+    <p>Lesson 3's read finished and stopped — the directory was <strong>bounded</strong>. But the client's job-history logs don't stop; new files land as engines run jobs. This lesson makes the same FileSystem source <strong>continuous</strong>, so Flink watches the directory and ingests new files as they appear. One option name does it.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/table/filesystem/">Flink FileSystem Connector</a> — the <code>source.monitor-interval</code> option and streaming-source behaviour.
+    </section>
+
+    <h2>The one option: <code>source.monitor-interval</code></h2>
+    <p>Add <code>source.monitor-interval</code> to the <code>WITH</code> clause and the connector flips from "read once" to "scan the directory on this interval, pick up new files forever":</p>
+
+    <pre><code>SET 'execution.runtime-mode' = 'streaming';
+
+CREATE TABLE job_history_stream (
+  job_id      STRING,
+  engine      STRING,
+  status      STRING,
+  duration_ms BIGINT
+) WITH (
+  'connector' = 'filesystem',
+  'path'      = 'file:///data/job-history/',
+  'format'    = 'json',
+  'source.monitor-interval' = '2s'
+);</code></pre>
+
+    <p>Everything else is identical to Lesson 3. The connector is still <code>filesystem</code>, the format still <code>json</code>, the path still the same directory. The only change in meaning is <strong>boundedness</strong> — exactly the axis from the <a href="0002-the-connector-map.html">connector map</a>.</p>
+
+    <h2>The observable difference: the job never finishes</h2>
+    <p>This is the whole point, and you can see it in the cluster's job list. A bounded read runs and reaches <code>FINISHED</code>. A continuous read stays <code>RUNNING</code>, waiting for the next file.</p>
+
+    <p class="lesson-meta">Verified output — the continuous job's state, listed from a real cluster a few seconds after submission:</p>
+
+    <pre><code>------------------ Running/Restarting Jobs -------------------
+14.10.2026 05:08:15 : d8cc9896a7755740f1e424ad2afc340e :
+    insert-into_default_catalog.default_database.sink_print (RUNNING)
+No scheduled jobs.</code></pre>
+
+    <p><code>RUNNING</code>, not <code>FINISHED</code>. Drop another JSON file into the directory and within the 2-second interval its rows flow through. The job only stops when you cancel it.</p>
+
+    <section class="callout tip">
+      <span class="callout-title">Bounded is a special case of unbounded</span>
+      Think of it as one dial, not two modes. <em>Without</em> <code>source.monitor-interval</code>: scan once, emit, finish — bounded. <em>With</em> it: scan repeatedly, emit new files, never finish — unbounded. The source table's schema, format, and path don't change; only whether the job ends.
+    </section>
+
+    <h2>What continuous mode costs you</h2>
+    <p>Watching forever isn't free, and these tradeoffs are the substance of a design conversation:</p>
+
+    <table>
+      <thead>
+        <tr><th></th><th>Bounded (batch)</th><th>Continuous (streaming)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Job lifecycle</td><td>Reads all files, finishes</td><td>Runs until cancelled</td></tr>
+        <tr><td>Latency to new data</td><td>Re-run the job manually</td><td>Picked up within the interval</td></tr>
+        <tr><td>Resource use</td><td>Only while running</td><td>A slot held continuously</td></tr>
+        <tr><td>Fits the client's…</td><td>Historical log backfill</td><td>Live job-history ingestion</td></tr>
+      </tbody>
+    </table>
+
+    <section class="callout warning">
+      <span class="callout-title">Each file is read once — and files are immutable here</span>
+      Continuous mode tracks which files it has already ingested and reads each new file exactly once. It does <em>not</em> re-read a file you edit in place. The FileSystem source assumes files are written once and never modified — which matches append-only log files, and does not match a file an engine rewrites. If the client's logs are rewritten rather than rolled, that's a design flag.
+    </section>
+
+    <h2>Mapping it to the client</h2>
+    <p>The client has both needs, and they are two different jobs:</p>
+    <ul>
+      <li><strong>Backfill</strong> the pile of historical job-history logs → <em>bounded</em>, run once (Lesson 3's setup).</li>
+      <li><strong>Keep up</strong> with logs as engines produce them → <em>continuous</em>, left running (this lesson's setup).</li>
+    </ul>
+    <p>You can even do both into the same Iceberg table: backfill first, then start the continuous job. That's a <a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/datastream/hybridsource/">hybrid source</a> pattern — worth knowing the name, not drilling here.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>What single change makes the FileSystem source continuous instead of read-once?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Switching the format option from json over to the csv format</button>
+        <button data-correct="true">Adding the source.monitor-interval option to the table's WITH clause</button>
+        <button data-correct="false">Pointing the path option at a single file instead of a folder</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. <code>source.monitor-interval</code> tells the connector to re-scan the directory on that interval and ingest new files, so the job never finishes.</p>
+      <p class="quiz-feedback incorrect">Not quite. The format and path don't control boundedness — <code>source.monitor-interval</code> does.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>How do you observe that a source is unbounded on a running cluster?</p>
+      <div class="quiz-options">
+        <button data-correct="false">The job prints every row twice to the output console log</button>
+        <button data-correct="true">The job stays in RUNNING state instead of reaching FINISHED</button>
+        <button data-correct="false">The job refuses to start until a second file is added</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A bounded read reaches <code>FINISHED</code>; a continuous read holds at <code>RUNNING</code>, waiting for the next file — exactly what the verified job list showed.</p>
+      <p class="quiz-feedback incorrect">No — the tell is the job state. Unbounded jobs stay <code>RUNNING</code> rather than finishing.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Run the continuous version with a <code>print</code> sink. In another terminal, <code>cp</code> a new JSON file into the directory and watch the rows appear within two seconds.</li>
+      <li>Run <code>flink list</code> and confirm the job is <code>RUNNING</code>. Then cancel it with <code>flink cancel &lt;job-id&gt;</code>.</li>
+      <li>For each of the client's two needs — backfill and live ingestion — state which mode and why, in one sentence each.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "If I edit an already-ingested file in place, will continuous mode re-read it?" (No — it assumes write-once files. Rewrites are a design flag.) Next lesson adds the other half of the pipeline: the Iceberg sink, where this stream actually lands.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0003-local-flink-sql-and-reading-files.html" title="Previous: Local Flink SQL">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0005-the-iceberg-sink.html" title="Next: The Iceberg Sink">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

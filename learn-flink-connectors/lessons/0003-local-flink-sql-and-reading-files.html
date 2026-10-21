@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A Local Flink SQL Environment + Reading Files</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    :root { --color-accent: #2e7d32; --color-accent-light: #e6f4e7; }
+    a:hover { color: #1b5e20; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+      :root:not([data-theme="light"]) a:hover { color: #98ee99; }
+    }
+    [data-theme="dark"] { --color-accent: #66bb6a; --color-accent-light: rgba(102, 187, 106, 0.12); }
+    [data-theme="dark"] a:hover { color: #98ee99; }
+  </style>
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0002-the-connector-map.html" title="Previous: The Connector Map">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0004-filesystem-source-bounded-vs-continuous.html" title="Next: Bounded vs. Continuous">Next →</a>
+    </nav>
+
+    <h1>A Local Flink SQL Environment + Reading Files</h1>
+    <p class="lesson-meta">Time: ~10 minutes. Tangible win: run Flink SQL in Docker and read a directory of job-history files into a table — your first real pipeline, verified on a live cluster. <strong>Every command and every output below is from a real run</strong> (Flink 1.18.1).</p>
+
+    <p>Lessons 1–2 were the model. Now you run it. By the end you'll have a Flink SQL Client talking to a live cluster, reading the client's job-history-style JSON files. The <a href="0005-the-iceberg-sink.html">Iceberg sink comes in Lesson 5</a> — this lesson stops at reading the source, so the one new skill (standing up Flink) lands cleanly.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/sqlClient/">Flink SQL Client docs</a> — how the interactive client and the <code>-f script.sql</code> runner work. Dremio's <a href="https://www.dremio.com/blog/getting-started-with-flink-sql-and-apache-iceberg/">Getting Started with Flink SQL and Iceberg</a> mirrors this setup.
+    </section>
+
+    <h2>Step 1 — Sample job-history files</h2>
+    <p>Create a directory with two small JSON files, one object per line (newline-delimited JSON, which Flink's <code>json</code> format reads row by row):</p>
+
+    <pre><code>mkdir -p ~/flink-lab/data/job-history ~/flink-lab/warehouse
+
+cat &gt; ~/flink-lab/data/job-history/2026-10-13-batch1.json &lt;&lt;'EOF'
+{"job_id":"job-001","engine":"preview","status":"COMPLETED","duration_ms":1240}
+{"job_id":"job-002","engine":"preview","status":"FAILED","duration_ms":308}
+{"job_id":"job-003","engine":"general","status":"COMPLETED","duration_ms":9820}
+EOF
+
+cat &gt; ~/flink-lab/data/job-history/2026-10-13-batch2.json &lt;&lt;'EOF'
+{"job_id":"job-004","engine":"general","status":"FAILED","duration_ms":512}
+{"job_id":"job-005","engine":"preview","status":"COMPLETED","duration_ms":2044}
+EOF</code></pre>
+
+    <h2>Step 2 — The two JARs Flink needs</h2>
+    <p>The stock Flink image already ships the FileSystem and JSON connectors. For the Iceberg work in later lessons you add two JARs now, so the environment is ready once:</p>
+
+    <pre><code>mkdir -p ~/flink-lab/jars &amp;&amp; cd ~/flink-lab/jars
+curl -sSLO https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-flink-runtime-1.18/1.6.1/iceberg-flink-runtime-1.18-1.6.1.jar
+curl -sSLO https://repo1.maven.org/maven2/org/apache/flink/flink-shaded-hadoop-2-uber/2.8.3-10.0/flink-shaded-hadoop-2-uber-2.8.3-10.0.jar</code></pre>
+
+    <section class="callout tip">
+      <span class="callout-title">Why these two, specifically</span>
+      <code>iceberg-flink-runtime-1.18</code> is the Iceberg↔Flink bridge, built to match <em>Flink 1.18</em> — the connector version must track your Flink version. The <code>flink-shaded-hadoop</code> uber JAR supplies the Hadoop classes Iceberg's Hadoop catalog and the Parquet writer need. Miss the Hadoop JAR and the Iceberg catalog fails to initialise.
+    </section>
+
+    <h2>Step 3 — The source table and read</h2>
+    <p>Put this in <code>~/flink-lab/read.sql</code>. It declares the FileSystem source from Lesson 1 and reads it:</p>
+
+    <pre><code>SET 'execution.runtime-mode' = 'batch';
+SET 'sql-client.execution.result-mode' = 'tableau';
+
+CREATE TABLE job_history (
+  job_id      STRING,
+  engine      STRING,
+  status      STRING,
+  duration_ms BIGINT
+) WITH (
+  'connector' = 'filesystem',
+  'path'      = 'file:///data/job-history/',
+  'format'    = 'json'
+);
+
+SELECT * FROM job_history;</code></pre>
+
+    <h2>Step 4 — Run it</h2>
+    <p>One container starts a local cluster, then runs your script. The volume mounts map your lab directories to the paths named in the SQL:</p>
+
+    <pre><code>docker run --rm --user root \
+  -v ~/flink-lab/data:/data \
+  -v ~/flink-lab/warehouse:/warehouse \
+  -v ~/flink-lab/jars:/extra-jars \
+  -v ~/flink-lab/read.sql:/read.sql \
+  flink:1.18.1-scala_2.12-java11 \
+  bash -lc '
+    cp /extra-jars/*.jar $FLINK_HOME/lib/
+    $FLINK_HOME/bin/start-cluster.sh
+    sleep 10
+    $FLINK_HOME/bin/sql-client.sh -f /read.sql
+  '</code></pre>
+
+    <p class="lesson-meta">Verified output from a real run. The row <em>order</em> can differ (Flink reads files in parallel); the five rows will not.</p>
+
+    <pre><code>+---------+---------+-----------+-------------+
+|  job_id |  engine |    status | duration_ms |
++---------+---------+-----------+-------------+
+| job-004 | general |    FAILED |         512 |
+| job-005 | preview | COMPLETED |        2044 |
+| job-001 | preview | COMPLETED |        1240 |
+| job-002 | preview |    FAILED |         308 |
+| job-003 | general | COMPLETED |        9820 |
++---------+---------+-----------+-------------+
+5 rows in set</code></pre>
+
+    <p>Five rows across two files, read as one table. That is the FileSystem source doing its whole job: it treats the <em>directory</em> as the table, not any single file.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Run as <code>--user root</code> for the lab</span>
+      Copying JARs into <code>$FLINK_HOME/lib</code> and editing config needs write access the default container user doesn't have. <code>--user root</code> is fine for a throwaway local lab; a real deployment bakes the JARs into a custom image instead of copying at runtime.
+    </section>
+
+    <h2>Why <code>batch</code> mode here</h2>
+    <p>You set <code>execution.runtime-mode = batch</code> because a fixed set of files is a <strong>bounded</strong> source — it has an end. The job reads everything and stops. <a href="0004-filesystem-source-bounded-vs-continuous.html">Lesson 4</a> flips this to continuous mode, where the same directory becomes an unbounded source the job watches forever. Same connector, different boundedness — exactly the axis from Lesson 2.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>In the source table, what does the <code>'path'</code> pointing at a directory mean?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Flink reads only the first file it finds inside that directory</button>
+        <button data-correct="true">Flink treats every file in the directory as rows of one table</button>
+        <button data-correct="false">Flink requires exactly one file to exist in that directory</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The FileSystem connector reads the whole directory as a single table — two files of job history became five rows of one <code>job_history</code> table.</p>
+      <p class="quiz-feedback incorrect">Not quite. The connector reads the entire directory as one table, combining the rows from every file it contains.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Why is <code>execution.runtime-mode = batch</code> the right choice for this read?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Because batch mode is always faster than streaming mode runs</button>
+        <button data-correct="true">Because a fixed set of files is a bounded source that has an end</button>
+        <button data-correct="false">Because the JSON format can only be parsed in batch mode here</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A fixed directory is bounded — the job reads it all and finishes. Continuous watching would be unbounded (Lesson 4).</p>
+      <p class="quiz-feedback incorrect">No — it's about boundedness, not speed or format. A fixed set of files is finite, so batch mode fits.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Run the four steps on your own machine. Confirm you get five rows back.</li>
+      <li>Add a third JSON file with two more jobs, re-run, and watch the row count rise to seven — proof the directory <em>is</em> the table.</li>
+      <li>Change <code>SELECT *</code> to <code>SELECT engine, COUNT(*) FROM job_history GROUP BY engine</code>. What do you expect before you run it?</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask the agent: "The cluster logs printed <code>jdk.compiler</code> warnings — do those matter?" (They don't; they're harmless module warnings on Java 11.) Next lesson keeps this exact source but makes it <em>continuous</em> — Flink watches the directory and picks up new files as they land.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0002-the-connector-map.html" title="Previous: The Connector Map">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0004-filesystem-source-bounded-vs-continuous.html" title="Next: Bounded vs. Continuous">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

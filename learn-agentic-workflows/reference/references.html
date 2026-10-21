@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>References</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+  <link rel="stylesheet" href="../assets/reference.css">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="../index.html" title="Course home">← Course home</a>
+      <a class="nav-home" href="../index.html" title="Course home"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="glossary.html" title="Next: Glossary">Glossary →</a>
+    </nav>
+
+    <h1>References</h1>
+    <p class="lesson-meta">Reference · Sources cited in lessons 0001 to 0008, ranked by trust. Mirrors RESOURCES.md in the course folder.</p>
+
+    <p>Primary sources come first. Each one states which lessons use it. Treat secondary sources as supporting reading only.</p>
+
+    <h2>Primary sources</h2>
+
+    <table>
+      <thead>
+        <tr><th>Source</th><th>Used in</th><th>What to take from it</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="https://www.anthropic.com/research/building-effective-agents">Building effective AI agents, Anthropic</a></td>
+          <td>0001, 0002, 0003, 0007</td>
+          <td>Workflows versus agents, the five workflow patterns, and the tool appendix on the agent-computer interface.</td>
+        </tr>
+        <tr>
+          <td><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Effective context engineering for AI agents, Anthropic</a></td>
+          <td>0004, 0008</td>
+          <td>Context rot, the attention budget, just-in-time retrieval, compaction, note-taking, and sub-agent summaries.</td>
+        </tr>
+        <tr>
+          <td><a href="https://learn.microsoft.com/en-us/agent-framework/agents/tools/tool-approval">Using function tools with human in the loop approvals, Microsoft Learn</a></td>
+          <td>0005</td>
+          <td>Approval pauses a run, the caller resumes it, approvals must bind to a pending request, and credential scope in production. Confirm current release status.</td>
+        </tr>
+        <tr>
+          <td><a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents, Anthropic</a></td>
+          <td>0006</td>
+          <td>Graders (code, model, human), capability and regression evals, pass@k and pass^k. Verify metric definitions against the original.</td>
+        </tr>
+        <tr>
+          <td><a href="https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons">Handling stop reasons, Claude Platform docs</a></td>
+          <td>0001</td>
+          <td>The <code>tool_use</code> and <code>end_turn</code> stop reasons and how the loop terminates.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Secondary and reference</h2>
+
+    <table>
+      <thead>
+        <tr><th>Source</th><th>Caveat</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for agents, Anthropic Engineering</a></td>
+          <td>Read in full before relying on specifics. Recommended for lesson 0003 extensions.</td>
+        </tr>
+        <tr>
+          <td><a href="https://learn.microsoft.com/en-ca/agent-framework/overview/">Microsoft Agent Framework overview</a></td>
+          <td>Vocabulary reference for agents versus workflows when comparing frameworks.</td>
+        </tr>
+        <tr>
+          <td><a href="https://biweekly-engineering.beehiiv.com/p/building-effective-agents-lessons-from-anthropic-biweekly-engineering-episode-37">Biweekly Engineering summary of Building effective agents</a></td>
+          <td>Third-party summary. Use only to reinforce the primary source.</td>
+        </tr>
+        <tr>
+          <td><a href="https://mer.vin/2026/05/when-not-to-build-ai-agents-anthropics-workflow-vs-agent-playbook/">When not to build AI agents, mer.vin</a></td>
+          <td>Not verified against Anthropic's pages. Treat its decision flow as a hypothesis.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Open items</h2>
+    <p>Observability for LLM calls is not yet covered. The OpenTelemetry GenAI conventions are still in development status, so pin a version before teaching them. Multi-agent coordination beyond the sub-agent pattern also needs a primary source.</p>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="../index.html">← Course home</a>
+      <a class="nav-home" href="../index.html" title="Course home"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="glossary.html">Glossary →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

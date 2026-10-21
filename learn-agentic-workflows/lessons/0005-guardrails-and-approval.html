@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guardrails and Approval</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+  <link rel="stylesheet" href="../assets/copy-button.css?v=3">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0004-context-and-state.html" title="Previous: Context and State">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0006-evaluating-agents.html" title="Next: Evaluating Agents">Next →</a>
+    </nav>
+
+    <h1>Guardrails and Approval</h1>
+    <p class="lesson-meta">Time: ~12 minutes. Tangible win: add a hard step limit and a human approval gate to one write action, and test the rejection path.</p>
+
+    <p>An agent can call any tool you give it, as often as the loop allows. Guardrails are the controls that decide what it may do, how long it may run, and when a person must step in. Anthropic's guidance on agents calls for stopping conditions such as a maximum number of iterations, and for extensive testing in sandboxed environments with appropriate guardrails.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://learn.microsoft.com/en-us/agent-framework/agents/tools/tool-approval">Using function tools with human in the loop approvals, Microsoft Learn</a>. The Python tab shows the approval pattern in a framework-neutral form. The concept applies to any stack.
+    </section>
+
+    <h2>Four kinds of guardrail</h2>
+    <ul>
+      <li><strong>Budget.</strong> Limits on steps, tokens, time, and money per run.</li>
+      <li><strong>Permission.</strong> Which tools exist for this run and which arguments they accept.</li>
+      <li><strong>Approval.</strong> A person must confirm an action before it runs.</li>
+      <li><strong>Validation.</strong> Checks on tool inputs and final outputs before they reach a system of record.</li>
+    </ul>
+
+    <p>The model should never be the only enforcer. A system prompt that says "never delete records" is a request, not a control. The control is a tool that does not exist for that run, or an approval gate that stops the call.</p>
+
+    <h2>How an approval pauses a run</h2>
+    <p>Microsoft's approval pattern shows the mechanics clearly. A tool marked to require approval does not execute when the model requests it. The run returns early with a request for user input instead of a final answer. The caller shows the pending call to a person, collects the decision, and resumes the run with an approval or rejection. The caller checks every response until no requests remain.</p>
+
+    <pre><code># Framework-neutral sketch of an approval gate
+APPROVAL_REQUIRED = {"delete_customer_record", "issue_refund"}
+
+def run_tool(call):
+    if call.name in APPROVAL_REQUIRED:
+        return {"status": "pending_approval", "call": call}   # do not execute
+    return execute(call)
+
+# The caller resumes only with a recorded decision:
+decision = ask_human(pending_call)          # True or False
+if decision:
+    result = execute(pending_call)
+else:
+    result = {"status": "rejected_by_user"}
+messages.append(tool_result(pending_call.id, result))</code></pre>
+
+    <section class="callout warning">
+      <span class="callout-title">Bind approvals to the request they answer</span>
+      Microsoft's documentation warns that an approval response should authorize a call only when it matches a pending request in the same session. An unbound response can let a fabricated or replayed answer approve a privileged action. Your gate needs the same binding, using the call ID.
+    </section>
+
+    <section class="callout tip">
+      <span class="callout-title">Credentials are a guardrail too</span>
+      The same documentation advises against using a broad default credential in production, and suggests a specific credential such as a managed identity. Scope each tool to the least privilege it needs.
+    </section>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>List every tool your agent could call and mark each as read or write. Mark any write action that is hard to reverse.</li>
+      <li>Add an approval gate to one of those write actions, using the sketch above or your framework's equivalent.</li>
+      <li>Test the rejection path. Confirm that a rejected call returns a clear result to the model and does not run. Then confirm the step limit still stops a looping run.</li>
+    </ol>
+
+    <h2>Retrieval check</h2>
+
+    <div class="quiz" data-quiz>
+      <p>An agent is about to delete a customer record. Which control is strongest?</p>
+      <div class="quiz-options">
+        <button data-correct="false">A system prompt that says not to delete</button>
+        <button data-correct="true">Human approval before the tool executes</button>
+        <button data-correct="false">Logging the call and running it anyway</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. A person confirms the action before it runs. Instructions are requests, while an approval gate is an enforced control.</p>
+      <p class="quiz-feedback incorrect">Not quite. Instructions and logs do not stop the action. Only a gate that holds the call until a person approves it is an enforced control.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>When a run pauses for approval, what must the caller do next?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Retry the same prompt until it passes</button>
+        <button data-correct="true">Collect the decision and send it back</button>
+        <button data-correct="false">Raise the step limit and keep going</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The run is paused, not finished. The caller gathers the decision and resumes the run with that response.</p>
+      <p class="quiz-feedback incorrect">Not quite. A paused run needs a decision from a person. Retrying or raising limits does not supply one, and the call should not run without it.</p>
+    </div>
+
+    <section class="ask-teacher">
+      Ask the agent: "Which of my tools should require approval, and how should I log each decision?" Next lesson covers evaluation, which tells you whether the agent is actually doing its job.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0004-context-and-state.html">← Prev</a>
+      <a class="nav-home" href="index.html" title="All lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+      <a class="nav-next" href="0006-evaluating-agents.html">Next →</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js?v=3"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
