@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 1: Two modes of thinking when you use AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><span></span><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0002-anchoring-the-first-number.html" class="lesson-next-top" title="Next">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Two modes of thinking when you use AI</h1>
+
+<div class="lesson-meta">Lesson 1 · Thinking Fast and Slow × AI · about 10 minutes</div>
+<p><em>Mission: notice when fast thinking is accepting or dismissing AI output without checking it.</em></p>
+
+
+  <h2>The core idea</h2>
+  <p><strong>System 1</strong> is fast, automatic, and intuitive. <strong>System 2</strong> is slow, effortful, and deliberate. System 2 is supposed to check System 1, but it is lazy and often accepts whatever System 1 proposes (<a href="https://old-wiki.lesswrong.com/wiki/Thinking,_Fast_and_Slow,_by_Daniel_Kahneman">overview</a>).</p>
+  <p>AI output arrives fluent, confident, and instant. That invites System 1 to accept it without a second look. Research on <strong>automation bias</strong> finds people over-rely on automated recommendations, and the tendency rises with workload (<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7651899">Goddard et al. systematic review</a>).</p>
+
+  <h2>Two ways to go wrong</h2>
+  <p>An <em>error of commission</em> is following a wrong AI recommendation. An <em>error of omission</em> is missing a problem the AI did not flag. Both come from letting the system's output stand in for your own check.</p>
+
+  <h2>Practice</h2>
+  <p class="goal">For each scenario, choose the mode most likely driving the response.</p>
+
+  <div class="quiz" id="quiz-1">
+  <div class="quiz-question">1. The AI summary of a 40-page contract says "no termination penalty." It reads cleanly, so you forward it to legal without opening the contract.</div>
+  <ul class="quiz-options">
+    <li data-correct="true">System 1 drives this</li>
+    <li data-correct="false">System 2 drives this</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Quick, fluent acceptance is System 1 at work.</div>
+  <div class="quiz-feedback incorrect">Not quite. Notice how fast the response happened and whether any checking occurred.</div>
+</div>
+
+  <div class="quiz" id="quiz-2">
+  <div class="quiz-question">2. The AI gives a confident fact that contradicts something you know, and you stop to check the source before deciding which to believe.</div>
+  <ul class="quiz-options">
+    <li data-correct="false">System 1 drives this</li>
+    <li data-correct="true">System 2 drives this</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Stopping to check a conflict is System 2 at work.</div>
+  <div class="quiz-feedback incorrect">Not quite. Stopping to check a source takes effort, which is the System 2 signature.</div>
+</div>
+
+  <div class="quiz" id="quiz-3">
+  <div class="quiz-question">3. You reject an AI draft in one second because the first sentence sounds generic, without reading the rest.</div>
+  <ul class="quiz-options">
+    <li data-correct="true">System 1 drives this</li>
+    <li data-correct="false">System 2 drives this</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. A snap rejection on a single sentence is System 1.</div>
+  <div class="quiz-feedback incorrect">Not quite. A snap judgment from one sentence is System 1.</div>
+</div>
+
+  <h2>Takeaway</h2>
+  <p>The fluency of AI output is a System 1 signal, not evidence of accuracy. Before acting on AI output, name the one claim that matters most and verify it against a source you control.</p>
+  <p><strong>Try it this week:</strong> pick one AI answer you would normally accept, and check its single most important claim.</p>
+
+  <h2>Sources</h2>
+  <ul class="sources">
+    <li>Kahneman, D. <em>Thinking, Fast and Slow</em> (2011), Part I. Primary source.</li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7651899">Goddard et al., systematic review on automation bias</a>. Peer-reviewed.</li>
+    <li><a href="https://wikipedia.com/wiki/Automation_bias">Automation bias, Wikipedia</a>. Secondary, check its citations.</li>
+  </ul>
+
+  <div class="ask-teacher"><strong>Questions?</strong> Stuck on any idea? Ask your teacher in this conversation to explain it another way or give a new example. Next: <a href="0002-anchoring-the-first-number.html">Lesson 0002, anchoring</a>.</div>
+
+<div class="lesson-nav">
+  <a href="index.html" title="Course index">← Course index</a>
+  <a href="index.html" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0002-anchoring-the-first-number.html" title="Next">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => { if (o.dataset.correct === 'true') o.classList.add('correct'); });
+      }
+    });
+  });
+});
+</script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

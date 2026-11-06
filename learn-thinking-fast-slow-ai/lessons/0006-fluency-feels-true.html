@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 6: Fluency feels true</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0005-framing-same-facts-different-answers.html" class="lesson-back-top" title="Previous"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Previous</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0007-sycophancy-and-confirmation.html" class="lesson-next-top" title="Next">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Fluency feels true</h1>
+
+<div class="lesson-meta">Lesson 6 · Thinking Fast and Slow × AI · about 10 minutes</div>
+<p><em>Mission: stop reading smooth, confident AI prose as evidence that it is accurate.</em></p>
+
+
+  <h2>The core idea</h2>
+  <p>Kahneman describes <strong>cognitive ease</strong>: when information is easy to process, we tend to feel it is familiar, true, and safe. Repetition makes a statement easier to process, and that ease is read as truth. This is the <strong>illusory truth effect</strong>, and it is usually explained as fluency (see the cognitive ease discussion in Part II of the book).</p>
+  <p>AI output is consistently fluent. Clean grammar, tidy structure, and a confident tone all increase ease. None of that is evidence of accuracy, and the model can produce a fluent falsehood as easily as a fluent truth.</p>
+
+  <h2>What the research shows</h2>
+  <p>A recent preprint found that without credibility signals, people could not reliably distinguish high-fluency AI hallucinations from accurate text (<a href="https://arxiv.org/pdf/2609.03460">arXiv 2609.03460</a>). The term "fluency trap" appears in some AI papers, but it is informal, so treat it as shorthand, not an established construct. Direct tests of AI authorship and repetition together are still limited.</p>
+
+  <h2>Practice</h2>
+  <p class="goal">Choose the bias the scenario shows.</p>
+
+  <div class="quiz" id="quiz-1">
+  <div class="quiz-question">1. A well-formatted AI answer includes a citation with an author and journal. It reads so cleanly that you assume the paper exists and move on.</div>
+  <ul class="quiz-options">
+    <li data-correct="true">Fluency illusion</li>
+    <li data-correct="false">Anchoring effect</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. The polished citation looked real, so you stopped checking.</div>
+  <div class="quiz-feedback incorrect">Not quite. The smooth presentation lowered your scrutiny. That is fluency at work.</div>
+</div>
+
+  <div class="quiz" id="quiz-2">
+  <div class="quiz-question">2. You see the same claim in three AI answers across different chats. You now believe it, though you never checked a source.</div>
+  <ul class="quiz-options">
+    <li data-correct="true">Illusory truth effect</li>
+    <li data-correct="false">Sunk cost fallacy</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Repetition across responses made the claim feel more true.</div>
+  <div class="quiz-feedback incorrect">Not quite. Repetition increases processing ease, which the mind reads as truth. That is the illusory truth effect.</div>
+</div>
+
+  <div class="quiz" id="quiz-3">
+  <div class="quiz-question">3. You want to break the fluency effect on an AI answer. Which step does that most reliably?</div>
+  <ul class="quiz-options">
+    <li data-correct="true">Check one claim at source</li>
+    <li data-correct="false">Reread the answer twice</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. A single source check breaks the spell of fluency.</div>
+  <div class="quiz-feedback incorrect">Not quite. Only a check against a source you control separates fluent from accurate.</div>
+</div>
+
+  <h2>Takeaway</h2>
+  <p>Smoothness is a property of the text, not of the facts. Treat any specific claim, name, number, or citation as unverified until you have checked it outside the chat.</p>
+  <p><strong>Try it this week:</strong> ask the AI for three sources on a topic you know, then open each one. Count how many exist as described.</p>
+
+  <h2>Sources</h2>
+  <ul class="sources">
+    <li>Kahneman, D. <em>Thinking, Fast and Slow</em> (2011), cognitive ease discussion in Part II. Primary source.</li>
+    <li><a href="https://arxiv.org/pdf/2609.03460">Provenance density and the transparency penalty (arXiv 2609.03460, 2026)</a>. Preprint, verify before citing.</li>
+  </ul>
+
+  <div class="ask-teacher"><strong>Questions?</strong> Stuck on any idea? Ask your teacher in this conversation. Previous: <a href="0005-framing-same-facts-different-answers.html">Lesson 0005</a>. Next: <a href="0007-sycophancy-and-confirmation.html">Lesson 0007, confirmation and sycophancy</a>.</div>
+
+<div class="lesson-nav">
+  <a href="0005-framing-same-facts-different-answers.html" title="Previous">← Previous</a>
+  <a href="index.html" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a>
+  <a href="0007-sycophancy-and-confirmation.html" title="Next">Next →</a>
+</div>
+
+<script>
+document.querySelectorAll('.quiz').forEach(quiz => {
+  const options = quiz.querySelectorAll('.quiz-options li');
+  const feedbackCorrect = quiz.querySelector('.quiz-feedback.correct');
+  const feedbackIncorrect = quiz.querySelector('.quiz-feedback.incorrect');
+  let answered = false;
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = option.dataset.correct === 'true';
+      option.classList.add(isCorrect ? 'correct' : 'incorrect');
+      if (isCorrect) {
+        feedbackCorrect.classList.add('show');
+      } else {
+        feedbackIncorrect.classList.add('show');
+        options.forEach(o => { if (o.dataset.correct === 'true') o.classList.add('correct'); });
+      }
+    });
+  });
+});
+</script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
