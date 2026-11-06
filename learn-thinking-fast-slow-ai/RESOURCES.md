@@ -11,6 +11,11 @@ Ordered by trust. The browsable version is at `reference/resources.html`.
 - Goddard et al., systematic review of automation bias (PMC7651899). Lessons 0001, 0003, 0010.
 - Sharma et al., sycophancy in language models (arXiv 2310.13548, ICLR 2024). Lesson 0007.
 
+## Cognitive surrender research
+
+- Shaw and Nave, Thinking, Fast, Slow, and Artificial (SSRN 6097646, 2025). Working paper, Wharton. Lessons 0001, 0010.
+- Interactive explainer of Shaw and Nave by Avinash Mohan Chetty (datachutney.io). Secondary.
+
 ## Preprints (verify before citing)
 
 - Huang et al., anchoring effect across LLMs (arXiv 2505.15392). Lesson 0002.
@@ -25,6 +30,7 @@ Ordered by trust. The browsable version is at `reference/resources.html`.
 
 - LessWrong wiki, Thinking, Fast and Slow. Orientation only.
 - Wikipedia: Automation bias; Representativeness heuristic. Check citations.
+- Ulrich Boser, 5 Tips To Keep Your Brain From Surrendering To AI (Forbes, 2026). Lesson 0010.
 - A 2025 Science study on sycophantic AI responses (2,405 participants). Reported second-hand; verify before citing.
 
 ## Communities
