@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 3: Tangent and Rewind</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0002-hooks-v3.html" title="Hooks: Standalone Files, New Triggers">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-specs-in-the-terminal.html" title="Specs in the Terminal">Next</a>
+    </nav>
+
+    <h1>Tangent and Rewind</h1>
+    <p class="lesson-meta">Lesson 3 &middot; Kiro CLI v3 for v2 users. Time: 8 minutes. Tangible win: branch, explore, and merge a finding back to the main chat.</p>
+
+    <p>v1's experimental tangent was a single checkpoint toggled with Ctrl+T. In v3, a tangent is a full, named, nestable session that inherits your context and stays isolated. <code>/rewind</code> is its sibling: it forks from an earlier turn. Both exist to protect your main thread's context.</p>
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://kiro.dev/docs/cli/chat/tangent/">Tangent</a> &mdash; kiro.dev. Commands, merge, use cases. About 4 minutes.
+    </section>
+
+    <h2>Commands</h2>
+    <table>
+      <thead><tr><th>Command</th><th>Does</th></tr></thead>
+      <tbody>
+        <tr><td><code>/tangent</code></td><td>At root: branch into an auto-named side conversation. Inside one: go back a level</td></tr>
+        <tr><td><code>/tangent &lt;name&gt;</code></td><td>Create or switch to a named tangent</td></tr>
+        <tr><td><code>/tangent ls</code></td><td>Visual tree picker of all conversations</td></tr>
+        <tr><td><code>/tangent root</code></td><td>Jump to the main conversation from any depth</td></tr>
+        <tr><td><code>/tangent merge [dest]</code></td><td>Send a short summary of this tangent to the parent (default), <code>root</code>, or a named session</td></tr>
+      </tbody>
+    </table>
+    <p>A footer chip shows where you are. You need at least one message before you can branch. Nothing inside a tangent reaches the parent unless you <code>merge</code>, and merge never creates a session.</p>
+
+    <h2>When to use which</h2>
+    <table>
+      <thead><tr><th>Situation</th><th>Reach for</th></tr></thead>
+      <tbody>
+        <tr><td>Quick lookup, noisy debugging, "dumb question"</td><td><code>/tangent</code></td></tr>
+        <tr><td>Compare two designs from the same starting point</td><td><code>/tangent approach-a</code>, <code>/tangent approach-b</code></td></tr>
+        <tr><td>Redo from an earlier prompt, keep file changes so far</td><td><code>/rewind</code> (forks a new session; files untouched)</td></tr>
+        <tr><td>Undo the agent's file edits</td><td>Version control. v3 has no <code>/checkpoint</code></td></tr>
+      </tbody>
+    </table>
+    <section class="callout warning">
+      <span class="callout-title">v2 habit to drop</span>
+      <p>The experimental <code>/checkpoint</code> that restored files is not available in v3. Commit (or stash) before letting the agent run long, and use <a href="https://kiro.dev/docs/checkpoints/">rewind</a> only for the conversation. Sessions have their own store; browse, bookmark and rename them in the <code>/sessions</code> pane.</p>
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You spend fifteen turns debugging inside a tangent. What does the main conversation hold afterward?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Every turn from the tangent, in order</button>
+        <button data-correct="true">Nothing from it unless you merge a summary</button>
+        <button data-correct="false">Only the final answer, added on exit</button>
+      </div>
+      <p class="quiz-feedback correct">Right. Tangents are isolated; only an explicit <code>/tangent merge</code> carries a summary back.</p>
+      <p class="quiz-feedback incorrect">Isolation is the point: nothing crosses back until you run <code>/tangent merge</code>.</p>
+    </div>
+    <div class="quiz" data-quiz>
+      <p>The agent edited the wrong files and you want them back. What fits best?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Fork the conversation with rewind to restore</button>
+        <button data-correct="false">Branch a tangent and revert files there</button>
+        <button data-correct="true">Restore them from version control instead</button>
+      </div>
+      <p class="quiz-feedback correct">Right. Rewind never touches files, and v3 has no checkpoint restore; git is the file safety net.</p>
+      <p class="quiz-feedback incorrect">Rewind forks only the conversation, and tangents do not touch files either. Use version control.</p>
+    </div>
+    <div class="quiz" data-quiz>
+      <p>You are two tangents deep. Which command sends findings to the main conversation?</p>
+      <div class="quiz-options">
+        <button data-correct="true"><code>/tangent merge root</code> from the tangent</button>
+        <button data-correct="false"><code>/tangent root</code> and retype the findings</button>
+        <button data-correct="false"><code>/tangent merge</code> with no destination</button>
+      </div>
+      <p class="quiz-feedback correct">Right. <code>merge root</code> targets the main conversation regardless of depth.</p>
+      <p class="quiz-feedback incorrect">A bare merge targets only the parent. <code>merge root</code> skips straight to the main conversation.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>In a real session, send any message, then <code>/tangent ddb</code> and ask a side question.</li>
+      <li>Run <code>/tangent ls</code> to see the tree, then <code>/tangent merge root</code> to send a summary home.</li>
+      <li>Back in the main chat, ask "what did we learn about ddb?" to confirm only the summary arrived.</li>
+      <li>Try <code>/rewind</code> once and notice what the new session starts with.</li>
+    </ol>
+    <section class="ask-teacher">
+      Ask me when a tangent beats starting a fresh session, or how tangents interact with compaction. Anything unclear? Ask.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0002-hooks-v3.html" title="Hooks: Standalone Files, New Triggers">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-specs-in-the-terminal.html" title="Specs in the Terminal">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

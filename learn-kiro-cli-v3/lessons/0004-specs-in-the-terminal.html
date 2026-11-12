@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 4: Specs in the Terminal</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0003-tangent-and-rewind.html" title="Tangent and Rewind">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-workflows.html" title="Workflows: Background Agent Teams">Next</a>
+    </nav>
+
+    <h1>Specs in the Terminal</h1>
+    <p class="lesson-meta">Lesson 4 &middot; Kiro CLI v3 for v2 users. Time: 10 minutes. Tangible win: generate and review a real spec, then run one task.</p>
+
+    <p>Specs are the IDE's structured workflow, now in the terminal. Instead of "build X", you agree on <em>what</em> (requirements), <em>how</em> (design) and <em>steps</em> (tasks) as files, then run the tasks.</p>
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://kiro.dev/docs/specs/">Specs</a> &mdash; kiro.dev. Spec types, the three files, parallel task waves. About 6 minutes. The CLI flow itself is described in the <a href="https://kiro.dev/blog/cli-3/">V3 announcement</a>.
+    </section>
+
+    <h2>What a spec produces</h2>
+    <table>
+      <thead><tr><th>File</th><th>Holds</th></tr></thead>
+      <tbody>
+        <tr><td><code>requirements.md</code> (or <code>bugfix.md</code>)</td><td>User stories and acceptance criteria, or bug analysis (current, expected, unchanged behavior)</td></tr>
+        <tr><td><code>design.md</code></td><td>Architecture, sequence diagrams, error handling, test strategy</td></tr>
+        <tr><td><code>tasks.md</code></td><td>Discrete, trackable implementation tasks</td></tr>
+      </tbody>
+    </table>
+
+    <h2>The CLI flow</h2>
+    <p>Start with <code>/spec new &lt;name&gt;</code>. Per the V3 announcement you can then review requirements and design, leave inline comments on the document, and choose which tasks to run, all from the terminal. A community write-up of an earlier build also reports a description step after the name, then a choice of Feature, Bug or Quick Spec. Treat that detail as version-dependent and check it in your own session.</p>
+    <table>
+      <thead><tr><th>Type</th><th>Use when</th></tr></thead>
+      <tbody>
+        <tr><td>Feature, requirements-first</td><td>You know the behavior; design follows</td></tr>
+        <tr><td>Feature, design-first</td><td>You know the architecture; requirements follow</td></tr>
+        <tr><td>Bugfix</td><td>Root cause and regression risk matter</td></tr>
+        <tr><td>Quick Spec</td><td>Well-understood work; all three files generated without approval gates</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Running tasks</h2>
+    <p>"Run all tasks" builds a dependency graph from <code>tasks.md</code> and runs independent tasks concurrently in waves: wave 1 has no dependencies, wave 2 depends only on wave 1, and so on. Waves run in order; tasks inside a wave run together. Hook into this with <code>PreTaskExec</code> and <code>PostTaskExec</code> from <a href="0002-hooks-v3.html">lesson 2</a>, for example to run tests after each task.</p>
+    <section class="callout tip">
+      <span class="callout-title">Plan agent</span>
+      <p>V3 also has a read-only Plan agent. A community write-up reports that approving its plan hands off to the default agent and starts implementing without a manual mode switch. Verify in your build before relying on it.</p>
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Which file should hold acceptance criteria for a new feature spec?</p>
+      <div class="quiz-options">
+        <button data-correct="true"><code>requirements.md</code> in the spec folder</button>
+        <button data-correct="false"><code>design.md</code> in the spec folder</button>
+        <button data-correct="false"><code>tasks.md</code> in the spec folder</button>
+      </div>
+      <p class="quiz-feedback correct">Right. Requirements capture stories and acceptance criteria; design and tasks come after.</p>
+      <p class="quiz-feedback incorrect">Acceptance criteria are the <em>what</em>, so they sit in <code>requirements.md</code>.</p>
+    </div>
+    <div class="quiz" data-quiz>
+      <p>Task B depends on task A. Tasks C and D depend on nothing. How do they run?</p>
+      <div class="quiz-options">
+        <button data-correct="true">A, C and D together first, then B</button>
+        <button data-correct="false">All four at once, ignoring dependencies</button>
+        <button data-correct="false">A first alone, then B, C, D together</button>
+      </div>
+      <p class="quiz-feedback correct">Right. Wave 1 is every task with no dependencies (A, C, D); B waits for wave 2.</p>
+      <p class="quiz-feedback incorrect">Wave 1 contains all tasks with no dependencies: A, C and D. B follows once A is done.</p>
+    </div>
+    <div class="quiz" data-quiz>
+      <p>A one-line, well-understood change needs a spec trail. Which type fits?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Design-first feature with full review gates</button>
+        <button data-correct="true">Quick Spec generating all three files</button>
+        <button data-correct="false">Bugfix spec with regression analysis steps</button>
+      </div>
+      <p class="quiz-feedback correct">Right. Quick Spec skips the approval gates for well-understood work.</p>
+      <p class="quiz-feedback incorrect">Quick Spec is built for work you already understand: it generates all three artifacts in one pass.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>In a scratch git repo, start <code>kiro-cli</code> and run <code>/spec new rate-limit</code>.</li>
+      <li>Pick Feature, describe a small change, and read the generated <code>requirements.md</code>. Leave one inline comment and send it back.</li>
+      <li>Approve design, then look at <code>tasks.md</code>. Which tasks would form wave 1?</li>
+      <li>Run a single task only, and check the diff with <code>git diff</code>.</li>
+      <li>Not sure what a prompt means? Ask Kiro: "use introspect to explain <code>/spec</code>".</li>
+    </ol>
+    <section class="ask-teacher">
+      Ask me to compare Requirements-First and Design-First for a project you actually have in mind. Anything unclear? Ask.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0003-tangent-and-rewind.html" title="Tangent and Rewind">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-workflows.html" title="Workflows: Background Agent Teams">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

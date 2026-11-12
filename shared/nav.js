@@ -275,6 +275,7 @@
       { text: 'Fullstack Agent', href: '/sandbox/learn-fullstack-agent/' },
       { text: 'Graphify', href: '/sandbox/learn-graphify/' },
       { text: 'Jujutsu (jj)', href: '/sandbox/learn-jj/' },
+      { text: 'Kiro CLI v3', href: '/sandbox/learn-kiro-cli-v3/' },
       { text: 'Safe Agentic Workflows', href: '/sandbox/safe-agentic-workflows/' },
       { text: 'SkillOpt & Harnesses', href: '/sandbox/learn-skillopt-harness/' },
       { text: 'Strands Agents', href: '/sandbox/learn-strands/' },

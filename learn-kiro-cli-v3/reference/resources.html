@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resources: Kiro CLI v3</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    .res-list { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+    .res-list li { padding: 0.9rem 0; border-bottom: 1px solid var(--color-border); }
+    .res-list li:last-child { border-bottom: none; }
+    .res-list a { font-weight: 600; }
+    .res-list p { margin: 0.25rem 0 0; color: var(--color-muted); font-size: 0.92rem; }
+    .res-tag { display: inline-block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-muted); border: 1px solid var(--color-border); border-radius: 6px; padding: 0 0.4rem; margin-left: 0.4rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="../lessons/index.html">All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Resources</h1>
+    <p>Trusted sources for the Kiro CLI v3 course. Lessons draw from these, not from memory. Source of truth: <code>RESOURCES.md</code>.</p>
+
+    <h2>Overview and migration</h2>
+    <ul class="res-list">
+      <li><a href="https://kiro.dev/docs/cli/v3/">Upgrade from CLI 2.x (What's new in V3)</a>
+        <p>Feature list, v3 vs v2 parity table, breaking changes. Use for: the overall map.</p></li>
+      <li><a href="https://kiro.dev/docs/cli/v3/migration-guide/">Migration guide</a>
+        <p>Seven steps: <code>/upgrade-agent</code>, hook renames, <code>permissions.yaml</code>, <code>use_aws</code> removal. Use for: converting agents, hooks, trust settings.</p></li>
+      <li><a href="https://kiro.dev/blog/cli-3/">Blog: Kiro CLI V3 is rolling out as the default</a>
+        <p>Rationale and highlights: cloud sessions, memories, spec, tangent, <code>/sessions</code>, workflows, global hooks, nested AGENTS.md. Use for: the why.</p></li>
+      <li><a href="https://kiro.dev/changelog/cli/">CLI changelog</a>
+        <p>Release-by-release changes, such as Approve for me. Use for: anything newer than 3.0.</p></li>
+    </ul>
+
+    <h2>Permissions and hooks</h2>
+    <ul class="res-list">
+      <li><a href="https://kiro.dev/docs/permissions/">Permissions</a>
+        <p>Capabilities, effects, scopes, deny-overrides, presets, Approve for me, workspace trust.</p></li>
+      <li><a href="https://kiro.dev/docs/cli/v3/hooks-migration/">Hooks migration</a>
+        <p>v2 object hooks to v3 arrays or standalone files; trigger renames; global hooks.</p></li>
+      <li><a href="https://kiro.dev/docs/hooks/">Hooks</a>, <a href="https://kiro.dev/docs/hooks/types/">Hook types</a>, <a href="https://kiro.dev/docs/hooks/actions/">Hook actions</a>
+        <p>Schema, triggers, exit codes. The actions page says any non-zero exit blocks <code>PreToolUse</code>; verify exit 2 vs 1 locally (lesson 2).</p></li>
+    </ul>
+
+    <h2>Working differently</h2>
+    <ul class="res-list">
+      <li><a href="https://kiro.dev/docs/cli/chat/tangent/">Tangent</a> and <a href="https://kiro.dev/docs/checkpoints/">Checkpoints and rewind</a>
+        <p>Tangent commands and merge; rewind vs checkpoints (checkpoints are IDE or experimental v2 only).</p></li>
+      <li><a href="https://kiro.dev/docs/specs/">Specs</a>
+        <p>Spec types, the three files, task waves. No official CLI-specific page found for <code>/spec new</code>.</p></li>
+      <li><a href="https://kiro.dev/docs/workflows/">Workflows</a> and <a href="https://kiro.dev/docs/workflows/authoring/">Author workflows</a>
+        <p>Concepts, recipe format, safety and permissions.</p></li>
+    </ul>
+
+    <h2>Secondary sources <span class="res-tag">verify</span></h2>
+    <ul class="res-list">
+      <li><a href="https://dev.classmethod.jp/articles/kiro-cli-specnew-step/">Classmethod: <code>/spec new</code> description step and Plan auto-execute</a>
+        <p>Japanese; tested on CLI 2.15.2 in v3 mode. Check against your build.</p></li>
+      <li><a href="https://zenn.dev/aws_japan/articles/36e23635add477">Zenn (AWS Japan): Kiro CLI v3 deep dive</a>
+        <p>Japanese, AWS-authored walkthrough of specs, hooks and permissions. Use for: cross-checking.</p></li>
+    </ul>
+
+    <h2>Community</h2>
+    <ul class="res-list">
+      <li>Kiro Discord (linked from kiro.dev) and the in-CLI <code>/feedback</code> command
+        <p>Use for: real-world edge cases and rollout issues.</p></li>
+    </ul>
+
+    <h2>Gaps</h2>
+    <section class="callout">
+      <span class="callout-title">Not yet read</span>
+      <p>Memories, cloud sessions, the <code>/sessions</code> pane, voice input, Code Intelligence, agent config reference, and an official CLI page for <code>/spec new</code>.</p>
+    </section>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="../lessons/index.html">All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

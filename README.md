@@ -16,6 +16,7 @@ Demos, prototypes & experiments.
 - **[Learn Cloudflare Workers](./learn-cloudflare/)** — 8-lesson course on building beyond static sites with Cloudflare's free tier.
 - **[Learn chezmoi](./learn-chezmoi/)** — 10-lesson course on managing dotfiles across multiple macOS machines.
 - **[Learn Skills](./learn-skills/)** — Building predictably excellent agent skills — vocabulary, audit discipline, and refactoring patterns.
+- **[Learn Kiro CLI v3](./learn-kiro-cli-v3/)** — 5-lesson course on what's new in Kiro CLI v3 for v1/v2 users: permissions, hooks, tangent, specs, workflows.
 
 ## External
 

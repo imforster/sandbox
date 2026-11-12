@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 2: Hooks: Standalone Files, New Triggers</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0001-permissions-capability-rules.html" title="From Trusted Tools to Capability Rules">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-tangent-and-rewind.html" title="Tangent and Rewind">Next</a>
+    </nav>
+
+    <h1>Hooks: Standalone Files, New Triggers</h1>
+    <p class="lesson-meta">Lesson 2 &middot; Kiro CLI v3 for v2 users. Time: 12 minutes. Tangible win: a working global <code>PreToolUse</code> guard.</p>
+
+    <p>v2 hooks lived inside an agent profile as an object keyed by camelCase trigger. v3 hooks are an <em>array</em> with PascalCase triggers, and they can live in their own files, project-wide or global. Hooks are for logic that rules cannot express; <a href="0001-permissions-capability-rules.html">permissions</a> remain the first line of control.</p>
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://kiro.dev/docs/hooks/">Hooks</a> &mdash; kiro.dev. Schema, locations, confirmation prompts. About 10 minutes; also skim <a href="https://kiro.dev/docs/hooks/types/">Hook types</a>.
+    </section>
+
+    <h2>Three places a hook can live</h2>
+    <table>
+      <thead><tr><th>Placement</th><th>Applies to</th></tr></thead>
+      <tbody>
+        <tr><td>Agent profile <code>hooks</code> array</td><td>That agent only</td></tr>
+        <tr><td><code>.kiro/hooks/*.json</code></td><td>This workspace, any agent; shared with the IDE</td></tr>
+        <tr><td><code>~/.kiro/hooks/*.json</code></td><td>Every workspace (new: global hooks)</td></tr>
+      </tbody>
+    </table>
+    <p>Global and workspace hooks run alongside each other. <code>/upgrade-agent</code> converts v2 object hooks into the profile array and keeps camelCase triggers as aliases; use PascalCase when you write new ones.</p>
+
+    <h2>The file</h2>
+<pre><code>{
+  "version": "v1",
+  "hooks": [{
+    "name": "lint-on-save",
+    "trigger": "PostFileSave",
+    "matcher": "\\.(ts|tsx)$",
+    "action": { "type": "command", "command": "npx eslint --fix" },
+    "timeout": 30,
+    "enabled": true
+  }]
+}</code></pre>
+    <p>The action is either <code>command</code> (shell; gets session JSON on stdin; exit 0 puts stdout in the agent's context) or <code>agent</code> (injects a prompt). Default timeout is 60 seconds.</p>
+
+    <h2>Triggers: renamed and new</h2>
+    <table>
+      <thead><tr><th>v2</th><th>v3</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>agentSpawn</code></td><td><code>SessionStart</code></td><td>Old name still accepted</td></tr>
+        <tr><td><code>userPromptSubmit</code></td><td><code>UserPromptSubmit</code></td><td>In the CLI it cannot block the prompt</td></tr>
+        <tr><td><code>preToolUse</code></td><td><code>PreToolUse</code></td><td>Can block a tool call</td></tr>
+        <tr><td><code>postToolUse</code></td><td><code>PostToolUse</code></td><td>Sees tool results</td></tr>
+        <tr><td><code>stop</code></td><td><code>Stop</code></td><td>Supports a <code>confirm</code> prompt</td></tr>
+        <tr><td>&mdash;</td><td><code>SessionEnd</code></td><td>New</td></tr>
+        <tr><td>&mdash;</td><td><code>PreCompact</code>, <code>PostCompact</code></td><td>New in 3.1.0; exit 2 on Pre cancels compaction</td></tr>
+        <tr><td>&mdash;</td><td><code>PostFileCreate</code>, <code>PostFileSave</code>, <code>PostFileDelete</code></td><td>New; agent-made file changes; matcher is a regex on the path</td></tr>
+        <tr><td>&mdash;</td><td><code>PreTaskExec</code>, <code>PostTaskExec</code></td><td>New; around <a href="0004-specs-in-the-terminal.html">spec</a> tasks</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Matchers for tool hooks</h2>
+    <p>For <code>PreToolUse</code> and <code>PostToolUse</code>, the matcher is a tool ID, a category tag (<code>read</code>, <code>write</code>, <code>shell</code>, <code>web</code>, <code>spec</code>), a source selector (<code>@builtin</code>, <code>@mcp</code>, <code>@server</code>, <code>@server/tool</code>), a wildcard, or a regex.</p>
+    <section class="callout warning">
+      <span class="callout-title">Regex trap</span>
+      <p>A matcher containing regex metacharacters is evaluated as an <em>unanchored</em> regex against the internal tool ID. MCP tools arrive as <code>mcp_&lt;server&gt;_&lt;tool&gt;</code> in the event JSON. Prefer tags and <code>@server/tool</code> selectors.</p>
+    </section>
+    <section class="callout">
+      <span class="callout-title">Docs disagree slightly: test it</span>
+      <p>The general <a href="https://kiro.dev/docs/hooks/actions/">Hook actions</a> page says any non-zero exit blocks a <code>PreToolUse</code> call and sends stderr to the agent. Other Kiro tooling uses exit 2 as the block signal. Use exit 2 with a message on stderr, and confirm the behavior in the practice step.</p>
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>You want one hook to run in every workspace you open. Where does the file go?</p>
+      <div class="quiz-options">
+        <button data-correct="false">The hooks array of your default agent profile</button>
+        <button data-correct="false"><code>.kiro/hooks/</code> inside each repository you open</button>
+        <button data-correct="true"><code>~/.kiro/hooks/</code> as a global hook file</button>
+      </div>
+      <p class="quiz-feedback correct">Right. Global hooks in <code>~/.kiro/hooks/</code> fire in all workspaces and run alongside workspace hooks.</p>
+      <p class="quiz-feedback incorrect">Profile hooks only apply to one agent, and per-repo files must be copied everywhere. Global hooks live in <code>~/.kiro/hooks/</code>.</p>
+    </div>
+    <div class="quiz" data-quiz>
+      <p>Which matcher targets only the <code>query</code> tool of an MCP server named <code>postgres</code>?</p>
+      <div class="quiz-options">
+        <button data-correct="true"><code>@postgres/query</code></button>
+        <button data-correct="false"><code>mcp:postgres.query</code></button>
+        <button data-correct="false"><code>postgres::query</code></button>
+      </div>
+      <p class="quiz-feedback correct">Right. <code>@&lt;server&gt;/&lt;tool&gt;</code> is the selector form for one MCP tool.</p>
+      <p class="quiz-feedback incorrect">The selector syntax is <code>@&lt;server&gt;/&lt;tool&gt;</code>, so <code>@postgres/query</code>.</p>
+    </div>
+    <div class="quiz" data-quiz>
+      <p>In the CLI, can a <code>UserPromptSubmit</code> hook stop your prompt from being sent?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Yes, but only when it exits with code two</button>
+        <button data-correct="false">Yes, because any non-zero exit blocks prompts</button>
+        <button data-correct="true">No, only tool hooks can block an action</button>
+      </div>
+      <p class="quiz-feedback correct">Right. CLI prompt-submit hooks cannot block; use <code>PreToolUse</code> to gate actions.</p>
+      <p class="quiz-feedback incorrect">The docs state CLI prompt-submit hooks cannot block. Blocking is for <code>PreToolUse</code>.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <p>You already have scripts in <code>~/.kiro/hooks/</code> (for example <code>deny-git.sh</code>), so look at what is there first. Then add a guard in a new file so nothing existing is touched.</p>
+    <ol class="checklist">
+      <li>List them: <code>ls ~/.kiro/hooks</code>, and run <code>/hooks</code> in a V3 session to see what loaded.</li>
+      <li>Create <code>~/.kiro/hooks/block-rm-rf.json</code>:
+<pre><code>{
+  "version": "v1",
+  "hooks": [{
+    "name": "block-rm-rf",
+    "trigger": "PreToolUse",
+    "matcher": "shell",
+    "action": {
+      "type": "command",
+      "command": "jq -r '.tool_input.command // \"\"' | grep -qE 'rm -rf' &amp;&amp; { echo 'blocked: rm -rf' &gt;&amp;2; exit 2; }; exit 0"
+    }
+  }]
+}</code></pre></li>
+      <li>In a scratch directory, ask Kiro to run <code>rm -rf ./tmp-test</code>. It should be refused with your message. Then check that <code>ls</code> still runs.</li>
+      <li>Optional: change <code>exit 2</code> to <code>exit 1</code> and see whether the call is still blocked. That settles the doc discrepancy for your version.</li>
+    </ol>
+    <section class="ask-teacher">
+      Ask me to convert one of your existing v2 agent <code>hooks</code> objects into the v3 array, or into a standalone file. Anything unclear? Ask.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0001-permissions-capability-rules.html" title="From Trusted Tools to Capability Rules">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-tangent-and-rewind.html" title="Tangent and Rewind">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
