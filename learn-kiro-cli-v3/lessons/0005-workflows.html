@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 5: Workflows: Background Agent Teams</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0004-specs-in-the-terminal.html" title="Specs in the Terminal">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Workflows: Background Agent Teams</h1>
+    <p class="lesson-meta">Lesson 5 &middot; Kiro CLI v3 for v2 users. Time: 12 minutes. Tangible win: run the bundled investigate workflow and author a two-step recipe.</p>
+
+    <p>Sub-agents (v2) run inside your session. A workflow runs a <em>graph</em> of agent steps in the background, each in its own fresh session, while your main chat stays free. A reviewer step does not inherit the coder's reasoning, which is the real point.</p>
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://kiro.dev/docs/workflows/">Workflows</a> &mdash; kiro.dev. Concepts, surfaces, safety. About 12 minutes; then <a href="https://kiro.dev/docs/workflows/authoring/">Author workflows</a> for recipes.
+    </section>
+
+    <h2>Turn it on</h2>
+    <p>Workflows are opt-in. Set <code>chat.enableWorkflows</code> and restart the CLI:</p>
+<pre><code>kiro-cli settings chat.enableWorkflows true</code></pre>
+    <p>Then ask in plain language ("Investigate how auth works here, in the background, and give me a cited summary") or run <code>/workflow run</code>. In V3 you approve the proposed plan before any step runs. Nothing starts on its own unless you ask.</p>
+
+    <h2>Five ideas</h2>
+    <table>
+      <thead><tr><th>Idea</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>Step</td><td>One agent, own session. Cannot read other steps' sessions</td></tr>
+        <tr><td>Handoff</td><td>Output or a declared artifact passes to a later step</td></tr>
+        <tr><td>Branch and join</td><td>Independent agents judge the same work; a policy combines results</td></tr>
+        <tr><td>Loop</td><td>Repeat until evidence matches or a cap is reached</td></tr>
+        <tr><td>Wait</td><td>Watch an external system without spending model turns</td></tr>
+      </tbody>
+    </table>
+    <p>Kiro ships three recipes: <code>investigate</code> (read-only), <code>feature-pipeline</code> and <code>publish-pr</code>. Recipe precedence: project <code>.kiro/workflows/</code>, then <code>~/.kiro/workflows/</code>, then synced, then bundled.</p>
+
+    <h2>A minimum recipe</h2>
+<pre><code>{
+  "name": "plan-and-implement",
+  "description": "Plan a change, then implement it",
+  "inputs": { "task": "prompt" },
+  "steps": [
+    { "type": "step", "id": "plan", "agent": "wf-planner",
+      "prompt": "Create an implementation plan for: {{task}}. Do not edit files." },
+    { "type": "step", "id": "implement", "agent": "wf-coder",
+      "prompt": "Implement this plan, then run tests:\n\n{{previous.output}}" }
+  ]
+}</code></pre>
+    <p>Save as <code>.kiro/workflows/plan-and-implement.workflow.json</code>, ask Kiro to run <code>validate_workflow</code> on it, then <code>/workflow run plan-and-implement --task "..."</code>.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Safety and cost</span>
+      <p>Every step goes through the same permission checks as any session, and the launching session's rules apply too, so an agent's own <code>allow</code> never grants more than you do. This is the <a href="0001-permissions-capability-rules.html">lesson 1</a> sub-agent rule again. Workflows use more tokens than one session; keep small tasks in chat. Set a finite <code>maxIterations</code> on every repeat.</p>
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Why does each workflow step run in its own fresh session?</p>
+      <div class="quiz-options">
+        <button data-correct="true">So a reviewer judges work without the coder's reasoning</button>
+        <button data-correct="false">So every step can reuse the same cached context</button>
+        <button data-correct="false">So steps can read each other's sessions directly</button>
+      </div>
+      <p class="quiz-feedback correct">Right. Fresh context gives independent judgment; steps pass only explicit handoffs.</p>
+      <p class="quiz-feedback incorrect">Steps cannot read each other's sessions. Isolation lets a reviewer evaluate work without inheriting the coder's reasoning.</p>
+    </div>
+    <div class="quiz" data-quiz>
+      <p>A step agent has an <code>allow</code> rule for <code>git push</code>, but your session does not. What happens?</p>
+      <div class="quiz-options">
+        <button data-correct="false">The push runs because the agent allows it</button>
+        <button data-correct="true">The push is not granted by that agent rule</button>
+        <button data-correct="false">The push runs once the recipe is validated</button>
+      </div>
+      <p class="quiz-feedback correct">Right. An agent's own allow never grants more than the launching session allows.</p>
+      <p class="quiz-feedback incorrect">The launching session's policy still applies, and the most restrictive rule wins, so the agent rule grants nothing extra.</p>
+    </div>
+    <div class="quiz" data-quiz>
+      <p>In the recipe above, how does <code>implement</code> receive the plan?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Through <code>{{previous.output}}</code> from the plan step</button>
+        <button data-correct="false">By reading the plan step's own session history</button>
+        <button data-correct="false">Through a shared global variable in settings</button>
+      </div>
+      <p class="quiz-feedback correct">Right. The final message of the previous step is passed via a template.</p>
+      <p class="quiz-feedback incorrect">Steps cannot read each other's sessions; handoffs travel through templates such as <code>{{previous.output}}</code>.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Run the setting command above, restart <code>kiro-cli</code>, and open a scratch repo.</li>
+      <li>Ask: "Use the investigate workflow to explain how this repo is built. Do not modify anything." Review the plan before approving.</li>
+      <li>While it runs, keep chatting in the main thread. Open the monitor and select a step (Ctrl+G is the sub-agent monitor shortcut; check <code>/workflow</code> for yours).</li>
+      <li>Save the recipe above, validate it, and run it on a tiny task.</li>
+    </ol>
+    <section class="ask-teacher">
+      Ask me to design a recipe for a job you really do, such as plan, implement, then two independent reviewers. Anything unclear? Ask.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0004-specs-in-the-terminal.html" title="Specs in the Terminal">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

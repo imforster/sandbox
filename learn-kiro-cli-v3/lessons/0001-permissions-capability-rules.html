@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 1: From Trusted Tools to Capability Rules</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-hooks-v3.html" title="Hooks: Standalone Files, New Triggers">Next</a>
+    </nav>
+
+    <h1>From Trusted Tools to Capability Rules</h1>
+    <p class="lesson-meta">Lesson 1 &middot; Kiro CLI v3 for v2 users. Time: 10 minutes. Tangible win: write a working <code>permissions.yaml</code> deny rule and predict how any rule set resolves.</p>
+
+    <p>In v2 you trusted <em>tools</em>: <code>allowedTools</code>, per-tool <code>toolsSettings</code>, <code>/tools trust</code>. In v3 you write <em>rules about actions</em>. This is the change most likely to break a migrated agent, so it comes first. Everything below is from the official <a href="https://kiro.dev/docs/permissions/">Permissions</a> and <a href="https://kiro.dev/docs/cli/v3/migration-guide/">Migration guide</a> pages.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://kiro.dev/docs/permissions/">Permissions</a> &mdash; kiro.dev. Capabilities, effects, scopes, presets. About 15 minutes; read "Scopes" and "Pattern syntax" first.
+    </section>
+
+    <h2>The shape of a rule</h2>
+    <p>A rule has a <strong>capability</strong> (what kind of operation), optional <code>match</code> and <code>exclude</code> globs, and an <strong>effect</strong>.</p>
+
+    <pre><code>rules:
+  - capability: shell
+    match: ["npm *"]
+    exclude: ["npm publish*"]
+    effect: allow</code></pre>
+
+    <table>
+      <thead><tr><th>Part</th><th>Values</th></tr></thead>
+      <tbody>
+        <tr><td>Capability</td><td><code>fs_read</code>, <code>fs_write</code>, <code>shell</code>, <code>web_fetch</code>, <code>web_search</code>, <code>mcp</code>, <code>subagent</code>, <code>skill</code>, <code>power</code>, <code>context</code>, <code>diagnostics</code>, <code>sandbox_network</code></td></tr>
+        <tr><td>Effect</td><td><code>deny</code>, <code>ask</code>, <code>allow</code>, <code>evaluate</code> (Approve for me)</td></tr>
+        <tr><td>Resolution</td><td><code>deny</code> &gt; <code>ask</code> &gt; <code>allow</code> &gt; <code>evaluate</code></td></tr>
+      </tbody>
+    </table>
+
+    <section class="callout tip">
+      <span class="callout-title">Key insight</span>
+      <p>There is no precedence between scopes. User, workspace, agent and session rules are pooled, and the most restrictive effect wins. A workspace <code>deny</code> cannot be overridden by your user-level <code>allow</code>, and vice versa. In v2 you could think "more specific setting wins"; in v3 you cannot.</p>
+    </section>
+
+    <h2>Translating v2</h2>
+    <table>
+      <thead><tr><th>v2 <code>toolsSettings</code></th><th>v3 rule</th></tr></thead>
+      <tbody>
+        <tr><td><code>execute_bash.allowedCommands: ["^git status$"]</code></td><td>shell, match <code>git status</code>, allow</td></tr>
+        <tr><td><code>execute_bash.deniedCommands: ["^rm -rf"]</code></td><td>shell, match <code>rm -rf*</code>, deny</td></tr>
+        <tr><td><code>fs_read.deniedPaths: [".env"]</code></td><td>fs_read, match <code>.env</code>, deny</td></tr>
+        <tr><td><code>fs_write.allowedPaths: ["src/**"]</code></td><td>fs_write, match <code>src/**</code>, allow</td></tr>
+      </tbody>
+    </table>
+
+    <section class="callout warning">
+      <span class="callout-title">Regex becomes glob</span>
+      <p>v2 patterns were regular expressions; v3 uses globs. Drop <code>^</code> and <code>$</code>, turn <code>.*</code> into <code>*</code>, and split alternations into multiple rules. In shell patterns only <code>*</code> works; <code>**</code> and <code>?</code> do not. In filesystem patterns <code>*</code> stays within one path component and <code>**</code> crosses them.</p>
+    </section>
+
+    <h2>Two things that surprise v2 users</h2>
+    <ul>
+      <li><strong>Compound shell commands are split.</strong> <code>a ; b</code>, <code>&amp;&amp;</code>, <code>||</code> and pipes are each evaluated on their own. A rule for <code>npm *</code> does not approve a <code>curl</code> chained after it.</li>
+      <li><strong>Sub-agents are capped by the parent.</strong> In v2 a sub-agent's pre-approved tools ran unprompted. In v3 a sub-agent's <code>allow</code> never grants more than the parent session allows, and headless runs deny the call.</li>
+    </ul>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>User scope has <code>shell</code> <code>git *</code> allow. Workspace scope has <code>shell</code> <code>git push*</code> deny. What happens to <code>git push origin main</code>?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Allowed, because the user scope outranks workspace scope</button>
+        <button data-correct="true">Denied, because deny overrides allow in any scope</button>
+        <button data-correct="false">Prompted, because conflicting scopes always ask the user</button>
+      </div>
+      <p class="quiz-feedback correct">Right. Scopes have no ranking; the most restrictive matching effect wins.</p>
+      <p class="quiz-feedback incorrect">Scopes are pooled, not ranked. A matching <code>deny</code> always wins, so the push is denied.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>With only <code>shell</code> <code>npm *</code> allow in place, you run <code>npm test ; curl evil.example</code>. What happens?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Whole line runs silently because it starts with npm</button>
+        <button data-correct="true">Each part is checked alone; curl still asks you</button>
+        <button data-correct="false">Whole line is blocked because chaining is never allowed</button>
+      </div>
+      <p class="quiz-feedback correct">Right. Sub-commands are split and evaluated independently; <code>curl</code> matches no rule, so it falls to the default and prompts.</p>
+      <p class="quiz-feedback incorrect">Kiro splits compound commands. <code>npm test</code> matches the allow, <code>curl</code> matches nothing and prompts.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>How should v2 <code>allowedCommands: ["^git (status|diff)$"]</code> be migrated?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Keep the regex but drop only the two anchors</button>
+        <button data-correct="false">Join both with a comma inside a single glob</button>
+        <button data-correct="true">Write two glob entries: git status and git diff</button>
+      </div>
+      <p class="quiz-feedback correct">Right. Globs have no alternation in shell patterns, so list each command.</p>
+      <p class="quiz-feedback incorrect">Shell globs support only <code>*</code>; there is no regex or alternation, so each command gets its own entry.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <p>You have no <code>~/.kiro/settings/permissions.yaml</code> yet, so this is a clean start. Kiro cannot write that file for you (it is a hard-denied path), so edit it yourself.</p>
+    <ol class="checklist">
+      <li>Create <code>~/.kiro/settings/permissions.yaml</code> with a deny rule for secrets:
+<pre><code>rules:
+  - capability: fs_read
+    effect: deny
+    match: ["**/.env", "**/.env.*", "**/*.pem"]</code></pre></li>
+      <li>In a scratch directory, make a <code>.env</code> file, start <code>kiro-cli</code>, and ask it to read the file. The read should be refused. The policy hot-reloads, so no restart is needed after future edits.</li>
+      <li>Run <code>/permissions</code> in the session and find where your rule appears. Then try removing the rule and asking again.</li>
+    </ol>
+    <p>Reference: <a href="../reference/permissions-cheatsheet.html">Permissions cheat sheet</a> &middot; <a href="../reference/glossary.html">Glossary</a></p>
+
+    <section class="ask-teacher">
+      Ask me: "Which of my existing agents carry <code>toolsSettings</code> that need migrating?" I can inspect your <code>~/.kiro/agents/*.json</code> and draft the equivalent rules. Anything unclear? Ask.
+    </section>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-hooks-v3.html" title="Hooks: Standalone Files, New Triggers">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

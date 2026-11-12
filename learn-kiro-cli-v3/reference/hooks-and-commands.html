@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hooks and commands cheat sheet</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="permissions-cheatsheet.html">Permissions</a>
+      <a class="nav-home" href="../lessons/index.html">All Lessons</a>
+      <a class="nav-next" href="glossary.html">Glossary</a>
+    </nav>
+
+    <h1>Hooks and commands cheat sheet</h1>
+
+    <h2>Hook file</h2>
+    <pre><code>{ "version": "v1",
+  "hooks": [{
+    "name": "x", "trigger": "PreToolUse", "matcher": "shell",
+    "action": { "type": "command", "command": "./guard.sh" },
+    "timeout": 60, "enabled": true }] }</code></pre>
+    <table>
+      <thead><tr><th>Place</th><th>Scope</th></tr></thead>
+      <tbody>
+        <tr><td>Agent <code>hooks</code> array</td><td>One agent</td></tr>
+        <tr><td><code>.kiro/hooks/*.json</code></td><td>Workspace</td></tr>
+        <tr><td><code>~/.kiro/hooks/*.json</code></td><td>Global</td></tr>
+      </tbody>
+    </table>
+    <p>Triggers: SessionStart, UserPromptSubmit (CLI cannot block), PreToolUse (can block), PostToolUse, Stop, SessionEnd, PreCompact, PostCompact, PostFileCreate, PostFileSave, PostFileDelete, PreTaskExec, PostTaskExec. v2 camelCase names are accepted aliases. Matchers: <code>read write shell web spec</code>, <code>@builtin @mcp @server @server/tool</code>, wildcard, or regex. Source: <a href="https://kiro.dev/docs/hooks/types/">Hook types</a>.</p>
+
+    <h2>Slash commands and flags seen so far</h2>
+    <table>
+      <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>/upgrade-agent</code>, <code>/upgrade-agent diagnostics</code></td><td>Convert v2 agents; list warnings</td></tr>
+        <tr><td><code>/permissions</code>, <code>/tools trust-all</code></td><td>Policies; session-wide trust</td></tr>
+        <tr><td><code>/hooks</code>, <code>/config</code></td><td>Verify loaded hooks and config</td></tr>
+        <tr><td><code>/tangent [name|ls|root|merge]</code></td><td>Side conversations</td></tr>
+        <tr><td><code>/rewind</code></td><td>Fork conversation from an earlier turn</td></tr>
+        <tr><td><code>/sessions</code></td><td>Browse, bookmark, rename sessions</td></tr>
+        <tr><td><code>/spec new &lt;name&gt;</code></td><td>Start a spec</td></tr>
+        <tr><td><code>/workflow run &lt;recipe&gt; --input value</code></td><td>Run a workflow (needs <code>chat.enableWorkflows</code>)</td></tr>
+        <tr><td><code>/memories</code>, <code>/voice</code></td><td>Cross-session memory; voice input</td></tr>
+        <tr><td><code>kiro-cli --cloud</code></td><td>Cloud session</td></tr>
+        <tr><td><code>kiro-cli --v2</code></td><td>One run on the v2 harness</td></tr>
+      </tbody>
+    </table>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="permissions-cheatsheet.html">Permissions</a>
+      <a class="nav-home" href="../lessons/index.html">All Lessons</a>
+      <a class="nav-next" href="glossary.html">Glossary</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="/sandbox/shared/theme.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
