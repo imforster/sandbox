@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Improving's promptfoo pattern (github.com/improving/promptfoo): exec: provider
+# wrapping kiro-cli, rubric judge via the same script, --no-cache because prompts
+# live in external files.
+#
+# Three arms, one task, same model:
+#   none  = no skill (baseline)
+#   triad = diagnose as you wrote it ("fast, deterministic, runnable pass/fail signal")
+#   tight = diagnose with "tight" / "red"
+# The skill text is injected as prompt text, so this tests the BODY wording only.
+# It cannot test the description/trigger (no skill-used signal over exec).
+description: Leading word A/B, diagnose skill, via Kiro CLI
+
+prompts:
+  - label: none
+    id: file://skill-none.md
+  - label: triad
+    id: file://skill-triad.md
+  - label: tight
+    id: file://skill-tight.md
+
+providers:
+  - id: 'exec: node ./kiro.js'
+    label: 'Kiro Sonnet'
+    config:
+      model: 'claude-sonnet-4.6'
+
+defaultTest:
+  options:
+    provider: 'Kiro Sonnet' # judge for llm-rubric
+
+tests:
+  - description: Nondeterministic bug, does the answer build a red loop before theorising?
+    vars:
+      request: |
+        This function sometimes returns tags in a different order between runs.
+        I expect first-seen order.
+
+        ```python
+        def unique_tags(tags):
+            return list(set(tags))
+        ```
+
+        Diagnose and fix it.
+    assert:
+      # Deterministic, cheap: some mention of running it more than once / across processes.
+      - type: icontains-any
+        value: ['PYTHONHASHSEED', 'subprocess', 'for _ in', 'for i in', 'range(', 'seq ']
+        metric: repeats-mentioned
+      # Judge, one dimension per assertion (Improving's pattern).
+      - type: llm-rubric
+        value: Before listing any hypothesis about the cause, the response specifies one concrete command or script that reproduces the failure
+        threshold: 0.7
+        metric: loop-first
+        weight: 2
+      - type: llm-rubric
+        value: The reproduction is built to fail on this exact symptom (order differs between runs) and would pass once fixed, rather than merely running without error
+        threshold: 0.7
+        metric: red-capable
+        weight: 2
+      - type: llm-rubric
+        value: The reproduction runs the code in separate processes or many times, because the symptom varies between runs
+        threshold: 0.7
+        metric: raises-repro-rate
+        weight: 1.5
+
+outputPath: results.html
