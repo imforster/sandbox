@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 1: Leading Words</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-finding-leading-words.html" title="Finding Leading Words">Next</a>
+    </nav>
+
+    <h1>Leading Words</h1>
+    <p class="lesson-meta">Time: 12 minutes. Tangible win: retire one restated phrase in a real skill of yours with a single leading word.</p>
+
+    <p>Ian, you described these repos as skills that "use words to guide the LLM". The sharpest form of that has a name: the <strong>leading word</strong>. Both repos lean on it. Matt Pocock names it explicitly; pstack uses the same move without the label. This lesson shows you where, then has you do it once on your own skill.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://github.com/mattpocock/skills/blob/main/skills/productivity/writing-for-agents/SKILL.md">writing-for-agents (section "Leading words")</a> — Matt Pocock. Read that one section; about 3 minutes.
+    </section>
+
+    <h2>The idea</h2>
+    <p>A <strong>leading word</strong> is a compact concept the model already learned in pretraining, which the agent then thinks with while running your document. You repeat it as a token, never as a sentence, and it recruits the model's existing knowledge instead of you spelling it out (<a href="https://github.com/mattpocock/skills/blob/main/skills/productivity/writing-for-agents/SKILL.md">source</a>).</p>
+
+    <p>It works in two places:</p>
+    <table>
+      <thead><tr><th>Where</th><th>Job</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td>In the body</td><td>Execution</td><td>The agent reaches for the same behaviour each time the word appears</td></tr>
+        <tr><td>In a pointer (description)</td><td>Invocation</td><td>A word shared with your prompts and docs makes the agent reach the skill more reliably</td></tr>
+      </tbody>
+    </table>
+
+    <h2>See it in Matt's repo</h2>
+    <p>The guide's own example: "fast, deterministic, low-overhead" collapses to <em>tight</em>. In <a href="https://github.com/mattpocock/skills/blob/main/skills/engineering/diagnosing-bugs/SKILL.md">diagnosing-bugs</a>, the whole skill hangs on that word and on <em>red</em>:</p>
+    <pre><code>A 30-second flaky loop is barely better than no loop;
+a 2-second deterministic one is tight, a debugging superpower.</code></pre>
+    <p><em>Red</em> turns a fuzzy gate ("a loop you believe in") into a binary state: the loop goes red on this bug, or it does not. The completion criterion then requires a loop that is "red-capable", so the agent cannot skip ahead.</p>
+
+    <h2>See it in pstack</h2>
+    <p>pstack's <a href="https://github.com/cursor/plugins/blob/main/pstack/skills/poteto-mode/SKILL.md">poteto-mode</a> router lists 24 principle skills, each named as a short phrase: <em>Subtract Before You Add</em>, <em>Build the Lever</em>, <em>Attack the Premise</em>, <em>Prove It Works</em>. Each leaf is one page, for example <a href="https://github.com/cursor/plugins/blob/main/pstack/skills/principle-subtract-before-you-add/SKILL.md">principle-subtract-before-you-add</a>. The router tells the agent to "name each principle that shaped a decision", so the phrase becomes shared vocabulary between you, the agent, and the PR.</p>
+    <p>My reading of the difference: Matt prefers single pretrained words (<em>tight</em>, <em>red</em>); pstack prefers short imperative phrases that work as names. Both repeat a stable token so the behaviour is recalled, not re-explained. This is my observation from the files, not a claim either author makes.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Three ways it goes wrong</span>
+      <p><strong>Coined words:</strong> a made-up word recruits no priors, so you pay for it in definition tokens. Reach for an existing word first. <strong>Weak words:</strong> "be thorough" when the agent is already thorough is a no-op; the fix is a stronger word, not another technique. <strong>Negation:</strong> "don't think of an elephant" makes the elephant more available. State the target behaviour instead. All three are from the same <a href="https://github.com/mattpocock/skills/blob/main/skills/productivity/writing-for-agents/SKILL.md">source</a>.</p>
+    </section>
+
+    <h2>Retrieval check</h2>
+    <p>Try to answer before you scroll back up.</p>
+
+    <div class="quiz" data-quiz>
+      <p>A skill says the loop must be quick, stable, and unattended. Which rewrite uses a leading word?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Build a robust feedback loop before forming any hypothesis about cause.</button>
+        <button data-correct="true">Build a tight feedback loop before forming any hypothesis about cause.</button>
+        <button data-correct="false">Build a feedback loop that is quick, stable, and runs unattended.</button>
+      </div>
+      <p class="quiz-feedback correct">Yes. <em>Tight</em> is the guide's own example: one pretrained word standing in for the whole triad.</p>
+      <p class="quiz-feedback incorrect">Not that one. The triad version restates the idea at length; "robust" is a generic quality word with no specific region of behaviour behind it, closer to a no-op. <em>Tight</em> is the leading word.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Which line prompts the positive instead of leaning on negation?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Do not write long multi-line comments anywhere in this file.</button>
+        <button data-correct="false">Never explain what the code does inside any comment block.</button>
+        <button data-correct="true">Write one-line comments that state the reason behind each choice.</button>
+      </div>
+      <p class="quiz-feedback correct">Right. The target behaviour is stated, so the banned behaviour is never put in context.</p>
+      <p class="quiz-feedback incorrect">Both other lines name the thing you want to avoid. Per the guide, that drags the forbidden behaviour into context. State what to do instead.</p>
+    </div>
+
+    <h2>Practice: on your own skill</h2>
+    <p>The guide says to assume every document carries restatements that leading words retire, and to go find them. Do that on one of yours.</p>
+    <ol class="checklist">
+      <li>Pick a skill you wrote in <code>~/.kiro/skills/</code> (for example <code>write-a-skill</code> or <code>tdd</code>).</li>
+      <li>Find one triad ("x, y, and z") or one sentence that gestures at an idea a single word could carry.</li>
+      <li>Replace it with an existing word. Check it is not a coined word and not a no-op.</li>
+      <li>Run the skill once on a real task. Matt's guide settles disputes by running the document, not by debating it.</li>
+      <li>Tell me the before, the after, and whether behaviour changed. I will write it up as your first learning record.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask me: "Is <em>blast radius</em> in pstack a leading word or a coined one?" or paste your before/after and ask whether the new word beats the default.
+    </section>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-finding-leading-words.html" title="Finding Leading Words">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

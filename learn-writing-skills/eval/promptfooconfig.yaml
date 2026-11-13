@@ -1,0 +1,50 @@
+# A/B: does swapping a restated triad for the leading words "tight" / "red"
+# change what the agent does? Model, task, tools identical; only SKILL.md differs.
+# Run: npx promptfoo@0.125.1 eval -c promptfooconfig.yaml --repeat 5 --no-cache
+description: diagnose skill, triad vs tight/red
+
+prompts:
+  - '{{request}}'
+
+providers:
+  - id: anthropic:claude-agent-sdk
+    label: diagnose-triad
+    config:
+      working_dir: ./fixtures/triad
+      setting_sources: ['project']
+      skills: ['diagnose']
+      append_allowed_tools: ['Read', 'Grep', 'Glob', 'Bash', 'Edit', 'Write']
+  - id: anthropic:claude-agent-sdk
+    label: diagnose-tight
+    config:
+      working_dir: ./fixtures/tight
+      setting_sources: ['project']
+      skills: ['diagnose']
+      append_allowed_tools: ['Read', 'Grep', 'Glob', 'Bash', 'Edit', 'Write']
+
+tests:
+  - description: Nondeterministic bug, skill should fire and build a loop before editing
+    vars:
+      request: >
+        unique_tags in tags.py sometimes returns tags in a different order between
+        runs. I expect first-seen order. Diagnose and fix it.
+    assert:
+      - type: skill-used
+        value: diagnose
+      # Proxy for "loop before fix": a Bash call happens before the first Edit/Write.
+      # It is a proxy, not the thing itself. See lesson 3, "Explain the number".
+      - type: javascript
+        value: |
+          const calls = context.providerResponse?.metadata?.toolCalls || [];
+          const firstBash = calls.findIndex(c => c.name === 'Bash');
+          const firstEdit = calls.findIndex(c => c.name === 'Edit' || c.name === 'Write');
+          if (firstBash === -1) return { pass: false, score: 0, reason: 'never ran a command' };
+          const ok = firstEdit === -1 || firstBash < firstEdit;
+          return { pass: ok, score: ok ? 1 : 0, reason: `firstBash=${firstBash} firstEdit=${firstEdit}` };
+
+  - description: Near miss, not a bug, skill should stay out
+    vars:
+      request: Add a function to tags.py that lowercases every tag.
+    assert:
+      - type: not-skill-used
+        value: diagnose

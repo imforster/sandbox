@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 2: Finding Leading Words</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0001-leading-words.html" title="Leading Words">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-testing-a-leading-word.html" title="Testing a Leading Word">Next</a>
+    </nav>
+
+    <h1>Finding Leading Words</h1>
+    <p class="lesson-meta">Time: 10 minutes. Tangible win: a short list of leading-word candidates in your <code>diagnose</code> skill, each screened, with one picked for lesson 3.</p>
+
+    <p>Ian, lesson 1 said what a leading word is. Now the harder part: spotting where one belongs. Matt's guide gives you two hunting grounds, and then you need a screen so you do not swap in a word that does nothing. Your own <code>diagnose</code> skill is the test subject.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://github.com/mattpocock/skills/blob/main/skills/productivity/writing-for-agents/SKILL.md">writing-for-agents (sections "Leading words" and "Pruning")</a> — Matt Pocock. About 4 minutes.
+    </section>
+
+    <h2>Where to hunt</h2>
+    <p>The guide names two patterns that are "begging to collapse into a single token" (<a href="https://github.com/mattpocock/skills/blob/main/skills/productivity/writing-for-agents/SKILL.md">source</a>):</p>
+    <ul>
+      <li><strong>A triad spelled out at several sites.</strong> The same three adjectives restated wherever the idea comes up.</li>
+      <li><strong>A pointer spending a sentence on one idea.</strong> A description or reference line that gestures at a concept instead of naming it.</li>
+    </ul>
+    <p>Also look at what is already there. In pstack's <a href="https://github.com/cursor/plugins/blob/main/pstack/skills/blast-radius/SKILL.md">blast-radius</a>, "the one fact" and the numbered "how sure are you" ladder are reused phrases that structure the whole skill. That is my reading of the file, not a claim by its authors.</p>
+
+    <h2>Live example: your diagnose skill</h2>
+    <p>Lines 16, 27 and 42 of <code>~/.kiro/skills/diagnose/SKILL.md</code> say the same thing three ways:</p>
+    <pre><code>16: Build a fast, deterministic, runnable pass/fail signal
+27: If you have a fast, deterministic pass/fail signal, you will find the cause.
+42: Iterate on the loop: faster? sharper signal? more deterministic?</code></pre>
+    <p>That is the first pattern: one idea (a feedback loop good enough to debug against), restated three times. Matt's <a href="https://github.com/mattpocock/skills/blob/main/skills/engineering/diagnosing-bugs/SKILL.md">diagnosing-bugs</a> collapses it to <em>tight</em> and <em>red</em>. Your skill also already uses a different leading word well: <em>gate</em> ("This is a gate, not a suggestion"). That one is working; leave it.</p>
+
+    <h2>Screen each candidate</h2>
+    <p>Finding a repeated phrase is not enough. Run each candidate replacement through these four questions. The first three come from the guide; the fourth is my addition and you should treat it as a heuristic.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Fails when</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>Is it an existing word the model already knows?</td><td>You coined it, so you pay definition tokens for no priors</td><td>Guide</td></tr>
+        <tr><td>Does it beat the default?</td><td>It is a no-op, like "be thorough" for an already thorough agent</td><td>Guide</td></tr>
+        <tr><td>Does it stand for the idea you restated?</td><td>It names a neighbour, not the triad you meant to retire</td><td>Guide</td></tr>
+        <tr><td>Can you repeat it as a token, never redefining it?</td><td>You must re-explain it each time it appears</td><td>My heuristic</td></tr>
+      </tbody>
+    </table>
+    <p>A candidate that passes all four is a hypothesis, not a win. The guide says there is no automated eval and to settle disputes by running the document. Lesson 3 is how to run it properly.</p>
+
+    <section class="callout warning">
+      <span class="callout-title">Negation is also a hunting ground</span>
+      <p>Any "don't", "never", or "avoid" in your skill names the thing you do not want. The guide says that makes the forbidden behaviour more available, so rewrite the line to the positive target where you can. A hard guardrail that you cannot phrase positively can stay, paired with the target.</p>
+    </section>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Which replacement recruits the fewest priors from the model's pretraining?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Call the failing check a red test.</button>
+        <button data-correct="false">Call the failing check a broken test.</button>
+        <button data-correct="true">Call the failing check a zorbulated test.</button>
+      </div>
+      <p class="quiz-feedback correct">Right. A made-up word has no pretraining meaning, so you would have to define it. <em>Red</em> is an existing word with strong associations.</p>
+      <p class="quiz-feedback incorrect">Not that one. Both words exist and carry meaning. The coined word is the one with no priors behind it.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Which is the best hunting target for a leading-word rewrite?</p>
+      <div class="quiz-options">
+        <button data-correct="false">A single numbered step that appears once in the file.</button>
+        <button data-correct="true">A triad of adjectives restated at three separate sites.</button>
+        <button data-correct="false">A code block showing one example command with output.</button>
+      </div>
+      <p class="quiz-feedback correct">Yes. Restatement of one idea at several sites is exactly what a repeated single token retires.</p>
+      <p class="quiz-feedback incorrect">A once-only step or a literal example has nothing to collapse. Look for the same idea spelled out repeatedly.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Scan your skill for repeated phrases: <code>grep -nE "fast|deterministic|sharp|tight|red\b" ~/.kiro/skills/diagnose/SKILL.md</code></li>
+      <li>List up to three candidates: the phrase, how many sites, and your proposed single word.</li>
+      <li>Screen each with the four questions. Drop any that fail.</li>
+      <li>Pick one survivor to test in lesson 3. For your <code>diagnose</code> skill, the obvious candidate is <em>tight</em> / <em>red</em>.</li>
+      <li>Send me your list. I will write your second learning record.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask me: "Is <em>gate</em> in my diagnose skill earning its place, and what would the no-op test say?" or paste a second skill and ask me to hunt it with you.
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0001-leading-words.html" title="Leading Words">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0003-testing-a-leading-word.html" title="Testing a Leading Word">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

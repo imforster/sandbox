@@ -280,6 +280,7 @@
       { text: 'SkillOpt & Harnesses', href: '/sandbox/learn-skillopt-harness/' },
       { text: 'Strands Agents', href: '/sandbox/learn-strands/' },
       { text: 'tuicr', href: '/sandbox/learn-tuicr/' },
+      { text: 'Writing Predictable Skills', href: '/sandbox/learn-writing-skills/' },
     ]},
     { label: 'Navigate', items: [
       { text: 'Blog', href: 'https://blog.imfsoftware.com' },

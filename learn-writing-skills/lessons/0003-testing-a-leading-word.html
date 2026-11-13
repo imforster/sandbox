@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 3: Testing a Leading Word</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0002-finding-leading-words.html" title="Finding Leading Words">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Testing a Leading Word</h1>
+    <p class="lesson-meta">Time: 15 minutes plus one eval run. Tangible win: an A/B eval of your <code>diagnose</code> skill, none against triad against <em>tight</em>/<em>red</em>, run through Improving's Kiro setup, and a clear idea of what it can and cannot prove.</p>
+
+    <p>Ian, a leading word is a hypothesis about behaviour. Matt's guide says there is no automated eval and to check by running the document. Promptfoo can automate the running part. It has a guide for testing skills, which is what this lesson is built on.</p>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://www.promptfoo.dev/docs/guides/test-agent-skills/">Test Agent Skills</a> — Promptfoo docs. About 8 minutes. Covers skill-used, repeats, and routing boundaries.
+    </section>
+
+    <h2>The setup</h2>
+    <p>Promptfoo compares two skill versions by holding the model, task files and permissions constant and swapping only the <code>SKILL.md</code>; any difference should then come from the skill text (<a href="https://www.promptfoo.dev/docs/guides/test-agent-skills/">source</a>). That is the shape of a leading-word test: one document edited, everything else frozen.</p>
+    <p>The guide's three questions map onto leading words like this:</p>
+    <table>
+      <thead><tr><th>Question</th><th>Assertion</th><th>What it tests for you</th></tr></thead>
+      <tbody>
+        <tr><td>Does the agent use the skill?</td><td><code>skill-used</code></td><td>Pointer wording (the description)</td></tr>
+        <tr><td>Does it avoid a neighbour?</td><td><code>not-skill-used</code> on a near-miss prompt</td><td>Trigger boundary</td></tr>
+        <tr><td>Does the work improve?</td><td>JavaScript or rubric on output and tool calls</td><td>Body wording (execution)</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Route A: Improving's promptfoo demo (use this first)</h2>
+    <p><a href="https://github.com/improving/promptfoo">improving/promptfoo</a> is a demo of Evaluation Driven Development. Its pattern is an <code>exec:</code> provider that shells out to a CLI, plus the same script acting as the rubric judge. It ships <code>kiro.js</code>, which wraps <code>kiro-cli chat --no-interactive</code>, so your own agent is the system under test. It pins promptfoo 0.121.17 and says to always use <code>--no-cache</code>, because promptfoo's cache cannot see changes inside external prompt files.</p>
+    <p>My adaptation is in <code>eval-improving/</code>, with the repo's <code>kiro.js</code> copied unchanged. It has three arms, one task, one model:</p>
+    <table>
+      <thead><tr><th>Arm</th><th>Prompt contents</th></tr></thead>
+      <tbody>
+        <tr><td><code>none</code></td><td>No skill. The baseline.</td></tr>
+        <tr><td><code>triad</code></td><td>Your <code>diagnose</code> body as written: "fast, deterministic, runnable pass/fail signal".</td></tr>
+        <tr><td><code>tight</code></td><td>The same body with <em>tight</em> and <em>red</em> on lines 16, 27 and 42.</td></tr>
+      </tbody>
+    </table>
+    <p>The skill text is pasted into the prompt and Kiro is told it cannot run commands, so it writes the commands it would run. Three <code>llm-rubric</code> assertions follow Improving's one-dimension-per-assertion style: <code>loop-first</code>, <code>red-capable</code> and <code>raises-repro-rate</code>, plus a cheap keyword check.</p>
+    <pre><code>cd eval-improving
+npm install
+npx promptfoo eval -c promptfooconfig.yaml --no-cache --repeat 3
+npx promptfoo view</code></pre>
+
+    <section class="callout tip">
+      <span class="callout-title">What I verified</span>
+      <p>Config validates, and headless Kiro works with your existing login (the demo's docs ask for <code>KIRO_API_KEY</code>; I did not need it). I ran one pass, repeat 1: none 0.00, triad 0.78, tight 0.96. That is one sample per arm and proves nothing. Treat it only as evidence the pipeline runs.</p>
+    </section>
+
+    <section class="callout warning">
+      <span class="callout-title">The smoke run already shows judge noise</span>
+      <p>On the <code>none</code> arm, the judge said the output was "empty". The raw output was 556 characters of a correct, short answer. So the judge is itself a source of error, here a false negative. Always read a sample of judge reasons before trusting a score. Also, both skill arms ended with ", Ian.": your global Kiro rules leak into the provider and judge. Equal across arms, but it means this is not a clean-room test.</p>
+    </section>
+
+    <h2>Route B: Claude Agent SDK (tests the trigger)</h2>
+    <p>Route A pastes the skill into the prompt, so it cannot tell you whether the agent <em>chooses</em> the skill. For that you need a harness with real skill discovery. <code>eval/</code> uses promptfoo's Claude Agent SDK provider with <code>skill-used</code>, <code>not-skill-used</code> on a near-miss prompt, and a Bash-before-Edit check. I validated this config (<code>promptfoo@0.125.1</code>) but have <strong>not</strong> run it, so I do not know whether its tool-call names behave as intended. It gives the agent Bash, Edit and Write, so keep fixtures free of secrets (Promptfoo warns Agent SDK runs can execute arbitrary code: <a href="https://www.promptfoo.dev/blog/claude-code-attack/">source</a>).</p>
+    <pre><code>cd eval
+npx promptfoo@0.125.1 eval -c promptfooconfig.yaml --repeat 5 --no-cache</code></pre>
+    <p>Rough cost: Route A with 3 repeats is 9 generations plus 27 judge calls. Route B with 5 repeats is 20 agent sessions.</p>
+
+    <h2>What this eval cannot prove</h2>
+    <p>These are the reasons a green result can mislead you. They are my analysis unless a link is given.</p>
+    <ul>
+      <li><strong>Confound.</strong> The <code>tight</code> variant changes three lines and drops the "faster? sharper? more deterministic?" questions. A win is not a win for the word alone. A cleaner test swaps one site at a time.</li>
+      <li><strong>Proxy.</strong> In Route A the agent writes a plan, not actions, so you measure what it says it would do. In Route B, "Bash before Edit" stands in for "built a red loop before fixing", and an agent can run <code>ls</code> first and pass. This is the <em>Explain the Number</em> principle from pstack: rule out that you measured something other than the work you meant (<a href="https://github.com/cursor/plugins/blob/main/pstack/skills/poteto-mode/SKILL.md">poteto-mode</a>). Inspect the traces of a few passes.</li>
+      <li><strong>Ceiling.</strong> If the task is easy, both versions pass and you learn nothing. Another skills repo notes that evals written from the skill itself score near 100% and are not evidence it changes behaviour (<a href="https://github.com/HoangNguyen0403/agent-skills-standard/blob/develop/benchmark-report.md">source</a>). Write tasks from real failures you have seen.</li>
+      <li><strong>Judge error.</strong> The rubric judge is an LLM too. See the false "empty output" above. Spot-check its reasons, and keep deterministic assertions alongside it.</li>
+      <li><strong>Noise.</strong> Agent runs vary. Five repeats can separate 5/5 from 1/5, not 5/5 from 4/5. Promptfoo's guidance is to rerun with repeats and inspect failures before choosing a version (<a href="https://www.promptfoo.dev/docs/guides/test-agent-skills/">source</a>).</li>
+      <li><strong>One model.</strong> A word that leads one model may do nothing on another. The same config can target other harnesses (Codex, OpenCode) per the guide.</li>
+    </ul>
+
+    <h2>Other options</h2>
+    <table>
+      <thead><tr><th>Tool</th><th>What I know</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Promptfoo with Improving's <code>kiro.js</code></td><td>Text-in, text-out eval against Kiro CLI, rubric judge via the same script</td><td>Smoke-run once, 3 arms</td></tr>
+        <tr><td>Promptfoo, Claude Agent SDK provider</td><td>Skill-aware: skill-used / not-skill-used, tool-call checks</td><td>Docs read, config validated, not run</td></tr>
+        <tr><td><a href="https://github.com/aws-samples/sample-agent-skill-eval">aws-samples/sample-agent-skill-eval</a></td><td>Describes with-skill vs without-skill, trigger precision, cost</td><td>Search snippet only</td></tr>
+        <tr><td><a href="https://github.com/tardigrde/agent-skill-eval">tardigrde/agent-skill-eval</a></td><td>Runs through the full harness; catches never-triggers</td><td>Search snippet only</td></tr>
+        <tr><td><a href="https://www.promptfoo.dev/docs/guides/llm-as-a-judge/">LLM-as-judge (llm-rubric)</a></td><td>Grades open-ended output when exact checks are too brittle</td><td>Snippet only; next step if the JS proxy is too crude</td></tr>
+      </tbody>
+    </table>
+    <p>Gap that remains: nothing here measures whether Kiro <em>triggers</em> your skill from its description. Over <code>exec:</code> you get text only. That needs a skill-aware harness, which is Route B on Claude Code or a future Kiro-native one.</p>
+
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Which assertion tells you the skill stays out of the way on a nearby task?</p>
+      <div class="quiz-options">
+        <button data-correct="false">skill-used on the happy-path prompt for the skill.</button>
+        <button data-correct="true">not-skill-used on a near-miss prompt for the skill.</button>
+        <button data-correct="false">cost threshold on the happy-path prompt for the skill.</button>
+      </div>
+      <p class="quiz-feedback correct">Yes. The promptfoo guide tests routing with near-miss prompts and asserts the skill you do not want is absent.</p>
+      <p class="quiz-feedback incorrect">Those only measure the happy path. To test a boundary you need a prompt that belongs elsewhere and an assertion that the skill did not fire.</p>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <p>Tight passes 5 of 5 runs and triad passes 4 of 5. What follows?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Tight wins, so replace the triad in every skill.</button>
+        <button data-correct="true">Too few runs to separate them, so repeat and read traces.</button>
+        <button data-correct="false">The triad is broken, so delete it from the skill.</button>
+      </div>
+      <p class="quiz-feedback correct">Right. One miss in five is within run-to-run noise. Add repeats and look at why the failure failed before deciding.</p>
+      <p class="quiz-feedback incorrect">That draws a conclusion from one lucky or unlucky run. The guide recommends rerunning with repeats and inspecting failures first.</p>
+    </div>
+
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Read <code>eval-improving/promptfooconfig.yaml</code>. Predict, before running: the order of the three arms by score, and whether <code>none</code> or <code>triad</code> is closer to <code>tight</code>.</li>
+      <li>Run Route A with <code>--repeat 3</code> or more (or ask me to). Note the score per arm and per metric.</li>
+      <li>Open the web view. Read the judge reasons for two passes and two failures. Does the judge agree with what you would conclude by reading the output?</li>
+      <li>Write down one reason the result could be wrong (confound, proxy, ceiling, noise).</li>
+      <li>Report back. I will write your learning record from your prediction versus the result.</li>
+    </ol>
+
+    <section class="ask-teacher">
+      Ask me: "Help me add a clean Kiro agent profile so my global rules stop leaking into the eval", or "How would I switch the near-miss test to an llm-rubric judge?"
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0002-finding-leading-words.html" title="Finding Leading Words">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

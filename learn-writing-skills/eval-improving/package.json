@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "dependencies": {
+    "promptfoo": "0.121.17"
+  },
+  "scripts": {
+    "eval": "promptfoo eval --no-cache --repeat 3",
+    "view": "promptfoo view"
+  }
+}
