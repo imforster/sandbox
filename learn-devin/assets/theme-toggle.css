@@ -1,0 +1,27 @@
+/* theme-toggle.css — floating light/dark toggle button.
+   Standalone so self-contained pages (e.g. the glossary) can use the toggle
+   without loading the full course style.css. Uses local fallbacks and the
+   glossary/style token names so it looks right in both contexts. */
+.theme-toggle {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 200;
+  width: 2.4rem;
+  height: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  background: var(--card-bg, var(--color-card-bg, #fff));
+  color: var(--text-primary, var(--color-text, #1d1d1f));
+  border: 1px solid var(--border, var(--color-border, #d2d2d7));
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.15s, border-color 0.2s;
+}
+.theme-toggle:hover { transform: scale(1.08); border-color: var(--accent, var(--color-accent, #0071e3)); }
+.theme-toggle:focus-visible { outline: 2px solid var(--accent, var(--color-accent, #0071e3)); outline-offset: 2px; }
+@media print { .theme-toggle { display: none; } }

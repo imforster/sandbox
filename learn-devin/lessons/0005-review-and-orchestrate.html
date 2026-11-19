@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5: Review &amp; Orchestrate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0004-ask-plan-agent-workflow.html" class="lesson-back-top" title="Ask → Plan → Code"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span class="lesson-nav-disabled"></span></nav>
+
+<h1>Review &amp; Orchestrate</h1>
+
+<div class="lesson-meta">
+  Lesson 5 · Leverage Devin on a New Project · ~8 minutes
+</div>
+
+<p>You can now scope, onboard, and run a single session well. The last leap in leverage is two-fold: <strong>reviewing</strong> Devin’s output efficiently, and <strong>orchestrating</strong> more than one agent at once. As coding agents write more, the bottleneck shifts from writing code to reviewing it — so both skills matter.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Your win</div>
+  <p>Let Devin Review catch bugs in a closed loop, and delegate independent work to subagents so several tasks progress in parallel — while you stay the reviewer, not the typist.</p>
+</div>
+
+<h2>Review: close the loop with Devin Review</h2>
+
+<p>Devin Review turns a large PR into an organized diff with a <strong>Bug Catcher</strong> (bugs by severity), a <strong>security scan</strong> (CWE-classified), and informational flags. Trigger it on any connected GitHub PR by commenting <code>/devin review</code>.</p>
+
+<p>The force-multiplier is <strong>Auto-Fix</strong>: when enabled, Devin proposes fixes for the bugs it finds and responds to review comments and CI failures — a closed loop where the PR iterates toward merge-ready without you in the middle of every cycle.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Review the findings, not the confidence</div>
+  <p>Bug Catcher labels findings by confidence, but you still judge them. Fix <strong>severe</strong> bugs; investigate <strong>flags</strong> yourself; ignore style nits your linter already owns. Encode project-specific scrutiny in a <code>REVIEW.md</code> — “all changes to <code>src/auth/</code> need a security check” — so every review enforces it.</p>
+</div>
+
+<h2>Orchestrate: delegate to subagents</h2>
+
+<p>A session can spawn <strong>subagents</strong> — independent workers that share your tools and codebase but run in their own conversation. Ask for them explicitly (“research how auth works in a subagent”), or let Devin delegate on its own. Cognition reports subagents both improve coding performance and reduce cost.</p>
+
+<div class="comparison">
+  <div class="comparison-side traditional">
+    <h4>Foreground</h4>
+    <p>Runs inline; the parent pauses and waits. You approve tool calls as they come. Best for one focused sub-task you want to watch.</p>
+  </div>
+  <div class="comparison-side workers">
+    <h4>Background</h4>
+    <p>Runs in parallel while the parent keeps working. Uses only pre-approved tools; anything new is auto-denied. Best for fan-out work.</p>
+  </div>
+</div>
+
+<p>Two built-in profiles decide capability and cost:</p>
+
+<table>
+  <thead><tr><th>Profile</th><th>Can it write?</th><th>Model &amp; cost</th></tr></thead>
+  <tbody>
+    <tr><td><code>subagent_explore</code></td><td>Read-only research</td><td>Cheap default model (SWE-1.6) — use for exploration</td></tr>
+    <tr><td><code>subagent_general</code></td><td>Full code changes</td><td>Same model as the parent — a full extra session’s cost</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="callout-title">Cost scales with fan-out</div>
+  <p>Each subagent is its own session with its own context and inference calls. Fanning out many <code>subagent_general</code> workers on a premium model multiplies spend. Ask for an <em>explore</em> subagent when the work is research, and reserve write-capable subagents for real parallel implementation.</p>
+</div>
+
+<h2>The parallel workflow</h2>
+
+<pre class="diagram">Root session
+├── explore subagent   → "map the payment module"   (read-only, cheap)
+├── general subagent A → implement webhook handler   (background, parallel)
+└── general subagent B → implement settings page     (background, parallel)
+        ↓
+   parent summarizes each result → you review the PRs with /devin review</pre>
+
+<p>This is the same decomposition from the <a href="0002-scope-with-the-three-hour-rule.html">3-hour rule</a> (Lesson 2), now executed concurrently. You return to being the reviewer of finished work rather than the driver of each keystroke.</p>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">You need cheap, read-only research on how a module works. Which subagent fits?</div>
+  <ul class="quiz-options">
+    <li data-correct="true">Ask for an explore subagent on the cheaper default model</li>
+    <li>Ask for a general subagent running the premium parent model</li>
+    <li>Disable subagents and read the entire module yourself now</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. <code>subagent_explore</code> is read-only and runs on the cheap default model.</div>
+  <div class="quiz-feedback incorrect">Not quite. A general subagent can write but costs like a full extra premium session; for read-only research, explore is right.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">What does enabling Auto-Fix in Devin Review actually create?</div>
+  <ul class="quiz-options">
+    <li>A permanent block preventing any human from reviewing PRs</li>
+    <li data-correct="true">A closed loop iterating a PR toward merge-ready quality</li>
+    <li>A guarantee that every detected bug is always a false alarm</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Auto-Fix responds to findings and CI failures so the PR iterates toward merge-ready.</div>
+  <div class="quiz-feedback incorrect">Not quite. Auto-Fix doesn’t remove human review or guarantee anything — it creates a closed loop toward merge-ready quality.</div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Open a Devin-authored PR and comment <code>/devin review</code>; triage the findings.</li>
+  <li>Add a <code>REVIEW.md</code> naming one area that needs extra scrutiny.</li>
+  <li>In a session, ask Devin to “research X in an explore subagent” and watch the panel.</li>
+  <li>Split one real task into two independent slices and run them as background subagents.</li>
+</ol>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://docs.devin.ai/cli/subagents">CLI — Subagents</a> and <a href="https://docs.devin.ai/work-with-devin/devin-review">Devin Review</a> (Auto-Fix, Bug Catcher, REVIEW.md).</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> This is the last lesson in the starter arc — ask me where to go next: playbooks, MCP integrations, cloud Devins, or a deeper dive on any lesson. I can also draft your first <code>REVIEW.md</code> or a custom subagent profile.
+</div>
+
+<div class="lesson-nav"><a href="0004-ask-plan-agent-workflow.html" class="lesson-nav-prev" title="Ask → Plan → Code">← Prev</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><span class="lesson-nav-disabled"></span></div>
+
+<script src="../assets/lesson.js"></script>
+<script src="../assets/copy-button.js"></script>
+<script src="../assets/theme-toggle.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glossary — Learn Devin</title>
+    <link rel="stylesheet" href="../assets/theme-toggle.css">
+    <style>
+        :root {
+            --bg: #fbfbfd;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #86868b;
+            --accent: #0071e3;
+            --border: rgba(0, 0, 0, 0.06);
+            --search-bg: #f5f5f7;
+            --radius: 12px;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #000000;
+                --text-primary: #f5f5f7;
+                --text-secondary: #a1a1a6;
+                --text-tertiary: #6e6e73;
+                --accent: #64d2ff;
+                --border: rgba(255, 255, 255, 0.08);
+                --search-bg: rgba(28, 28, 30, 0.9);
+            }
+        }
+        [data-theme="dark"] {
+            --bg: #000000;
+            --text-primary: #f5f5f7;
+            --text-secondary: #a1a1a6;
+            --text-tertiary: #6e6e73;
+            --accent: #64d2ff;
+            --border: rgba(255, 255, 255, 0.08);
+            --search-bg: rgba(28, 28, 30, 0.9);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .header { max-width: 980px; margin: 0 auto; padding: 3rem 2rem 1rem; }
+        .header .back-link {
+            display: inline-flex; align-items: center; gap: 0.25rem;
+            font-size: 0.875rem; color: var(--accent); text-decoration: none; margin-bottom: 1.5rem;
+        }
+        .header .back-link:hover { text-decoration: underline; }
+        .header h1 { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+        .header p { font-size: 1.125rem; color: var(--text-secondary); max-width: 640px; }
+        .search-container {
+            position: sticky; top: 0; z-index: 100;
+            background: var(--bg); border-bottom: 1px solid var(--border); padding: 1rem 2rem;
+        }
+        .search-container .search-inner { max-width: 980px; margin: 0 auto; }
+        .search-wrapper { position: relative; max-width: 480px; }
+        .search-input {
+            width: 100%; max-width: 480px; padding: 0.75rem 1rem 0.75rem 2.5rem;
+            font-size: 1rem; border: none; border-radius: var(--radius);
+            background: var(--search-bg); color: var(--text-primary); outline: none; transition: box-shadow 0.2s;
+        }
+        .search-input::placeholder { color: var(--text-tertiary); }
+        .search-input:focus { box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.2); }
+        .search-icon {
+            position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+            color: var(--text-tertiary); pointer-events: none;
+        }
+        .content-wrapper {
+            max-width: 980px; margin: 0 auto; padding: 2rem;
+            display: grid; grid-template-columns: 1fr 60px; gap: 2rem; align-items: start;
+        }
+        .glossary-body { min-width: 0; }
+        .letter-group { margin-bottom: 2.5rem; }
+        .letter-heading {
+            position: sticky; top: 65px; z-index: 50;
+            font-size: 1.25rem; font-weight: 600; color: var(--accent);
+            padding: 0.5rem 0; background: var(--bg); border-bottom: 1px solid var(--border); margin-bottom: 1rem;
+        }
+        .term-entry { padding: 1rem 0; border-bottom: 1px solid var(--border); }
+        .term-entry:last-child { border-bottom: none; }
+        .term-name { font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem; }
+        .term-def { font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.5; }
+        .letter-index { position: sticky; top: 80px; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+        .letter-index a {
+            font-size: 0.75rem; font-weight: 600; color: var(--text-tertiary); text-decoration: none;
+            padding: 0.15rem 0.35rem; border-radius: 4px; transition: color 0.15s, background 0.15s;
+        }
+        .letter-index a:hover { color: var(--accent); background: var(--search-bg); }
+        .no-results { display: none; padding: 3rem 0; text-align: center; color: var(--text-tertiary); font-size: 1rem; }
+        @media (max-width: 900px) {
+            .content-wrapper { grid-template-columns: 1fr; }
+            .letter-index { display: none; }
+        }
+        @media (max-width: 600px) {
+            .header { padding: 2rem 1.25rem 0.75rem; }
+            .header h1 { font-size: 1.75rem; }
+            .header p { font-size: 1rem; }
+            .search-container { padding: 0.75rem 1.25rem; }
+            .content-wrapper { padding: 1.5rem 1.25rem; }
+        }
+        code { font-family: 'SF Mono', 'Fira Code', Consolas, Menlo, monospace; font-size: 0.85em; background: var(--search-bg); padding: 0.1em 0.35em; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="../lessons/index.html" class="back-link">← Lessons</a>
+        <h1>Glossary</h1>
+        <p>Key terms for Devin.ai control modes, onboarding, review, and multi-agent orchestration. Grounded in the official Devin docs.</p>
+    </div>
+
+    <div class="search-container">
+        <div class="search-inner">
+            <div class="search-wrapper">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" class="search-input" placeholder="Filter terms..." id="searchInput">
+            </div>
+        </div>
+    </div>
+
+    <div class="content-wrapper">
+        <div class="glossary-body" id="glossaryBody">
+
+            <div class="letter-group" id="letter-A">
+                <div class="letter-heading">A</div>
+                <div class="term-entry" data-term="agents.md">
+                    <div class="term-name">AGENTS.md</div>
+                    <div class="term-def">A repo-root instruction file — a "README for agents." Devin reads it before coding. Covers setup commands, code style, testing, structure, and workflow.</div>
+                </div>
+                <div class="term-entry" data-term="ask mode">
+                    <div class="term-name">Ask</div>
+                    <div class="term-def">A read-only mode that answers questions about the codebase with cited results and makes no changes. Trigger: <code>/ask</code>.</div>
+                </div>
+                <div class="term-entry" data-term="auto-fix">
+                    <div class="term-name">Auto-Fix</div>
+                    <div class="term-def">A Devin Review setting where Devin proposes fixes for detected bugs and responds to review comments and CI failures, iterating a PR toward merge-ready quality.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-B">
+                <div class="letter-heading">B</div>
+                <div class="term-entry" data-term="bug catcher">
+                    <div class="term-name">Bug Catcher</div>
+                    <div class="term-def">The Devin Review analyzer that flags likely bugs by severity and surfaces security findings with CWE classification.</div>
+                </div>
+                <div class="term-entry" data-term="bypass permissions">
+                    <div class="term-name">Bypass Permissions</div>
+                    <div class="term-def">The most permissive mode: auto-approves all tool calls — writes and shell — with no isolation. Never overrides admin org rules. Trigger: <code>/bypass</code> (confirm the name with <code>/help</code>).</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-C">
+                <div class="letter-heading">C</div>
+                <div class="term-entry" data-term="code mode">
+                    <div class="term-name">Code</div>
+                    <div class="term-def">The default write mode: writes code and auto-accepts edits in the workspace while still prompting for shell commands. The everyday mode for executing a scoped task. Trigger: <code>/code</code>.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-D">
+                <div class="letter-heading">D</div>
+                <div class="term-entry" data-term="devin cli">
+                    <div class="term-name">Devin CLI</div>
+                    <div class="term-def">A local command-line coding agent with cloud integration. Install: <code>curl -fsSL https://cli.devin.ai/install.sh | bash</code>.</div>
+                </div>
+                <div class="term-entry" data-term="devin desktop">
+                    <div class="term-name">Devin Desktop</div>
+                    <div class="term-def">The full AI-powered IDE surface, including Cascade, autocomplete, chat, and command.</div>
+                </div>
+                <div class="term-entry" data-term="devin review">
+                    <div class="term-name">Devin Review</div>
+                    <div class="term-def">An automated PR review platform with organized diffs, a Bug Catcher, and security scanning. Trigger on a PR by commenting <code>/devin review</code>.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-K">
+                <div class="letter-heading">K</div>
+                <div class="term-entry" data-term="knowledge">
+                    <div class="term-name">Knowledge</div>
+                    <div class="term-def">Persistent context recalled automatically across sessions — coding standards, common fixes, internal tooling. Pin to a repo or apply globally.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-M">
+                <div class="letter-heading">M</div>
+                <div class="term-entry" data-term="at mention">
+                    <div class="term-name">@ mention</div>
+                    <div class="term-def">An inline context reference in a prompt: files, repos, macros, playbooks, skills, secrets, or sessions.</div>
+                </div>
+                <div class="term-entry" data-term="mode">
+                    <div class="term-name">Mode</div>
+                    <div class="term-def">The single setting that governs how much Devin does before asking. Five choices, least to most autonomous: Ask, Plan, Code, Smart, Bypass Permissions. Cycle with <code>Shift+Tab</code> or set with a slash command.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-P">
+                <div class="letter-heading">P</div>
+                <div class="term-entry" data-term="plan mode">
+                    <div class="term-name">Plan</div>
+                    <div class="term-def">A read-only mode that scopes and plans a task into a context-rich prompt, without making code changes. Trigger: <code>/plan</code>.</div>
+                </div>
+                <div class="term-entry" data-term="playbook">
+                    <div class="term-name">Playbook</div>
+                    <div class="term-def">A reusable, shareable prompt template capturing a step-by-step procedure for a recurring task, unlike Knowledge which stores broad context.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-R">
+                <div class="letter-heading">R</div>
+                <div class="term-entry" data-term="repo indexing">
+                    <div class="term-name">Repo indexing</div>
+                    <div class="term-def">An onboarding step that lets Devin understand and search your codebase before it works. Do this before your first real session.</div>
+                </div>
+                <div class="term-entry" data-term="repl">
+                    <div class="term-name">REPL</div>
+                    <div class="term-def">The default interactive terminal interface for a CLI session — chat back and forth while observing Devin's actions.</div>
+                </div>
+                <div class="term-entry" data-term="review.md">
+                    <div class="term-name">REVIEW.md</div>
+                    <div class="term-def">A dedicated instruction file that customizes how Devin Review analyzes a project — areas needing scrutiny, anti-patterns, and files to ignore.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-S">
+                <div class="letter-heading">S</div>
+                <div class="term-entry" data-term="session">
+                    <div class="term-name">Session</div>
+                    <div class="term-def">One unit of work with Devin. Resumable with <code>devin -c</code> (continue) or <code>devin -r</code> (pick recent).</div>
+                </div>
+                <div class="term-entry" data-term="session insights">
+                    <div class="term-name">Session Insights</div>
+                    <div class="term-def">Post-session analysis — a timeline of what happened, actionable feedback, and an improved prompt for similar future tasks.</div>
+                </div>
+                <div class="term-entry" data-term="single-turn mode">
+                    <div class="term-name">Single-turn mode</div>
+                    <div class="term-def">Running <code>devin -p "prompt"</code> to print one response and exit. Ideal for scripts and automation.</div>
+                </div>
+                <div class="term-entry" data-term="smart">
+                    <div class="term-name">Smart</div>
+                    <div class="term-def">A write mode like Code, plus a fast model that auto-runs other actions it judges clearly safe, while always prompting for high-risk operations. Trigger: <code>/smart</code>.</div>
+                </div>
+                <div class="term-entry" data-term="subagent">
+                    <div class="term-name">Subagent</div>
+                    <div class="term-def">An independent worker a session spawns that shares tools and codebase but runs in its own conversation. Profiles: explore (read-only, cheap) and general (write-capable, parent's model).</div>
+                </div>
+                <div class="term-entry" data-term="success criteria">
+                    <div class="term-name">Success criteria</div>
+                    <div class="term-def">The observable checks that define "done" for a task — a test passing, an endpoint returning 200, a rendered page.</div>
+                </div>
+            </div>
+
+            <div class="letter-group" id="letter-T">
+                <div class="letter-heading">T</div>
+                <div class="term-entry" data-term="three-hour rule">
+                    <div class="term-name">3-Hour Rule</div>
+                    <div class="term-def">A rule of thumb: if a task would take you three hours or less, Devin can most likely do it. Break bigger work into parallel sessions.</div>
+                </div>
+            </div>
+
+            <div class="no-results" id="noResults">No terms match your search.</div>
+        </div>
+
+        <nav class="letter-index" id="letterIndex">
+            <a href="#letter-A">A</a>
+            <a href="#letter-B">B</a>
+            <a href="#letter-C">C</a>
+            <a href="#letter-D">D</a>
+            <a href="#letter-K">K</a>
+            <a href="#letter-M">M</a>
+            <a href="#letter-P">P</a>
+            <a href="#letter-R">R</a>
+            <a href="#letter-S">S</a>
+            <a href="#letter-T">T</a>
+        </nav>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const glossaryBody = document.getElementById('glossaryBody');
+        const noResults = document.getElementById('noResults');
+        const letterGroups = glossaryBody.querySelectorAll('.letter-group');
+
+        searchInput.addEventListener('input', function () {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+            letterGroups.forEach(group => {
+                const entries = group.querySelectorAll('.term-entry');
+                let groupVisible = 0;
+                entries.forEach(entry => {
+                    const term = entry.getAttribute('data-term');
+                    const def = entry.querySelector('.term-def').textContent.toLowerCase();
+                    const matches = term.includes(query) || def.includes(query);
+                    entry.style.display = matches ? '' : 'none';
+                    if (matches) groupVisible++;
+                });
+                group.style.display = groupVisible > 0 ? '' : 'none';
+                visibleCount += groupVisible;
+            });
+            noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+        });
+
+        document.querySelectorAll('.letter-index a').forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+    </script>
+    <script src="../assets/theme-toggle.js"></script>
+    <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

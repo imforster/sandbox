@@ -271,6 +271,7 @@
       { text: 'chezmoi', href: '/sandbox/learn-chezmoi/' },
       { text: 'Cloudflare Workers', href: '/sandbox/learn-cloudflare/' },
       { text: 'Codex', href: '/sandbox/learn-codex/' },
+      { text: 'Devin', href: '/sandbox/learn-devin/' },
       { text: 'Flink Connectors', href: '/sandbox/learn-flink-connectors/' },
       { text: 'Fullstack Agent', href: '/sandbox/learn-fullstack-agent/' },
       { text: 'Graphify', href: '/sandbox/learn-graphify/' },

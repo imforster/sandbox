@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3: Onboard Your Repo</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0002-scope-with-the-three-hour-rule.html" class="lesson-back-top" title="Scope with the 3-Hour Rule"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-ask-plan-agent-workflow.html" class="lesson-next-top" title="Ask → Plan → Code">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Onboard Your Repo</h1>
+
+<div class="lesson-meta">
+  Lesson 3 · Leverage Devin on a New Project · ~8 minutes
+</div>
+
+<p>A well-scoped task (<a href="0002-scope-with-the-three-hour-rule.html">Lesson 2</a>) still fails if Devin doesn’t know how your project runs. Onboarding is the one-time investment that makes every later session start informed instead of guessing. Three layers do the work: <strong>indexing</strong>, <strong>AGENTS.md</strong>, and <strong>Knowledge</strong>.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Your win</div>
+  <p>Set up three onboarding layers once, and stop repeating the same setup, style, and “how we do things” context in every prompt.</p>
+</div>
+
+<h2>Layer 1 — Index the repository</h2>
+
+<p>Indexing lets Devin understand and search your codebase before it works — the foundational step the docs tell you to do before your first session. Without it, Devin reads blind; with it, it navigates like someone who has seen the whole tree. Index the repo from Devin’s repo settings before you scope real work against it.</p>
+
+<h2>Layer 2 — Write an AGENTS.md</h2>
+
+<p>Devin supports <a href="https://agents.md/">AGENTS.md</a>, an open standard — think of it as a <em>README for agents</em>. Put it in your project root; Devin reads it before it starts coding. Cover the things a new teammate would ask on day one:</p>
+
+<pre><code># AGENTS.md
+
+## Setup Commands
+- Install dependencies: `npm install`
+- Start dev server: `npm run dev`
+- Run tests: `npm test`
+
+## Code Style
+- TypeScript strict mode; functional React components
+- ESLint + Prettier enforced; conventional commits
+
+## Testing Guidelines
+- Unit-test new functions with Jest; aim for >80% coverage
+- Run tests before committing
+
+## Project Structure
+- `/src` app code · `/tests` tests · `/docs` docs
+
+## Development Workflow
+- Feature branches from `main`; PRs for review; squash before merge</code></pre>
+
+<div class="callout">
+  <div class="callout-title">Why it pays off</div>
+  <p>Every fact in AGENTS.md is a decision Devin no longer has to guess. It stops picking the wrong test runner, the wrong branch base, or the wrong commit style — the small mistakes that cost you review time.</p>
+</div>
+
+<h2>Layer 3 — Add Knowledge</h2>
+
+<p>For context that should persist across <em>all</em> sessions — coding standards, common bugs and their fixes, how to use internal tools — use <strong>Knowledge</strong>. Knowledge items are recalled automatically when relevant, so you never repeat them in a prompt. Pin them to a repo or apply them globally.</p>
+
+<div class="callout warning">
+  <div class="callout-title">Knowledge vs. Playbooks — don’t confuse them</div>
+  <p>Use <strong>Knowledge</strong> for broad, always-on conventions and context. Use <strong>Playbooks</strong> for step-by-step procedures tied to a specific repeating task (“address CI build failures”). Knowledge is <em>what’s true</em>; a Playbook is <em>what to do</em>.</p>
+</div>
+
+<h2>How the layers stack</h2>
+
+<pre class="diagram">Indexing   → Devin can FIND anything in the codebase
+AGENTS.md  → Devin knows HOW to build, test, and style this repo
+Knowledge  → Devin remembers WHAT'S TRUE across every session
+Playbook   → Devin follows a fixed PROCEDURE for a recurring task</pre>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">Where do you put “run tests with pytest, not unittest” so Devin reads it before coding?</div>
+  <ul class="quiz-options">
+    <li data-correct="true">In the AGENTS.md file at your project root directory</li>
+    <li>Inside a one-off comment on the pull request thread</li>
+    <li>Only in the chat prompt each session you happen to start</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. AGENTS.md is read before coding and captures setup and testing conventions.</div>
+  <div class="quiz-feedback incorrect">Not quite. A PR comment or per-session prompt won’t be read up front every time — AGENTS.md is.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">You have a fixed procedure Devin should follow to triage CI failures. What fits?</div>
+  <ul class="quiz-options">
+    <li>Store the steps as a broad Knowledge entry pinned globally</li>
+    <li data-correct="true">Create a Playbook capturing the repeatable triage procedure</li>
+    <li>Repeat the steps manually in every single session prompt</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Playbooks capture step-by-step procedures for recurring tasks.</div>
+  <div class="quiz-feedback incorrect">Not quite. Knowledge is for broad always-on context; a fixed procedure belongs in a Playbook.</div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Index your new project’s repository in Devin.</li>
+  <li>Add an <code>AGENTS.md</code> at the root with setup, style, testing, and workflow.</li>
+  <li>Capture one always-true convention as a Knowledge item.</li>
+  <li>Start an <code>/ask</code> session and confirm Devin answers using your conventions.</li>
+</ol>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://docs.devin.ai/onboard-devin/agents-md">AGENTS.md</a>, <a href="https://docs.devin.ai/onboard-devin/index-repo">Index a Repository</a>, and <a href="https://docs.devin.ai/onboard-devin/knowledge-onboarding">Knowledge Onboarding</a>.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Tell me your stack and I’ll draft a starter AGENTS.md you can drop into the repo root.
+</div>
+
+<div class="lesson-nav"><a href="0002-scope-with-the-three-hour-rule.html" class="lesson-nav-prev" title="Scope with the 3-Hour Rule">← Prev</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0004-ask-plan-agent-workflow.html" class="lesson-nav-next" title="Ask → Plan → Code">Next →</a></div>
+
+<script src="../assets/lesson.js"></script>
+<script src="../assets/copy-button.js"></script>
+<script src="../assets/theme-toggle.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
