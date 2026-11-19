@@ -17,6 +17,7 @@ Demos, prototypes & experiments.
 - **[Learn chezmoi](./learn-chezmoi/)** — 10-lesson course on managing dotfiles across multiple macOS machines.
 - **[Learn Skills](./learn-skills/)** — Building predictably excellent agent skills — vocabulary, audit discipline, and refactoring patterns.
 - **[Learn Kiro CLI v3](./learn-kiro-cli-v3/)** — 5-lesson course on what's new in Kiro CLI v3 for v1/v2 users: permissions, hooks, tangent, specs, workflows.
+- **[Learn Devin](./learn-devin/)** — 5-lesson course on using Devin CLI + Desktop on a new project: control axes, scoping, onboarding, ask/plan/agent workflow, review and orchestration.
 
 ## External
 

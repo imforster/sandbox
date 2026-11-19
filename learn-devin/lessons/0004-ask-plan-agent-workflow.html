@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4: Ask → Plan → Code in Practice</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><a href="0003-onboard-your-repo.html" class="lesson-back-top" title="Onboard Your Repo"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1L1 6l5 5"/></svg> Prev</a><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-review-and-orchestrate.html" class="lesson-next-top" title="Review & Orchestrate">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Ask → Plan → Code in Practice</h1>
+
+<div class="lesson-meta">
+  Lesson 4 · Leverage Devin on a New Project · ~8 minutes
+</div>
+
+<p>You have the five modes (<a href="0001-two-control-axes.html">Lesson 1</a>), a scoped task (<a href="0002-scope-with-the-three-hour-rule.html">Lesson 2</a>), and an onboarded repo (<a href="0003-onboard-your-repo.html">Lesson 3</a>). Now run the workflow the docs recommend end-to-end — and write the kind of instruction that gets a mergeable result on the first try.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Your win</div>
+  <p>The single most important instruction habit: <strong>be as specific as you would be handing a detailed spec to a coworker.</strong> Devin gets stuck when a request has too many interpretations.</p>
+</div>
+
+<h2>The loop: Ask, then Plan, then Code</h2>
+
+<pre class="diagram">/ask    → understand the code, get cited answers      (read-only)
+   ↓
+/plan   → turn understanding into a scoped prompt      (no changes)
+   ↓
+/code   → execute the plan, test, open a PR            (writes code)</pre>
+
+<p>Each arrow hands context forward. By the time Devin writes code, it is executing a plan you already reviewed — not improvising from a one-line ask.</p>
+
+<h2>Write an opinionated instruction</h2>
+
+<p>Make the decisions <em>for</em> Devin. Compare:</p>
+
+<div class="comparison">
+  <div class="comparison-side traditional">
+    <h4>Don’t</h4>
+    <p>“Improve our database’s performance.”</p>
+    <p>“Make the app look better.”</p>
+    <p>“Make sure it works.”</p>
+  </div>
+  <div class="comparison-side workers">
+    <h4>Do</h4>
+    <p>“Add a composite index on <code>order_id</code> and <code>product_id</code>; replace the correlated subquery in <code>getOrderDetails</code> with a JOIN.”</p>
+    <p>“Refactor the Header to use <code>useReducer</code>; preserve all functionality; add unit tests.”</p>
+    <p>“Run <code>npm test</code> after each iteration; pass ESLint before pushing.”</p>
+  </div>
+</div>
+
+<p>The good instructions share four traits the docs call out: they give <strong>context</strong>, break work into <strong>steps</strong>, define <strong>success criteria</strong>, and <strong>reference existing patterns</strong> (“use <code>authTemplate.rs</code> for error-handling consistency”).</p>
+
+<h2>Close the feedback loop</h2>
+
+<p>Devin has a full desktop — shell, IDE, browser. Tell it to <strong>test its own work before opening a PR</strong>, and give it automatic checks to iterate against:</p>
+
+<ul>
+  <li>“Run <code>npm run dev</code> and verify the new page renders at <code>/settings</code>.”</li>
+  <li>“Open the browser, complete the OAuth flow, confirm it succeeds.”</li>
+  <li>“Pass ESLint/Prettier and the CI pipeline before pushing.”</li>
+</ul>
+
+<div class="callout">
+  <div class="callout-title">Set checkpoints</div>
+  <p>For multi-step tasks, ask Devin to report back after each sub-task: “When modifying the API, confirm the endpoint returns 200 and includes all required fields.” Checkpoints keep it focused and catch drift early.</p>
+</div>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">Which instruction is most likely to get a mergeable result on the first pass?</div>
+  <ul class="quiz-options">
+    <li>Please try to make the checkout process a lot better overall</li>
+    <li data-correct="true">Add idempotency keys to the checkout POST; test duplicates</li>
+    <li>Look into checkout and fix whatever seems wrong in there</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. It is specific, bounded, and states a testable success condition.</div>
+  <div class="quiz-feedback incorrect">Not quite. “Better” and “fix whatever” leave the decisions to Devin. The idempotency-key instruction is specific and testable.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">Why tell Devin to run tests and spin up the app itself?</div>
+  <ul class="quiz-options">
+    <li>It makes the final pull request description read more nicely</li>
+    <li data-correct="true">It lets Devin QA and correct its work before your review</li>
+    <li>It permanently disables the need to review any output later</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Self-testing creates a feedback loop so Devin fixes mistakes before you look.</div>
+  <div class="quiz-feedback incorrect">Not quite. It doesn’t remove review — it means Devin corrects its own errors first, so review is faster.</div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Take your scoped task from Lesson 2. Open <code>/ask</code> and explore the relevant code.</li>
+  <li><code>/plan</code> it into a prompt; read the plan and tighten anything vague.</li>
+  <li>Switch to Code, add explicit success criteria and a “test it yourself” instruction.</li>
+  <li>After it finishes, open Session Insights → <strong>Generate Analysis</strong> for an improved prompt.</li>
+</ol>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://docs.devin.ai/essential-guidelines/instructing-devin-effectively">Instructing Devin Effectively</a> and <a href="https://docs.devin.ai/essential-guidelines/good-vs-bad-instructions">Good vs. Bad Instructions</a>.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Draft an instruction and paste it — I’ll flag anywhere Devin would have to guess, and we’ll make it opinionated.
+</div>
+
+<div class="lesson-nav"><a href="0003-onboard-your-repo.html" class="lesson-nav-prev" title="Onboard Your Repo">← Prev</a><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0005-review-and-orchestrate.html" class="lesson-nav-next" title="Review & Orchestrate">Next →</a></div>
+
+<script src="../assets/lesson.js"></script>
+<script src="../assets/copy-button.js"></script>
+<script src="../assets/theme-toggle.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

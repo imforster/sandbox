@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1: Devin's Five Modes</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+
+<nav class="lesson-top-nav"><span class="lesson-nav-disabled"></span><a href="index.html" class="lesson-home-top" title="All Lessons"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0002-scope-with-the-three-hour-rule.html" class="lesson-next-top" title="Scope with the 3-Hour Rule">Next <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></a></nav>
+
+<h1>Devin's Five Modes</h1>
+
+<div class="lesson-meta">
+  Lesson 1 · Leverage Devin on a New Project · ~7 minutes
+</div>
+
+<p>Every Devin session runs in one <strong>mode</strong>, and the mode decides how much Devin does on its own before it stops to ask you. Pick the wrong one and you either babysit every edit or hand an unsupervised agent your whole machine. Learn the five modes and you control Devin precisely.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Your win</div>
+  <p>The Devin CLI has one mode selector with five choices: <strong>Ask</strong>, <strong>Plan</strong>, <strong>Code</strong>, <strong>Smart</strong>, and <strong>Bypass Permissions</strong>. Cycle them with <code>Shift+Tab</code>. Read-only first, more autonomy as you earn trust.</p>
+</div>
+
+<div class="callout warning">
+  <div class="callout-title">Docs lag the binary</div>
+  <p>Cognition’s published docs still describe an older model (separate “agent modes” and a permission mode called “Accept Edits,” plus an “Autonomous” mode). Your installed CLI is the source of truth. When in doubt, run <code>/help</code> or <code>/mode</code> to see the exact names your build accepts.</p>
+</div>
+
+<h2>The five modes, least to most autonomous</h2>
+
+<table>
+  <thead><tr><th>Mode</th><th>What it does</th><th>Reach for it when</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Ask</strong></td><td>Answers questions about the codebase. Makes no changes.</td><td>Exploring an unfamiliar repo.</td></tr>
+    <tr><td><strong>Plan</strong></td><td>Scopes and plans a task into a prompt. Still no changes.</td><td>Turning a vague idea into a plan.</td></tr>
+    <tr><td><strong>Code</strong></td><td>Writes code and auto-accepts edits in the workspace; prompts for shell commands.</td><td>Executing a scoped task — the everyday default.</td></tr>
+    <tr><td><strong>Smart</strong></td><td>Like Code, plus a fast model auto-runs other actions it judges clearly safe.</td><td>Trusted, routine work you want to move faster.</td></tr>
+    <tr><td><strong>Bypass Permissions</strong></td><td>Auto-approves <em>everything</em> — writes and shell — with no isolation.</td><td>Rarely, and only when you trust the whole run.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="callout-title">Read-only vs. write modes</div>
+  <p><strong>Ask</strong> and <strong>Plan</strong> never change your code — they are the safe way to understand and scope. <strong>Code</strong>, <strong>Smart</strong>, and <strong>Bypass Permissions</strong> all write; they differ only in how much they ask before acting. Cognition’s advice holds: start in Ask to understand, move to Plan to scope, then to Code to execute.</p>
+</div>
+
+<h2>Switching modes</h2>
+
+<p>Cycle modes with <code>Shift+Tab</code>, or set one directly with a slash command. Ask and Plan are one-shot-friendly for a single question or planning pass:</p>
+
+<pre><code># Cycle: Shift+Tab steps through Ask → Plan → Code → Smart → Bypass Permissions
+
+# Or set a mode explicitly:
+/ask how does authentication work in this repo?   # read-only Q&A
+/plan add rate limiting to the login endpoint     # scope it, no changes
+/code                                             # switch to the write mode
+/smart                                            # model-judged auto-approval
+/bypass                                           # Bypass Permissions (confirm the name with /help)</code></pre>
+
+<div class="callout warning">
+  <div class="callout-title">Bypass Permissions has no safety net</div>
+  <p>Bypass Permissions auto-approves every tool call — file writes and shell commands — with no isolation. It never overrides organization rules an admin has set, but on your own machine it trusts the agent completely. On a first project, stay in <strong>Code</strong> so you see and approve what happens. Autonomy is trust you earn.</p>
+</div>
+
+<h2>A typical first task</h2>
+
+<pre><code># 1. Explore in Ask (read-only)
+devin
+/ask where is the login flow handled?
+
+# 2. Plan the change (still no edits)
+/plan add a 5-attempts-per-minute rate limit to the login route
+
+# 3. Execute in Code — edits auto-accepted, shell still prompts
+/code
+# ...review the diff; approve shell commands as they come</code></pre>
+
+<p>You never touched Bypass Permissions. See the <a href="../reference/glossary.html">glossary</a> for exact definitions, and we scope the actual task in <a href="0002-scope-with-the-three-hour-rule.html">Lesson 2</a>.</p>
+
+<h2>Check Your Understanding</h2>
+
+<div class="quiz" id="quiz-1">
+  <div class="quiz-question">You want Devin to plan a refactor but make zero changes to the code yet. Which mode fits?</div>
+  <ul class="quiz-options">
+    <li data-correct="true">Plan mode, which scopes the work without editing files</li>
+    <li>Code mode, which writes and auto-accepts edits now</li>
+    <li>Bypass mode, which approves every action without asking</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Plan scopes and plans without changing code; Code and Bypass both write.</div>
+  <div class="quiz-feedback incorrect">Not quite. Code auto-accepts edits and Bypass approves everything. Only Plan makes zero changes.</div>
+</div>
+
+<div class="quiz" id="quiz-2">
+  <div class="quiz-question">Which mode auto-approves every tool call, including shell, with no isolation?</div>
+  <ul class="quiz-options">
+    <li>Code mode, which writes edits but still prompts for shell</li>
+    <li data-correct="true">Bypass mode, which approves all actions without asking</li>
+    <li>Smart mode, which only auto-runs actions it judges safe</li>
+  </ul>
+  <div class="quiz-feedback correct">Correct. Bypass Permissions auto-approves everything; Code and Smart still gate riskier actions.</div>
+  <div class="quiz-feedback incorrect">Not quite. Code prompts for shell and Smart only auto-runs safe-judged actions. Bypass approves all.</div>
+</div>
+
+<h2>Do This Now</h2>
+
+<ol>
+  <li>Open Devin in a real repo with <code>devin</code>.</li>
+  <li>Run <code>/help</code> and confirm the exact mode names your build shows.</li>
+  <li>Ask one read-only question in <code>/ask</code>.</li>
+  <li>Cycle with <code>Shift+Tab</code> and name each mode as it appears, and why you would use it.</li>
+</ol>
+
+<div class="primary-source">
+  <div class="primary-source-label">Primary Source</div>
+  <p><a href="https://docs.devin.ai/cli/essential-commands">Devin Docs — CLI Essential Commands</a> (Modes). Note: the published docs may lag your CLI — trust <code>/help</code> for the current names.</p>
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions?</strong> Devin’s mode names have been changing — if your CLI shows something different from this lesson, paste your <code>/help</code> output and I’ll update the lesson to match your exact build.
+</div>
+
+<div class="lesson-nav"><span class="lesson-nav-disabled"></span><a href="index.html" class="lesson-nav-home" title="All Lessons"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></a><a href="0002-scope-with-the-three-hour-rule.html" class="lesson-nav-next" title="Scope with the 3-Hour Rule">Next →</a></div>
+
+<script src="../assets/lesson.js"></script>
+<script src="../assets/copy-button.js"></script>
+<script src="../assets/theme-toggle.js"></script>
+<script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
