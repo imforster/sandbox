@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 8: Choosing a table format: three designs, real tradeoffs</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0007-worked-example-read-critically.html" title="A worked example, read critically">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+
+    <h1>Choosing a table format: three designs, real tradeoffs</h1>
+    <p class="lesson-meta">Lesson 8 of 8. Time: 12 minutes. Tangible win: match a workload to the design tradeoff that matters and name what to test.</p>
+
+    <p>Lesson 5 said a table format is the enabling piece. This lesson asks how the three popular ones differ. Source: <a href="https://vldb.org/cidrdb/papers/2023/p92-jain.pdf">Jain et al., CIDR 2023</a>, which compares Delta Lake, Apache Hudi, and Apache Iceberg. The authors are at UC Berkeley and Stanford, and one is at Databricks, so read it as research from people close to the field, not as a neutral audit.</p>
+    <h2>Three design questions</h2>
+    <p>The paper frames the differences as design choices, each forced by running on object storage that is slow and has weak transactional guarantees.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Delta Lake</th><th>Hudi</th><th>Iceberg</th></tr></thead>
+      <tbody>
+        <tr><td>Where is metadata?</td><td>Transaction log plus checkpoints</td><td>Transaction log plus metadata table</td><td>Hierarchy of manifest files</td></tr>
+        <tr><td>How is a commit made atomic?</td><td>Atomic log appends</td><td>Table-level lock</td><td>Table-level lock</td></tr>
+        <tr><td>Isolation levels</td><td>Serializability, strict serializability</td><td>Snapshot isolation</td><td>Snapshot isolation, serializability</td></tr>
+      </tbody>
+    </table>
+    <p>This is the paper's Table 1, which describes the versions it tested.</p>
+    <h2>Copy-on-write versus merge-on-read</h2>
+    <p><strong>Copy-on-write (CoW)</strong> rewrites the affected files when records change. Writes cost more, reads stay fast. <strong>Merge-on-read (MoR)</strong> writes the changes to extra files and reconciles them at query time. Writes are faster, reads are slower. The paper says lower write latency can matter for workloads that apply many record-level changes, such as continuously replicating one database into another.</p>
+    <h2>What the study measured</h2>
+    <table>
+      <thead><tr><th>Test</th><th>Finding reported by the paper</th></tr></thead>
+      <tbody>
+        <tr><td>Load 3 TB of TPC-DS</td><td>Delta and Iceberg took about the same time. Hudi was almost ten times slower, because it is optimized for keyed upserts and does extra pre-processing.</td></tr>
+        <tr><td>Run all TPC-DS queries</td><td>Delta ran 1.4 times faster than Hudi and 1.7 times faster than Iceberg overall. Per-query gaps reached 10 times.</td></tr>
+        <tr><td>Merge updates (CoW versus MoR)</td><td>MoR merged 1.3 times faster than CoW in Hudi, with 3.2 times slower queries afterward. In Iceberg 0.14.0, MoR merged 1.4 times faster.</td></tr>
+        <tr><td>Plan queries on huge tables</td><td>Iceberg planned small tables faster. Delta, with distributed planning, was 7 to 12 times faster on a 200K-file table.</td></tr>
+      </tbody>
+    </table>
+    <section class="callout warning">
+      <span class="callout-title">Why you cannot just crown a winner</span>
+      <p>Everything ran on Apache Spark on AWS EMR with default settings, using Delta 2.2.0, Hudi 0.12.0, and Iceberg 1.1.0, from 2022. The paper itself traces some gaps to engine integration, such as Iceberg's custom Parquet reader and its Spark API, not only the format. It also reports Iceberg 1.1.0 merge-on-read hit S3 timeout errors, so it added results from version 0.14.0. These formats have changed since, and the paper notes Delta was planning merge-on-read support.</p>
+    </section>
+    <section class="callout tip">
+      <span class="callout-title">A tension with Lesson 6</span>
+      <p>Lesson 6 said projects like Nessie and LakeFS enable multi-table transactions. This paper says all three formats provide transactions across records in a single table, but not across tables. Both can be true: the cross-table part comes from a layer above the format.</p>
+    </section>
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Which workload does the paper say may favor merge-on-read?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Frequent record-level change replication</button>
+        <button data-correct="false">Rare full-table batch reloads</button>
+        <button data-correct="false">Mostly read-only dashboard queries</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Merge-on-read writes faster at the cost of slower reads, which suits workloads applying many record-level changes.</p>
+      <p class="quiz-feedback incorrect">Not quite. Copy-on-write suits read-heavy work, and most lakehouse workloads favor read speed. Merge-on-read helps when changes are frequent.</p>
+    </div>
+    <div class="quiz" data-quiz>
+      <p>Which statement does the paper's evidence support?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Delta and Iceberg loaded 3 TB similarly</button>
+        <button data-correct="false">Hudi loaded bulk data fastest overall</button>
+        <button data-correct="false">Iceberg planned fastest at 200K files</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. The paper reports Delta and Iceberg loading in approximately the same time, with Hudi almost ten times slower.</p>
+      <p class="quiz-feedback incorrect">Not quite. Hudi was slowest at bulk load, and Delta planned 7 to 12 times faster than Iceberg on the 200K-file table.</p>
+    </div>
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Take a workload you know (for example, replicating a busy database, or append-only event logs). Say which of the three design questions matters most and why.</li>
+      <li>List two reasons the study's numbers might not match your environment.</li>
+      <li>Write a one-paragraph test plan using your own data. The open-source LHBench, linked from the paper, is a starting point.</li>
+    </ol>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://vldb.org/cidrdb/papers/2023/p92-jain.pdf">Analyzing and Comparing Lakehouse Storage Systems</a>, Jain, Kraft, Power, Das, Stoica, Zaharia (CIDR 2023). Read Sections 2 and 3. About 5 minutes.
+    </section>
+
+    <section class="ask-teacher">
+      Stuck on anything here? Ask your teacher (the agent in this session). Try: "Explain choosing a table format: three designs, real tradeoffs with a different example," or "Quiz me again on this lesson."
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0007-worked-example-read-critically.html" title="A worked example, read critically">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <span class="nav-next"></span>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 1: Warehouse, lake, lakehouse: the vocabulary</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-six-parts-of-a-warehouse.html" title="The six parts of a warehouse">Next</a>
+    </nav>
+
+    <h1>Warehouse, lake, lakehouse: the vocabulary</h1>
+    <p class="lesson-meta">Lesson 1 of 8. Time: 8 minutes. Tangible win: define six core terms and sort a workload into OLTP or OLAP.</p>
+
+    <p>The paper uses a few words very precisely. Learn them now and the rest reads easily. Everything below comes from <a href="https://arxiv.org/pdf/2310.08697">Section 1 of the paper</a>.</p>
+    <h2>Two kinds of database workload</h2>
+    <p><strong>OLTP</strong> systems handle live transactions that touch one or a few rows at a time. The paper's example is booking a flight ticket, which adds rows to a bookings table. <strong>OLAP</strong> systems answer large analytical questions, such as the total number of bookings over a period. The paper says OLTP databases hit performance problems on that kind of question, even at small scale.</p>
+    <p>OLAP systems fit analytics because they store data in columns, their engines exploit that layout, and they usually spread work across many machines (massively parallel processing, MPP).</p>
+    <h2>The paper's naming choice</h2>
+    <p>"Data warehouse" has meant two things: a technology and a set of practices. The authors split them on purpose.</p>
+    <table>
+      <thead><tr><th>Term</th><th>Meaning in this paper</th></tr></thead>
+      <tbody>
+        <tr><td>RDBMS-OLAP</td><td>The technology: a relational database built for analytics (what most people call a data warehouse).</td></tr>
+        <tr><td>DW practices</td><td>Technology-independent habits such as data modeling and data quality.</td></tr>
+        <tr><td>Data warehousing</td><td>RDBMS-OLAP plus DW practices together.</td></tr>
+        <tr><td>Data lake</td><td>Cheap storage that holds any kind of data in open files.</td></tr>
+        <tr><td>Data lakehouse</td><td>An architecture that brings warehouse capabilities to a data lake.</td></tr>
+        <tr><td>Data lakehousing</td><td>Lakehouse plus the same DW practices.</td></tr>
+      </tbody>
+    </table>
+    <section class="callout tip">
+      <span class="callout-title">Why the split matters</span>
+      <p>Because practices are separate from technology, the paper can argue that the practices carry over unchanged to a lakehouse. Only the technology underneath changes.</p>
+    </section>
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>Which task is the best fit for an OLAP system?</p>
+      <div class="quiz-options">
+        <button data-correct="false">Adding one new customer record</button>
+        <button data-correct="true">Totalling sales across three years</button>
+        <button data-correct="false">Updating one order's shipping status</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Large aggregations over many rows are the OLAP pattern. The other two touch single rows, which is OLTP.</p>
+      <p class="quiz-feedback incorrect">Not quite. Aggregating across many rows is OLAP. Single-row inserts and updates are OLTP.</p>
+    </div>
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Without scrolling up, write one sentence each for OLTP, OLAP, and RDBMS-OLAP.</li>
+      <li>Explain why the paper separates "RDBMS-OLAP" from "DW practices".</li>
+      <li>Check your answers against the <a href="../reference/glossary.html">glossary</a>.</li>
+    </ol>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arxiv.org/pdf/2310.08697">The Data Lakehouse: Data Warehousing and More</a>, Mazumdar, Hughes, Onofré (arXiv 2310.08697). Read Section 1 (Introduction). About 5 minutes.
+    </section>
+
+    <section class="ask-teacher">
+      Stuck on anything here? Ask your teacher (the agent in this session). Try: "Explain warehouse, lake, lakehouse: the vocabulary with a different example," or "Quiz me again on this lesson."
+    </section>
+
+    <nav class="lesson-nav">
+      <span class="nav-prev"></span>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0002-six-parts-of-a-warehouse.html" title="The six parts of a warehouse">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

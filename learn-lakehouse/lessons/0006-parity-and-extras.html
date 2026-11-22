@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 6: Parity and extras</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0005-how-a-lakehouse-is-built.html" title="How a lakehouse is built">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0007-worked-example-read-critically.html" title="A worked example, read critically">Next</a>
+    </nav>
+
+    <h1>Parity and extras</h1>
+    <p class="lesson-meta">Lesson 6 of 8. Time: 10 minutes. Tangible win: explain rollback, concurrent writes, and branch-and-merge in lakehouse terms.</p>
+
+    <p>The paper walks each warehouse capability and says how a lakehouse meets it, then lists extras. Source: <a href="https://arxiv.org/pdf/2310.08697">Sections 5.2, 5.3 and 6</a>. These are the paper's descriptions.</p>
+    <h2>Three parity examples</h2>
+    <table>
+      <thead><tr><th>Capability</th><th>Lakehouse mechanism per the paper</th></tr></thead>
+      <tbody>
+        <tr><td>Rollback</td><td>Table formats such as Iceberg keep snapshots of table state, so you can query or restore a prior state.</td></tr>
+        <tr><td>Concurrent writes</td><td>Optimistic concurrency control at the table format level, so concurrent writes do not leave bad data.</td></tr>
+        <tr><td>Schema evolution</td><td>Add, drop, and rename operations only change metadata, with no data files rewritten.</td></tr>
+      </tbody>
+    </table>
+    <h2>Four claimed extras</h2>
+    <table>
+      <thead><tr><th>Extra</th><th>Idea</th></tr></thead>
+      <tbody>
+        <tr><td>Open architecture</td><td>Adopt future engines without migrating data.</td></tr>
+        <tr><td>Fewer copies</td><td>Query data on the lake instead of copying it into a warehouse.</td></tr>
+        <tr><td>Data as code</td><td>Tools like Project Nessie and LakeFS give Git-like branches and commits for tables.</td></tr>
+        <tr><td>Federation</td><td>Query other systems without moving the data first.</td></tr>
+      </tbody>
+    </table>
+    <section class="callout tip">
+      <span class="callout-title">Data as code, in one picture</span>
+      <p>Write a batch job to an isolated branch, check it, expose it to a few users, then merge atomically. The paper compares this to blue-green deployment in software.</p>
+    </section>
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>How does the paper say a lakehouse achieves transaction rollback?</p>
+      <div class="quiz-options">
+        <button data-correct="true">By table snapshots of state</button>
+        <button data-correct="false">By locking every table daily</button>
+        <button data-correct="false">By copying data to a warehouse</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Table formats keep a history of table state as snapshots, so a prior state can be queried or restored.</p>
+      <p class="quiz-feedback incorrect">Not quite. The paper points to snapshots kept by the table format, not daily locks or warehouse copies.</p>
+    </div>
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Explain optimistic concurrency control in your own words, then check the paper's wording.</li>
+      <li>Describe a branch-and-merge flow for a risky data load.</li>
+      <li>Pick the extra you find least proven and say what evidence you would want.</li>
+    </ol>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arxiv.org/pdf/2310.08697">The Data Lakehouse: Data Warehousing and More</a>, Mazumdar, Hughes, Onofré (arXiv 2310.08697). Read Sections 5.2, 5.3 and 6. About 5 minutes.
+    </section>
+
+    <section class="ask-teacher">
+      Stuck on anything here? Ask your teacher (the agent in this session). Try: "Explain parity and extras with a different example," or "Quiz me again on this lesson."
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0005-how-a-lakehouse-is-built.html" title="How a lakehouse is built">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0007-worked-example-read-critically.html" title="A worked example, read critically">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
