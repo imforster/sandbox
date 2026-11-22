@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 7: A worked example, read critically</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0006-parity-and-extras.html" title="Parity and extras">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0008-choosing-a-table-format.html" title="Choosing a table format: three designs, real tradeoffs">Next</a>
+    </nav>
+
+    <h1>A worked example, read critically</h1>
+    <p class="lesson-meta">Lesson 7 of 8. Time: 10 minutes. Tangible win: trace one Iceberg table serving BI and ML, and name two claims to test.</p>
+
+    <p>The paper closes with a small build. Trace it, then decide what it proves. Source: <a href="https://arxiv.org/pdf/2310.08697">Sections 7 and 8</a>.</p>
+    <h2>The pipeline</h2>
+    <pre class="mermaid">
+flowchart TD
+    P["Parquet files on Amazon S3"] --> I["Apache Iceberg table format"]
+    N["Project Nessie catalog"] --- I
+    I --> S["Dremio Sonar SQL engine"]
+    S --> T["Tableau dashboard"]
+    I --> K["Apache Spark with scikit-learn"]
+    K --> M["Churn model"]
+    </pre>
+    <p>The authors create an Iceberg table with one SQL statement, build a dashboard on it, then train a churn model from the same table, with no export step in between.</p>
+    <h2>What it shows and what it does not</h2>
+    <table>
+      <thead><tr><th>Shows</th><th>Does not show</th></tr></thead>
+      <tbody>
+        <tr><td>One table can feed BI and ML</td><td>Query speed against a warehouse</td></tr>
+        <tr><td>No export pipeline in this flow</td><td>Cost comparison with any warehouse</td></tr>
+        <tr><td>Open formats work across engines</td><td>Behavior at large scale or with many users</td></tr>
+      </tbody>
+    </table>
+    <section class="callout warning">
+      <span class="callout-title">Vendor caveat</span>
+      <p>The authors work for Dremio, and the example uses Dremio Sonar. The paper itself says large-scale implementations vary in complexity and tool stack. Treat the example as a demonstration, not a benchmark.</p>
+    </section>
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>What does the paper's example demonstrate?</p>
+      <div class="quiz-options">
+        <button data-correct="true">One table serving BI and ML</button>
+        <button data-correct="false">Faster queries than a warehouse</button>
+        <button data-correct="false">Lower cost than any alternative</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. It shows a single Iceberg table feeding a dashboard and a model without an export step.</p>
+      <p class="quiz-feedback incorrect">Not quite. The example gives no speed or cost measurements. It demonstrates one table serving both workloads.</p>
+    </div>
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Retell the five takeaways of the paper from memory, one sentence each.</li>
+      <li>Write two claims you would test before adopting a lakehouse, and how you would test each.</li>
+      <li>Revisit your mission in <code>MISSION.md</code> and sharpen it with a concrete project.</li>
+    </ol>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arxiv.org/pdf/2310.08697">The Data Lakehouse: Data Warehousing and More</a>, Mazumdar, Hughes, Onofré (arXiv 2310.08697). Read Sections 7 and 8. About 5 minutes.
+    </section>
+
+    <section class="ask-teacher">
+      Stuck on anything here? Ask your teacher (the agent in this session). Try: "Explain a worked example, read critically with a different example," or "Quiz me again on this lesson."
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0006-parity-and-extras.html" title="Parity and extras">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0008-choosing-a-table-format.html" title="Choosing a table format: three designs, real tradeoffs">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+  <script src="../assets/mermaid.min.js"></script>
+  <script src="../assets/mermaid-init.js"></script>
+</body>
+</html>

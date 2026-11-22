@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 4: Where warehouses hurt</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0003-what-a-warehouse-promises.html" title="What a warehouse promises">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-how-a-lakehouse-is-built.html" title="How a lakehouse is built">Next</a>
+    </nav>
+
+    <h1>Where warehouses hurt</h1>
+    <p class="lesson-meta">Lesson 4 of 8. Time: 8 minutes. Tangible win: describe the two-tier architecture and its three costs.</p>
+
+    <p>The lakehouse exists because of three complaints about warehouses, as the authors state them in <a href="https://arxiv.org/pdf/2310.08697">Section 3</a>. These are the paper's claims, so note them as claims.</p>
+    <h2>Three challenges</h2>
+    <table>
+      <thead><tr><th>Challenge</th><th>What the paper says</th></tr></thead>
+      <tbody>
+        <tr><td>Mostly structured data</td><td>Warehouses were built for structured, schema-on-write data. Machine learning wants JSON, images, and iterative training, so data scientists reach for the lake.</td></tr>
+        <tr><td>Lock-in and lock-out</td><td>Data sits in proprietary formats. Teams export it to a lake through ETL, which creates pipelines to maintain and extra copies.</td></tr>
+        <tr><td>High cost</td><td>Storage and compute costs grow over time, and pre-aggregated tables add more storage. Cost can limit analysis to a few datasets.</td></tr>
+      </tbody>
+    </table>
+    <h2>The two-tier architecture</h2>
+    <p>The common workaround is two tiers: a data lake for raw and ML data, plus a warehouse for BI, with pipelines between them. The paper says this adds complexity and overhead, and that copies can cause data drift and model decay.</p>
+    <pre class="mermaid">
+flowchart LR
+    S["Source systems"] -->|"ETL"| L["Data lake"]
+    L -->|"ETL copy"| W["Warehouse"]
+    W --> BI["BI dashboards"]
+    L --> ML["ML training"]
+    </pre>
+    <section class="callout warning">
+      <span class="callout-title">Read it critically</span>
+      <p>The paper says some cloud warehouses can query open-format external tables, but calls this complicated and slow. That is a claim about performance with no measurements in the paper.</p>
+    </section>
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>According to the paper, what causes unmanageable extra data copies?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Moving warehouse data into a lake</button>
+        <button data-correct="false">Running too many dashboards</button>
+        <button data-correct="false">Using columnar file formats</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Offloading warehouse data to a lake via ETL creates the copies and pipelines the paper criticizes.</p>
+      <p class="quiz-feedback incorrect">Not quite. Dashboards and columnar formats are not blamed. The copies come from exporting warehouse data to a lake.</p>
+    </div>
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Draw the two-tier architecture from memory and label every copy of the data.</li>
+      <li>List the three challenges and tie each to a cost.</li>
+      <li>Pick one challenge you could verify with real numbers, and note what you would measure.</li>
+    </ol>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arxiv.org/pdf/2310.08697">The Data Lakehouse: Data Warehousing and More</a>, Mazumdar, Hughes, Onofré (arXiv 2310.08697). Read Section 3 (Challenges with data warehousing). About 5 minutes.
+    </section>
+
+    <section class="ask-teacher">
+      Stuck on anything here? Ask your teacher (the agent in this session). Try: "Explain where warehouses hurt with a different example," or "Quiz me again on this lesson."
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0003-what-a-warehouse-promises.html" title="What a warehouse promises">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0005-how-a-lakehouse-is-built.html" title="How a lakehouse is built">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+  <script src="../assets/mermaid.min.js"></script>
+  <script src="../assets/mermaid-init.js"></script>
+</body>
+</html>

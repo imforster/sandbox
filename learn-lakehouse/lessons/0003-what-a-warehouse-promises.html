@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 3: What a warehouse promises</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0002-six-parts-of-a-warehouse.html" title="The six parts of a warehouse">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-where-warehouses-hurt.html" title="Where warehouses hurt">Next</a>
+    </nav>
+
+    <h1>What a warehouse promises</h1>
+    <p class="lesson-meta">Lesson 3 of 8. Time: 10 minutes. Tangible win: explain ACID and group the eight warehouse capabilities.</p>
+
+    <p>The paper lists what a warehouse can do, then later shows a lakehouse doing the same. Group the capabilities so you can recall them. Source: <a href="https://arxiv.org/pdf/2310.08697">Sections 2.2 and 2.3</a>.</p>
+    <h2>Eight capabilities in three groups</h2>
+    <table>
+      <thead><tr><th>Group</th><th>Capabilities</th></tr></thead>
+      <tbody>
+        <tr><td>Speed and scale</td><td>Low query latency, high concurrency, ad hoc queries, workload management, separation of storage and compute</td></tr>
+        <tr><td>Safety</td><td>Governance and security, ACID-compliant transactions</td></tr>
+        <tr><td>Flexibility</td><td>Schema and physical layout evolution</td></tr>
+      </tbody>
+    </table>
+    <h2>ACID in plain words</h2>
+    <table>
+      <thead><tr><th>Letter</th><th>Guarantee</th></tr></thead>
+      <tbody>
+        <tr><td>Atomicity</td><td>A statement runs completely or not at all.</td></tr>
+        <tr><td>Consistency</td><td>Changes in a transaction behave as expected.</td></tr>
+        <tr><td>Isolation</td><td>Concurrent transactions do not interfere.</td></tr>
+        <tr><td>Durability</td><td>Committed changes persist.</td></tr>
+      </tbody>
+    </table>
+    <p>Three transaction features matter later: multi-statement and multi-table transactions, rollback, and a locking model.</p>
+    <h2>Practices that are not tied to technology</h2>
+    <p>Data modeling, ETL or ELT (move data in, transform before or after loading), and data quality. Data quality includes master data management, referential integrity, and slowly changing dimensions, which track changing attributes such as a customer's address while keeping history.</p>
+    <section class="callout tip">
+      <span class="callout-title">Why multi-table matters</span>
+      <p>The paper's example: a data load often spans several tables. If one table's changes are visible downstream before the rest, results become inconsistent. Multi-statement transactions prevent that.</p>
+    </section>
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>A load fails halfway and no rows from it appear. Which ACID property is at work?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Atomicity of the load</button>
+        <button data-correct="false">Isolation between users</button>
+        <button data-correct="false">Durability of the data</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Atomicity means the whole statement runs or none of it does.</p>
+      <p class="quiz-feedback incorrect">Not quite. Isolation concerns concurrent transactions and durability concerns persistence. All-or-nothing behavior is atomicity.</p>
+    </div>
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Recite the three capability groups and one example from each.</li>
+      <li>Explain why a dashboard reader needs isolation while a load job writes.</li>
+      <li>Give your own example of a slowly changing dimension.</li>
+    </ol>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arxiv.org/pdf/2310.08697">The Data Lakehouse: Data Warehousing and More</a>, Mazumdar, Hughes, Onofré (arXiv 2310.08697). Read Sections 2.2 and 2.3 (Capabilities and practices). About 5 minutes.
+    </section>
+
+    <section class="ask-teacher">
+      Stuck on anything here? Ask your teacher (the agent in this session). Try: "Explain what a warehouse promises with a different example," or "Quiz me again on this lesson."
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0002-six-parts-of-a-warehouse.html" title="The six parts of a warehouse">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0004-where-warehouses-hurt.html" title="Where warehouses hurt">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 5: How a lakehouse is built</title>
+  <link rel="stylesheet" href="../assets/course.css">
+  <link rel="stylesheet" href="../assets/copy-button.css">
+</head>
+<body>
+  <main>
+    <nav class="lesson-top-nav">
+      <a class="nav-prev" href="0004-where-warehouses-hurt.html" title="Where warehouses hurt">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0006-parity-and-extras.html" title="Parity and extras">Next</a>
+    </nav>
+
+    <h1>How a lakehouse is built</h1>
+    <p class="lesson-meta">Lesson 5 of 8. Time: 10 minutes. Tangible win: map each warehouse component to its lakehouse counterpart.</p>
+
+    <p>Now the answer. A lakehouse keeps the same six components but separates them and stores data in open formats, so any compatible engine can use it. Source: <a href="https://arxiv.org/pdf/2310.08697">Sections 4 and 5.1</a>.</p>
+    <h2>Six traits of a lakehouse</h2>
+    <p>The paper characterizes a lakehouse by: transactional support, open data, no copy, data quality and governance, schema management, and scalability through separate storage and compute.</p>
+    <h2>Component mapping</h2>
+    <table>
+      <thead><tr><th>Component</th><th>Warehouse</th><th>Lakehouse (paper's examples)</th></tr></thead>
+      <tbody>
+        <tr><td>Storage</td><td>Bundled</td><td>Cloud object stores: Amazon S3, Azure Storage, Google Cloud Storage</td></tr>
+        <tr><td>File format</td><td>Proprietary</td><td>Open, usually columnar: Apache Parquet</td></tr>
+        <tr><td>Table format</td><td>Proprietary</td><td>Apache Iceberg, Apache Hudi, Delta Lake</td></tr>
+        <tr><td>Storage engine</td><td>Bundled</td><td>Compaction, repartitioning, indexing services</td></tr>
+        <tr><td>Catalog</td><td>Bundled</td><td>Separate service: Hive, AWS Glue, Nessie, REST</td></tr>
+        <tr><td>Compute engine</td><td>One engine</td><td>Choose per workload: Spark, Flink, Dremio Sonar</td></tr>
+      </tbody>
+    </table>
+    <section class="callout tip">
+      <span class="callout-title">The key idea</span>
+      <p>The table format is a metadata layer over open files. The paper credits it with bringing schema evolution, partitioning, time travel, and ACID transactions to a data lake, where they were previously limited to warehouses.</p>
+    </section>
+    <h2>Retrieval check</h2>
+    <div class="quiz" data-quiz>
+      <p>What does storing data in open file and table formats allow?</p>
+      <div class="quiz-options">
+        <button data-correct="true">Several engines use one copy</button>
+        <button data-correct="false">One vendor controls all access</button>
+        <button data-correct="false">Queries skip the catalog entirely</button>
+      </div>
+      <p class="quiz-feedback correct">Correct. Open formats let different engines, even from different vendors, work on the same data.</p>
+      <p class="quiz-feedback incorrect">Not quite. Open formats remove single-vendor control, and catalogs are still used. The benefit is multiple engines on one copy.</p>
+    </div>
+    <h2>Practice</h2>
+    <ol class="checklist">
+      <li>Redraw your Lesson 2 stack, this time with lakehouse names and open formats.</li>
+      <li>Explain in two sentences why a table format is the enabling piece.</li>
+      <li>Mark which components can be swapped without moving data.</li>
+    </ol>
+
+    <section class="primary-source">
+      <span class="primary-source-label">Primary source</span>
+      <a href="https://arxiv.org/pdf/2310.08697">The Data Lakehouse: Data Warehousing and More</a>, Mazumdar, Hughes, Onofré (arXiv 2310.08697). Read Sections 4 and 5.1. About 5 minutes.
+    </section>
+
+    <section class="ask-teacher">
+      Stuck on anything here? Ask your teacher (the agent in this session). Try: "Explain how a lakehouse is built with a different example," or "Quiz me again on this lesson."
+    </section>
+
+    <nav class="lesson-nav">
+      <a class="nav-prev" href="0004-where-warehouses-hurt.html" title="Where warehouses hurt">Previous</a>
+      <a class="nav-home" href="index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>All Lessons</a>
+      <a class="nav-next" href="0006-parity-and-extras.html" title="Parity and extras">Next</a>
+    </nav>
+  </main>
+  <script src="../assets/copy-button.js"></script>
+  <script src="../assets/quiz.js"></script>
+  <script src="/sandbox/shared/nav.js"></script>
+</body>
+</html>
